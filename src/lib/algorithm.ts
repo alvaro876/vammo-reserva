@@ -49,6 +49,7 @@ export interface AlgoritmoInput {
   pecas_criticas: string;    // "Garfo, Caixa direção"
   is_piso: number;           // 1 = cliente fisicamente no piso, 0 = não
   min_no_status: number;     // minutos no status atual (para IN_PROGRESS: tempo já trabalhado)
+  min_desde_open: number;    // minutos desde que a OS foi aberta
 }
 
 export function avaliarOS(input: AlgoritmoInput): Recomendacao {
@@ -147,7 +148,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     ...base,
     decision: "SEM_RESERVA" as ReservaDecision,
     rule_triggered: "C4_PENDING",
-    motivo: "passa para avaliação de mecânicos e backlog",
+    motivo: `aberta há ${input.min_desde_open}min, estimado ${input.tempo_estimado_min}min — dentro do prazo, passa para avaliação de mecânicos`,
     motivo_claude: null,
   };
 }
