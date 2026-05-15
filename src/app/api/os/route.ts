@@ -58,7 +58,7 @@ os_meta AS (
       AND so.asset_model NOT IN ('S 60V45Ah', 'T 74V28Ah')
     GROUP BY so.id, so.so_type, so.location_id, so.asset_model,
              so.maintenance_metadata, so.so_description, so.created_at
-    HAVING status_atual IN ('OPEN', 'IN_PROGRESS', 'IN_DIAGNOSIS', 'AWAITING_MECHANIC', 'PAUSED')
+    HAVING status_atual IN ('OPEN', 'IN_PROGRESS', 'IN_DIAGNOSIS', 'AWAITING_MECHANIC', 'PAUSED', 'AWAITING_QA', 'IN_QA', 'QA_REJECTED', 'AWAITING_VMGMT')
        AND toDate(so.created_at, 'America/Sao_Paulo') >= toDate(now('America/Sao_Paulo')) - 1
 ),
 mecanico_atual AS (

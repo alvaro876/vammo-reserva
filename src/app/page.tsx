@@ -54,6 +54,10 @@ function StatusBadge({ status }: { status: string }) {
     IN_PROGRESS: "bg-blue-100 text-blue-800",
     AWAITING_MECHANIC: "bg-yellow-100 text-yellow-800",
     PAUSED: "bg-orange-100 text-orange-800",
+    AWAITING_QA: "bg-teal-100 text-teal-800",
+    IN_QA: "bg-teal-200 text-teal-900",
+    QA_REJECTED: "bg-red-100 text-red-800",
+    AWAITING_VMGMT: "bg-gray-100 text-gray-700",
   };
   const labels: Record<string, string> = {
     OPEN: "Aberta",
@@ -61,6 +65,10 @@ function StatusBadge({ status }: { status: string }) {
     IN_PROGRESS: "Em andamento",
     AWAITING_MECHANIC: "Aguard. mecânico",
     PAUSED: "Pausada",
+    AWAITING_QA: "Aguard. QA",
+    IN_QA: "Em QA",
+    QA_REJECTED: "Reprovada",
+    AWAITING_VMGMT: "Aguard. gestão",
   };
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium ${cores[status] ?? "bg-gray-100 text-gray-600"}`}>
