@@ -188,7 +188,7 @@ export async function GET() {
     // Statuses onde reserva ainda faz sentido — cliente está esperando
     // Pula AWAITING_QA e posteriores (moto quase pronta, reserva não ajuda mais)
     const STATUSES_AVALIAVEIS = new Set([
-      "OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "IN_PROGRESS",
+      "OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "IN_PROGRESS", "AWAITING_VMGMT",
     ]);
 
     const osComRecomendacao = rows.map((row) => {

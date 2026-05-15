@@ -48,6 +48,7 @@ export interface AlgoritmoInput {
   pecas_sem_estoque: string; // "Disco dianteiro, Motor"
   pecas_criticas: string;    // "Garfo, Caixa direção"
   is_piso: number;           // 1 = cliente fisicamente no piso, 0 = não
+  min_no_status: number;     // minutos no status atual (para IN_PROGRESS: tempo já trabalhado)
 }
 
 export function avaliarOS(input: AlgoritmoInput): Recomendacao {
@@ -125,14 +126,17 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 3.5: Tempo total combinado ────────────────────────────────────
   // Cliente já esperou X min + ainda tem Y min de trabalho = total > 3h.
-  // Sem precisar de dados de mecânico: se a soma já passa do limite,
-  // qualquer mecânico disponível entregaria depois do prazo.
-  const tempoTotalSemMec = input.min_desde_open + input.tempo_estimado_min;
+  // Para IN_PROGRESS: mecânico já trabalhou min_no_status — usar só o restante.
+  // Para outros: mecânico ainda não começou — usar estimado total.
+  const tempoRestante = input.status_atual === "IN_PROGRESS"
+    ? Math.max(0, input.tempo_estimado_min - input.min_no_status)
+    : input.tempo_estimado_min;
+  const tempoTotalSemMec = input.min_desde_open + tempoRestante;
   // Guard: OS > 8h são anomalias — C1_ANOMALIA é a regra certa pra elas
   if (input.tempo_estimado_min > 0 && input.min_desde_open < 480 && tempoTotalSemMec > THRESHOLDS.tempo_total_max) {
     return reserva(
       "C3_TEMPO_COMBINADO",
-      `já esperou ${input.min_desde_open}min + estimado ${input.tempo_estimado_min}min = ${tempoTotalSemMec}min total`,
+      `já esperou ${input.min_desde_open}min + restante ~${tempoRestante}min = ${tempoTotalSemMec}min total`,
       base
     );
   }
