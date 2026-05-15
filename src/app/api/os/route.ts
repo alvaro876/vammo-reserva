@@ -185,14 +185,16 @@ export async function GET() {
     // Busca os dados do ClickHouse
     const rows = await query<AlgoritmoInput>(OS_QUERY);
 
-    // Para cada OS, roda as Camadas 1-3 do algoritmo
-    // as OS em AWAITING_MECHANIC recebem avaliação completa
-    // as demais (IN_PROGRESS, PAUSED) recebem "out_of_scope" — só aparecem na tabela
+    // Statuses onde reserva ainda faz sentido — cliente está esperando
+    // Pula AWAITING_QA e posteriores (moto quase pronta, reserva não ajuda mais)
+    const STATUSES_AVALIAVEIS = new Set([
+      "OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "IN_PROGRESS",
+    ]);
+
     const osComRecomendacao = rows.map((row) => {
-      const recomendacao =
-        row.status_atual === "AWAITING_MECHANIC"
-          ? avaliarOS(row as AlgoritmoInput)
-          : null;
+      const recomendacao = STATUSES_AVALIAVEIS.has(row.status_atual)
+        ? avaliarOS(row as AlgoritmoInput)
+        : null;
 
       return {
         ...row,

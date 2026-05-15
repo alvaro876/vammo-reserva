@@ -351,10 +351,10 @@ export default function Home() {
       setUltimaAtualizacao(new Date());
       setErro(null);
 
-      // Depois de carregar, pede pro Claude avaliar os casos C4_PENDING
-      // Só OS em AWAITING_MECHANIC que passaram por C1-C3 sem disparar
+      // Pede pro Claude avaliar todos os C4_PENDING de clientes em piso
+      // cobre OPEN, IN_DIAGNOSIS, AWAITING_MECHANIC e IN_PROGRESS
       const pendentes = data.filter(
-        os => os.status_atual === "AWAITING_MECHANIC" &&
+        os => os.is_piso === 1 &&
               os.recomendacao?.rule_triggered === "C4_PENDING"
       );
 
@@ -465,9 +465,16 @@ export default function Home() {
 
   const base = (id: number) => id === 1 ? "Mooca" : id === 34 ? "Osasco" : id === 166 ? "SBC" : `Base ${id}`;
 
-  // Aplica filtros: apenas piso + base selecionada
+  // Tabela principal: apenas piso + base selecionada
   const osExibidas = osList.filter(os => {
     if (os.is_piso !== 1) return false;
+    if (baseFiltro !== "todas" && os.location_id !== Number(baseFiltro)) return false;
+    return true;
+  });
+
+  // Segunda tabela: não-piso + base selecionada (contexto da oficina)
+  const osNaoPiso = osList.filter(os => {
+    if (os.is_piso === 1) return false;
     if (baseFiltro !== "todas" && os.location_id !== Number(baseFiltro)) return false;
     return true;
   });
@@ -588,6 +595,41 @@ export default function Home() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Segunda tabela: OS não-piso — contexto da oficina */}
+        {osNaoPiso.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3 px-1">
+              Demais OS ativas na base ({osNaoPiso.length})
+            </h2>
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    {["OS", "Placa", "Modelo", "Base", "Status", "T. em aberto", "T. estimado", "Peça principal", "Mecânico"].map(h => (
+                      <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {osNaoPiso.map(os => (
+                    <tr key={os.os_id} className="hover:bg-slate-50 text-slate-600">
+                      <td className="px-4 py-2 text-slate-400 text-xs">{os.os_id}</td>
+                      <td className="px-4 py-2 font-medium text-slate-700">{os.placa}</td>
+                      <td className="px-4 py-2 text-slate-500">{os.asset_model}</td>
+                      <td className="px-4 py-2 text-slate-500">{base(os.location_id)}</td>
+                      <td className="px-4 py-2"><StatusBadge status={os.status_atual} /></td>
+                      <td className="px-4 py-2">{formatMin(os.min_desde_open)}</td>
+                      <td className="px-4 py-2">{os.tempo_estimado_min > 0 ? formatMin(os.tempo_estimado_min) : <span className="text-slate-300">—</span>}</td>
+                      <td className="px-4 py-2 max-w-32 truncate" title={os.peca_principal}>{os.peca_principal || <span className="text-slate-300">—</span>}</td>
+                      <td className="px-4 py-2">{os.mecanico_atual || <span className="text-slate-300">—</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>
