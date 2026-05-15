@@ -95,6 +95,14 @@ function ReservaBadge({ os, onClick }: { os: OSRow; onClick: () => void }) {
       </span>
     );
   }
+  // C4_ERRO = Claude retornou erro
+  if (os.recomendacao.rule_triggered === "C4_ERRO") {
+    return (
+      <span className="text-xs text-orange-500" title={os.recomendacao.motivo ?? ""}>
+        erro IA
+      </span>
+    );
+  }
   if (os.recomendacao.decision === "RESERVA") {
     return (
       <button
@@ -390,8 +398,25 @@ export default function Home() {
               },
             }),
           });
-          if (!r.ok) return;
           const resultado = await r.json();
+
+          if (!r.ok) {
+            // API retornou erro — mostra "erro" em vez de spinner eterno
+            setOsList(prev => prev.map(item => {
+              if (item.os_id !== os.os_id) return item;
+              return {
+                ...item,
+                recomendacao: {
+                  ...item.recomendacao!,
+                  decision: "SEM_RESERVA" as const,
+                  rule_triggered: "C4_ERRO",
+                  motivo: resultado?.error ?? "Erro ao consultar Claude",
+                  motivo_claude: null,
+                },
+              };
+            }));
+            return;
+          }
 
           // Atualiza só a OS correspondente no estado — não refaz o fetch inteiro
           setOsList(prev => prev.map(item => {
@@ -401,14 +426,27 @@ export default function Home() {
               recomendacao: {
                 ...item.recomendacao!,
                 decision: resultado.decision,
-                rule_triggered: resultado.decision === "RESERVA" ? "C4_CLAUDE" : "C4_CLAUDE",
+                rule_triggered: "C4_CLAUDE",
                 motivo: resultado.motivo_claude,
                 motivo_claude: resultado.motivo_claude,
               },
             };
           }));
-        } catch {
-          // falha silenciosa — OS fica como C4_PENDING
+        } catch (err) {
+          // Mostra erro em vez de spinner eterno
+          setOsList(prev => prev.map(item => {
+            if (item.os_id !== os.os_id) return item;
+            return {
+              ...item,
+              recomendacao: {
+                ...item.recomendacao!,
+                decision: "SEM_RESERVA" as const,
+                rule_triggered: "C4_ERRO",
+                motivo: err instanceof Error ? err.message : "Erro desconhecido",
+                motivo_claude: null,
+              },
+            };
+          }));
         }
       });
     } catch (e) {
