@@ -81,19 +81,19 @@ function StatusBadge({ status }: { status: string }) {
 // AWAITING_QA e posteriores não têm recomendação (moto quase pronta)
 function ReservaBadge({ os, onClick }: { os: OSRow; onClick: () => void }) {
   if (!os.recomendacao) {
-    return <span className="text-slate-400 text-xs">avaliando...</span>;
+    return <span className="text-orange-400 text-xs font-mono">null/{os.status_atual}</span>;
   }
-  // C4_PENDING = Claude ainda não respondeu
-  if (os.recomendacao.rule_triggered === "C4_PENDING") {
+  const rule = os.recomendacao.rule_triggered;
+  // C4_PENDING = algoritmo passou para avaliação de mecânicos
+  if (rule === "C4_PENDING") {
     return (
-      <span className="flex items-center gap-1 text-xs text-slate-400">
-        <span className="inline-block w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
-        analisando...
+      <span className="text-xs text-blue-500 font-mono" title={os.recomendacao.motivo ?? ""}>
+        pending · {os.min_desde_open}+{os.tempo_estimado_min}
       </span>
     );
   }
   // C4_ERRO = Claude retornou erro
-  if (os.recomendacao.rule_triggered === "C4_ERRO") {
+  if (rule === "C4_ERRO") {
     return (
       <span className="text-xs text-orange-500" title={os.recomendacao.motivo ?? ""}>
         erro IA
@@ -105,14 +105,15 @@ function ReservaBadge({ os, onClick }: { os: OSRow; onClick: () => void }) {
       <button
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         className="flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 transition-colors"
+        title={os.recomendacao.motivo ?? ""}
       >
-        🔴 RESERVAR
+        🔴 RESERVAR · {rule}
       </button>
     );
   }
   return (
-    <span className="flex items-center gap-1 text-xs font-medium text-green-700">
-      🟢 Sem reserva
+    <span className="text-xs text-green-700 font-mono" title={os.recomendacao.motivo ?? ""}>
+      ok · {rule}
     </span>
   );
 }
