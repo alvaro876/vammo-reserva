@@ -77,12 +77,9 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// Badge de reserva — só aparece pra OS em AWAITING_MECHANIC
-// Para outros status mostra traço (não houve avaliação ainda)
+// Badge de reserva — aparece para qualquer status avaliável
+// AWAITING_QA e posteriores não têm recomendação (moto quase pronta)
 function ReservaBadge({ os, onClick }: { os: OSRow; onClick: () => void }) {
-  if (os.status_atual !== "AWAITING_MECHANIC") {
-    return <span className="text-slate-300">—</span>;
-  }
   if (!os.recomendacao) {
     return <span className="text-slate-400 text-xs">avaliando...</span>;
   }
