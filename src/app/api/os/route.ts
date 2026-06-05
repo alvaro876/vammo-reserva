@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { query } from "@/lib/clickhouse";
-import { avaliarOS, AlgoritmoInput } from "@/lib/algorithm";
+import { avaliarOS, AlgoritmoInput, MecanicoEstado } from "@/lib/algorithm";
 
 // SQL que busca OS ativas com tudo que o algoritmo e a tabela precisam
 // Já validado manualmente no ClickHouse em 11/05/2026
@@ -180,20 +180,59 @@ LEFT JOIN is_piso ip ON ip.os_id = om.os_id
 ORDER BY om.min_desde_open DESC
 `;
 
+// Tipo estendido do que o SQL retorna (inclui campos não presentes em AlgoritmoInput)
+type OSRow = AlgoritmoInput & { mecanico_atual: string };
+
 export async function GET() {
   try {
     // Busca os dados do ClickHouse
-    const rows = await query<AlgoritmoInput>(OS_QUERY);
+    const rows = await query<OSRow>(OS_QUERY);
+
+    // ── C4: Computa estado dos mecânicos a partir das OS ativas ──────────
+    // Mecânicos IN_PROGRESS → ocupados, min_restantes = estimado - já trabalhado
+    // Mecânicos em AWAITING_QA/PAUSED → livres (acabaram a OS, esperando próxima)
+    // Skill proxy: se a OS atual tem complexidade >= 5 (MEC2), o mecânico é MEC2+
+    //
+    // Limitação conhecida: mecânicos que finalizaram todas as OS hoje e estão
+    // ociosos não aparecem aqui (não têm OS ativa). Resulta em contagem conservadora
+    // (pode sugerir reserva para OS que teriam mecânico disponível). Aceitável no DEV.
+    const mecMap = new Map<string, MecanicoEstado>();
+
+    for (const row of rows) {
+      if (!row.mecanico_atual) continue;
+      const email = row.mecanico_atual;
+
+      if (row.status_atual === "IN_PROGRESS") {
+        // Ocupado — prioridade sobre qualquer estado "livre" anterior
+        mecMap.set(email, {
+          email,
+          status_atual: "IN_PROGRESS",
+          location_id: row.location_id,
+          min_restantes: Math.max(0, row.tempo_estimado_min - row.min_no_status),
+          skill_level: row.complexidade_max >= 5 ? 5 : 3,
+        });
+      } else if (!mecMap.has(email)) {
+        // Livre (AWAITING_QA, PAUSED, etc.) — só registra se ainda não vimos ele ocupado
+        mecMap.set(email, {
+          email,
+          status_atual: row.status_atual,
+          location_id: row.location_id,
+          min_restantes: 0,
+          skill_level: row.complexidade_max >= 5 ? 5 : 3,
+        });
+      }
+    }
+
+    const todosMecanicos = Array.from(mecMap.values());
 
     // Statuses onde reserva ainda faz sentido — cliente está esperando
-    // Pula AWAITING_QA e posteriores (moto quase pronta, reserva não ajuda mais)
     const STATUSES_AVALIAVEIS = new Set([
       "OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "IN_PROGRESS", "PAUSED", "AWAITING_VMGMT",
     ]);
 
     const osComRecomendacao = rows.map((row) => {
       const recomendacao = STATUSES_AVALIAVEIS.has(row.status_atual)
-        ? avaliarOS(row as AlgoritmoInput)
+        ? avaliarOS({ ...row, mecanicos: todosMecanicos } as AlgoritmoInput)
         : null;
 
       return {
