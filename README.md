@@ -1,6 +1,5 @@
 <div align="center">
 
-# 🛵 RIVERS
 
 **Decide, em tempo real e com justificativa, quais clientes em manutenção devem receber uma moto reserva.**
 
@@ -11,7 +10,7 @@
 [![ClickHouse](https://img.shields.io/badge/data-ClickHouse-FFCC01?logo=clickhouse&logoColor=black)](https://clickhouse.com)
 [![Supabase](https://img.shields.io/badge/log-Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 
-[App ao vivo](https://vammo-reserva.vercel.app) · [Como funciona](docs/COMO-FUNCIONA.md) · [Conceitos](docs/RIVERS-CONCEITOS.md) · [Relatórios](calib/)
+[Como funciona](docs/COMO-FUNCIONA.md) · [Conceitos](docs/RIVERS-CONCEITOS.md) · [Relatórios](calib/)
 
 </div>
 
