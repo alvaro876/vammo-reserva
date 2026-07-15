@@ -147,7 +147,6 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       decision: "SEM_RESERVA" as ReservaDecision,
       rule_triggered: "C4_OK",
       motivo: `dentro do prazo: ~${tempoTotal}min (fila ~${tempoEspera}min com ${cap} mec esperados + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA)`,
-      motivo_claude: null,
     };
   }
 
@@ -160,21 +159,19 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     motivo: semDiag
       ? `aguardando diagnóstico (aberta há ${input.min_desde_open}min, sem estimativa de tempo ainda)`
       : `dentro do prazo: aberta há ${input.min_desde_open}min, estimado ${input.tempo_estimado_min}min`,
-    motivo_claude: null,
   };
 }
 
 function reserva(
   rule: string,
   motivo: string,
-  base: Omit<Recomendacao, "decision" | "rule_triggered" | "motivo" | "motivo_claude">
+  base: Omit<Recomendacao, "decision" | "rule_triggered" | "motivo">
 ): Recomendacao {
   return {
     ...base,
     decision: "RESERVA",
     rule_triggered: rule,
     motivo,
-    motivo_claude: null,
   };
 }
 

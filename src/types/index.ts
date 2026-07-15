@@ -37,7 +37,6 @@ export interface Recomendacao {
   decision: ReservaDecision;
   rule_triggered: string | null;
   motivo: string;
-  motivo_claude: string | null; // explicação gerada pelo Claude
   tempo_previsto_min: number | null;
   mecanico_sugerido: string | null;
   tempo_para_inicio_min: number | null;

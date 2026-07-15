@@ -25,7 +25,7 @@ Ver histórico e justificativas em [`DECISOES.md`](./DECISOES.md).
 | Escopo V1 | Completa, incluindo **capacidade agregada de mecânicos**; alocação por mecânico específico (senioridade) **fora da V1** | 🟡 alinhado |
 | Absenteísmo | **Medir antes de modelar** — haircut empírico, não modelo preditivo na V1 | 🟡 recomendado |
 | Sem RAG | Contexto persiste via estes docs + Vammo Mind + memórias | ✅ recomendado |
-| Remover Claude | Tirar o fallback LLM, deixar 100% determinístico | ✅ pedido do Alvaro |
+| Remover o LLM | Tirar o fallback de IA generativa, deixar 100% determinístico | ✅ pedido do Alvaro |
 
 ## Como funciona hoje (estado atual do código)
 
@@ -34,8 +34,8 @@ Ver histórico e justificativas em [`DECISOES.md`](./DECISOES.md).
   `avaliarOS` em cada OS ativa. Devolve JSON pro browser.
 - **`src/lib/algorithm.ts`**: `avaliarOS` com as **Camadas 1–4** determinísticas.
   A primeira camada que dispara manda.
-- **`src/app/api/recommendation/route.ts`**: fallback que chama o **Claude Haiku** para
-  os casos `C4_PENDING` (combinações sutis). ← **a remover**.
+- **`src/app/api/recommendation/route.ts`** (removido): fallback que chamava um **LLM** para
+  os casos `C4_PENDING` (combinações sutis).
 - **`src/lib/clickhouse.ts`**: cliente HTTP read-only (Basic Auth), zero-dep.
 - **`src/app/page.tsx`**: UI. Tem botões de aceitar/rejeitar **soltos** ("Feedback salvo
   no Supabase em breve").
@@ -98,7 +98,7 @@ Ver histórico e justificativas em [`DECISOES.md`](./DECISOES.md).
 > depois aterrar inputs, depois capacidade, depois rodar sozinho, depois medir e iterar.
 
 ### Fase 0 — Fundação
-- [x] **0.1 Remover o Claude** — algoritmo 100% determinístico (fallback `C5_DENTRO_PRAZO`).
+- [x] **0.1 Remover o LLM** — algoritmo 100% determinístico (fallback `C5_DENTRO_PRAZO`).
 - [x] **0.2 Criar Supabase + rodar `schema.sql`** — feito (tabelas criadas).
 - [x] **0.3 Instrumentação** — sugestões gravando na `rivers_suggestion` (verificado: 133 linhas);
   botões aceitar/rejeitar ligados (`/api/feedback`, popula ao primeiro clique).

@@ -116,9 +116,9 @@ Cruzamos **três coisas por OS** (join por os_id = so_id):
 
 **Resultados (25/06–10/07, 1.396 OS):** recall 88% (pegou 115 das 130 decisões da oficina) · aponta antes do humano em 58% (70% na última semana) · 6 furos reais (todos por "não estar olhando", não por conta errada) · dos 245 "só RIVERS", 61 passaram mesmo de 3h (a oficina que não deu) e 180 foram excesso (mediana 131min — na trave).
 
-**Relatórios publicados:**
-- Principal (executivo, com "mapa dos números"): https://claude.ai/code/artifact/f8259103-9194-4052-91ba-42857f47f72c
-- Investigação (furos, excessos, conciliações): https://claude.ai/code/artifact/6311c2f4-0176-46d3-be24-6778e804f543
+**Relatórios (em `calib/`):**
+- Principal (executivo, com "mapa dos números"): `calib/rivers-vs-oficina.html`
+- Investigação (furos, excessos, conciliações): `calib/rivers-investigacao.html`
 
 **Scripts de análise** (rodam com Node; dados via export do Metabase em Downloads/Metabase/):
 - `scripts/cross-analysis.mjs` — cruzamento completo → calib/cross-dashboard.json
@@ -169,7 +169,7 @@ supabase/schema.sql        ← DDL das tabelas de log
 | Quando | O quê |
 |---|---|
 | ~11/05 | Primeira versão do algoritmo (thresholds calibrados contra 865 OS) |
-| 22-23/06 | Reboot: Claude/LLM removido (100% determinístico) · Supabase logando · bug do JSONExtractBool corrigido (C1 estava morto) · modelo de presença estudado |
+| 22-23/06 | Reboot: fallback de LLM removido (100% determinístico) · Supabase logando · bug do JSONExtractBool corrigido (C1 estava morto) · modelo de presença estudado |
 | 24/06 | Deploy na Vercel (vammo-reserva.vercel.app) |
 | 25/06 | Capacidade plugada no algoritmo (v0.2.0) · Supabase em prod · Slack funcionando · **início da medição** |
 | 27/06 | Feedback dos gerentes aplicado: só rampa, janela curta, +8min QA, **removidas peça-crítica/diversas-avarias** |

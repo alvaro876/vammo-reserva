@@ -217,4 +217,4 @@ Ordem de avaliação — **a primeira que dispara retorna**:
 
 **180min** (SLA) · **120/150/240min** (cortes: serviço longo / espera sem diag / anomalia) · **8min** QA · **25min** custo fixo por OS · **12.785 OS / 181 peças** (calibração) · **31,6 vs 35,1** (MAE novo vs antigo) · **1,68×** (superestimação multi-peça) · **0,70/0,84/0,94** (haircuts M/O/S) · **3,3 vs 5,2** (MAE baseline vs escala, Mooca — o backtest que a escala perdeu) · **88% recall · 67×48 corrida · 6 furos (0 por conta errada) · 61/245 excessos com razão · mediana 131min** · **360=115+245** · **670 entregas reais / 18% com motivo** · **~1min** lag CH · versões **0.1→0.2→0.3**.
 
-**Links:** app vammo-reserva.vercel.app · relatório e investigação (URLs no PREP-CALL-TEC-DATA.md) · referência: docs/COMO-FUNCIONA.md
+**Links:** app vammo-reserva.vercel.app · relatórios em `calib/` · referência: docs/COMO-FUNCIONA.md

@@ -11,7 +11,7 @@
 [![ClickHouse](https://img.shields.io/badge/data-ClickHouse-FFCC01?logo=clickhouse&logoColor=black)](https://clickhouse.com)
 [![Supabase](https://img.shields.io/badge/log-Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 
-[App ao vivo](https://vammo-reserva.vercel.app) · [Relatório de acurácia](https://claude.ai/code/artifact/f8259103-9194-4052-91ba-42857f47f72c) · [Como funciona](docs/COMO-FUNCIONA.md) · [Conceitos](docs/RIVERS-CONCEITOS.md)
+[App ao vivo](https://vammo-reserva.vercel.app) · [Como funciona](docs/COMO-FUNCIONA.md) · [Conceitos](docs/RIVERS-CONCEITOS.md) · [Relatórios](calib/)
 
 </div>
 
@@ -93,7 +93,7 @@ Acurácia aqui não é opinião. Cruzamos, moto a moto: **o que o RIVERS sugeriu
 
 > Régua que importa: medimos o tempo **até a moto ficar pronta**, não até o cliente buscar — porque cliente com reserva na mão não tem pressa de devolver, o que distorcia a conta.
 
-Nos primeiros 15 dias, o RIVERS **capturou a grande maioria** das reservas que a oficina deu, **apontou antes** da decisão humana na maior parte dos casos, e os poucos furos foram investigados um a um: nenhum foi erro de conta — foi o motor não estar "olhando" na hora certa (o que o cron resolve). Detalhes, com método e ressalvas, no [relatório de acurácia](https://claude.ai/code/artifact/f8259103-9194-4052-91ba-42857f47f72c) e na [investigação](https://claude.ai/code/artifact/6311c2f4-0176-46d3-be24-6778e804f543).
+Nos primeiros 15 dias, o RIVERS **capturou a grande maioria** das reservas que a oficina deu, **apontou antes** da decisão humana na maior parte dos casos, e os poucos furos foram investigados um a um: nenhum foi erro de conta — foi o motor não estar "olhando" na hora certa (o que o cron resolve). Os relatórios completos, com método e ressalvas, estão em [`calib/`](calib/).
 
 ## Estrutura do projeto
 
