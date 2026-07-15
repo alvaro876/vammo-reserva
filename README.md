@@ -1,5 +1,7 @@
 <div align="center">
 
+**🇧🇷 Português** · [🇬🇧 English](README.en.md)
+
 # 🛵 RIVERS
 
 **Decide, em tempo real e com justificativa, quais clientes em manutenção devem receber uma moto reserva.**
