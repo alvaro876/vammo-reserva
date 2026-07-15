@@ -86,28 +86,11 @@ function ReservaBadge({ os, onClick }: { os: OSRow; onClick: () => void }) {
   const rule = os.recomendacao.rule_triggered;
   const motivo = os.recomendacao.motivo ?? "";
 
-  // C4_PENDING = sem dados de mecânicos, passou para Claude
-  if (rule === "C4_PENDING") {
-    return (
-      <span className="flex items-center gap-1 text-xs text-slate-400" title={motivo}>
-        <span className="inline-block w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
-        analisando...
-      </span>
-    );
-  }
-  // C4_OK = passou C4 determinístico, dentro do prazo
+  // C4_OK / C5_DENTRO_PRAZO = passou determinístico, dentro do prazo
   if (rule === "C4_OK") {
     return (
       <span className="text-xs text-green-700 font-medium" title={motivo}>
         🟢 Sem reserva
-      </span>
-    );
-  }
-  // C4_ERRO = Claude retornou erro
-  if (rule === "C4_ERRO") {
-    return (
-      <span className="text-xs text-orange-500" title={motivo}>
-        erro IA
       </span>
     );
   }
@@ -243,7 +226,7 @@ function DetalhePanel({ os, onClose }: { os: OSRow; onClose: () => void }) {
               ) : (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                   <p className="text-xs font-bold text-green-700">🟢 Sem reserva</p>
-                  <p className="text-xs text-green-600 mt-0.5">Avaliação de mecânicos pendente</p>
+                  <p className="text-xs text-green-600 mt-0.5">{os.recomendacao.motivo}</p>
                 </div>
               )}
             </div>
@@ -259,15 +242,11 @@ function motivoInfo(rule: string | null): { icone: string; titulo: string } {
   if (!rule) return { icone: "🔴", titulo: "Reserva recomendada" };
   if (rule.startsWith("C1_HARD"))      return { icone: "🚨", titulo: "Situação crítica" };
   if (rule === "C1_ANOMALIA")          return { icone: "⚠️", titulo: "Anomalia de fluxo" };
+  if (rule === "C1_ESPERA_SEM_DIAG")   return { icone: "⏰", titulo: "Esperando há muito sem diagnóstico" };
   if (rule === "C2_SEM_ESTOQUE")       return { icone: "📦", titulo: "Peça sem estoque" };
-  if (rule === "C3_PECA_CRITICA")      return { icone: "🔧", titulo: "Peça de alta complexidade" };
-  if (rule === "C3_DIVERSAS_AVARIAS")  return { icone: "🔩", titulo: "Diversas avarias" };
   if (rule === "C3_TEMPO_ALTO")        return { icone: "⏱️", titulo: "Trabalho muito longo" };
   if (rule === "C3_TEMPO_COMBINADO")   return { icone: "⏳", titulo: "Tempo total excede limite" };
-  if (rule === "C4_SEM_MECANICO")      return { icone: "👨‍🔧", titulo: "Sem mecânico disponível" };
-  if (rule === "C4_FILA_LONGA")        return { icone: "🚦", titulo: "Fila longa — espera >1h" };
-  if (rule === "C4_TEMPO_COM_FILA")    return { icone: "⏳", titulo: "Tempo total com fila excede 3h" };
-  if (rule === "C4_CLAUDE")            return { icone: "🤖", titulo: "Recomendação por IA" };
+  if (rule === "C4_CAPACIDADE")        return { icone: "🚦", titulo: "Oficina saturada (fila + serviço > 3h)" };
   return { icone: "🔴", titulo: "Reserva recomendada" };
 }
 
@@ -275,6 +254,30 @@ function motivoInfo(rule: string | null): { icone: string; titulo: string } {
 function ReservaModal({ os, onClose }: { os: OSRow; onClose: () => void }) {
   const rec = os.recomendacao!;
   const { icone, titulo } = motivoInfo(rec.rule_triggered);
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState<string | null>(null);
+
+  async function enviarFeedback(aceitou: boolean) {
+    setEnviando(true);
+    try {
+      const r = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ os_id: os.os_id, aceitou }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setEnviado(j.error ? `Erro: ${j.error}` : "Erro ao salvar");
+      } else {
+        setEnviado(aceitou ? "Reserva confirmada ✓" : "Marcado: não reservar");
+        setTimeout(onClose, 800);
+      }
+    } catch {
+      setEnviado("Erro de conexão");
+    } finally {
+      setEnviando(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
@@ -293,9 +296,6 @@ function ReservaModal({ os, onClose }: { os: OSRow; onClose: () => void }) {
         <div className="space-y-3">
           {/* Motivo principal */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            {rec.rule_triggered === "C4_CLAUDE" && (
-              <p className="text-xs text-red-500 font-medium mb-1">🤖 Análise por IA</p>
-            )}
             <p className="text-sm font-semibold text-red-800 leading-relaxed">{rec.motivo}</p>
           </div>
 
@@ -329,16 +329,26 @@ function ReservaModal({ os, onClose }: { os: OSRow; onClose: () => void }) {
             )}
           </div>
 
-          {/* Botões — Fase 4 vai ligar ao Supabase */}
+          {/* Botões — registram feedback no Supabase (rivers_feedback) */}
           <div className="flex gap-2 pt-1">
-            <button className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">
+            <button
+              onClick={() => enviarFeedback(true)}
+              disabled={enviando || enviado !== null}
+              className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
               ✓ Confirmar reserva
             </button>
-            <button className="flex-1 py-2.5 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-50 transition-colors">
+            <button
+              onClick={() => enviarFeedback(false)}
+              disabled={enviando || enviado !== null}
+              className="flex-1 py-2.5 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
               ✗ Não reservar
             </button>
           </div>
-          <p className="text-center text-xs text-slate-400">Feedback salvo no Supabase em breve</p>
+          <p className="text-center text-xs text-slate-400">
+            {enviado ?? "Seu feedback é salvo pra medir a acurácia do algoritmo"}
+          </p>
         </div>
       </div>
     </div>
@@ -363,104 +373,7 @@ export default function Home() {
       setUltimaAtualizacao(new Date());
       setErro(null);
 
-      // Pede pro Claude avaliar todos os C4_PENDING de clientes em piso
-      // cobre OPEN, IN_DIAGNOSIS, AWAITING_MECHANIC e IN_PROGRESS
-      const pendentes = data.filter(
-        os => os.is_piso === 1 &&
-              os.recomendacao?.rule_triggered === "C4_PENDING"
-      );
-
-      // Chama em paralelo — Claude Haiku responde em ~1s cada
-      pendentes.forEach(async (os) => {
-        try {
-          // Estado atual da oficina na mesma base — passado pro Claude raciocinar
-          const osNaBase = data.filter(o => o.location_id === os.location_id);
-          const emAndamento = osNaBase.filter(o => o.status_atual === "IN_PROGRESS");
-          const aguardandoMec = osNaBase.filter(
-            o => o.status_atual === "AWAITING_MECHANIC" && o.os_id !== os.os_id
-          );
-          // Tempo restante estimado por mecânico = estimado - tempo já no status atual
-          const tempoRestanteList = emAndamento.map(o =>
-            Math.max(0, o.tempo_estimado_min - o.min_no_status)
-          );
-          const tempoMedioRestante = tempoRestanteList.length > 0
-            ? Math.round(tempoRestanteList.reduce((a, b) => a + b, 0) / tempoRestanteList.length)
-            : 0;
-
-          const r = await fetch("/api/recommendation", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              os_id: os.os_id,
-              placa: os.placa,
-              asset_model: os.asset_model,
-              location_id: os.location_id,
-              min_desde_open: os.min_desde_open,
-              tempo_estimado_min: os.tempo_estimado_min,
-              n_pecas: os.n_pecas,
-              complexidade_max: os.complexidade_max,
-              todas_pecas_diag: os.todas_pecas_diag,
-              peca_principal: os.peca_principal,
-              mecanico_atual: os.mecanico_atual,
-              descricao_cx: os.descricao_cx,
-              oficina_estado: {
-                mecanicos_em_os: emAndamento.length,
-                tempo_medio_restante_min: tempoMedioRestante,
-                outras_os_aguardando_mec: aguardandoMec.length,
-              },
-            }),
-          });
-          const resultado = await r.json();
-
-          if (!r.ok) {
-            // API retornou erro — mostra "erro" em vez de spinner eterno
-            setOsList(prev => prev.map(item => {
-              if (item.os_id !== os.os_id) return item;
-              return {
-                ...item,
-                recomendacao: {
-                  ...item.recomendacao!,
-                  decision: "SEM_RESERVA" as const,
-                  rule_triggered: "C4_ERRO",
-                  motivo: resultado?.error ?? "Erro ao consultar Claude",
-                  motivo_claude: null,
-                },
-              };
-            }));
-            return;
-          }
-
-          // Atualiza só a OS correspondente no estado — não refaz o fetch inteiro
-          setOsList(prev => prev.map(item => {
-            if (item.os_id !== os.os_id) return item;
-            return {
-              ...item,
-              recomendacao: {
-                ...item.recomendacao!,
-                decision: resultado.decision,
-                rule_triggered: "C4_CLAUDE",
-                motivo: resultado.motivo_claude,
-                motivo_claude: resultado.motivo_claude,
-              },
-            };
-          }));
-        } catch (err) {
-          // Mostra erro em vez de spinner eterno
-          setOsList(prev => prev.map(item => {
-            if (item.os_id !== os.os_id) return item;
-            return {
-              ...item,
-              recomendacao: {
-                ...item.recomendacao!,
-                decision: "SEM_RESERVA" as const,
-                rule_triggered: "C4_ERRO",
-                motivo: err instanceof Error ? err.message : "Erro desconhecido",
-                motivo_claude: null,
-              },
-            };
-          }));
-        }
-      });
+      // Recomendação já vem pronta e determinística do /api/os — sem IA.
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro desconhecido");
     } finally {

@@ -1,17 +1,21 @@
-// Algoritmo de recomendação de reserva — Camadas 1 a 4
+// Algoritmo de recomendação de reserva — camadas determinísticas
 //
-// Camada 4 (DEV): mecânico disponível — verifica se há mecânico elegível,
-// quanto tempo até ficar livre, e se o tempo total ainda cabe em 3h.
-// Dados de mecânicos chegam computados em route.ts a partir das OS ativas.
+// Camada 4: capacidade da oficina — usa a curva de mecânicos ESPERADOS
+// (base × dia-da-semana × hora, do histórico, injetada em route.ts) + a fila de
+// trabalho esperando mecânico, pra estimar se a OS fica pronta em 3h.
 
 import { Recomendacao, ReservaDecision } from "@/types";
+
+// Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
+export const ALGO_VERSION = "0.3.0"; // 0.3.0 = estimativa de tempo calibrada (tempo-pecas.ts)
 
 const THRESHOLDS = {
   anomalia_min: 240,         // C1: OS aberta há mais de 4h antes do diag fechar
   diversas_avarias: 9,       // C3: 9+ tipos de peça diferentes no diag
   tempo_estimado_max: 120,   // C3: tempo estimado total > 120 min
   tempo_total_max: 180,      // C3.5 / C4: espera + execução > 180 min
-  fila_max: 60,              // C4: próximo mecânico elegível só livre em >60min
+  qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
+  espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
 };
 
 // Peças que sozinhas justificam reserva imediata
@@ -22,15 +26,6 @@ const PECAS_CRITICAS = new Set([
   296,                 // Chassi
   240,                 // Garfo
 ]);
-
-// Estado atual de um mecânico (computado em route.ts a partir das OS ativas)
-export interface MecanicoEstado {
-  email: string;
-  status_atual: string;   // IN_PROGRESS, AWAITING_QA, PAUSED, etc.
-  location_id: number;
-  min_restantes: number;  // 0 se livre, estimativa do que falta se IN_PROGRESS
-  skill_level: number;    // 3 = MEC1, 5 = MEC2+, proxy da complexidade da OS atual
-}
 
 export interface AlgoritmoInput {
   os_id: number;
@@ -54,7 +49,8 @@ export interface AlgoritmoInput {
   is_piso: number;
   min_no_status: number;
   min_desde_open: number;
-  mecanicos?: MecanicoEstado[];  // injetado em route.ts, opcional para retrocompatibilidade
+  capacidade_esperada?: number;  // nº esperado de mecânicos na base/hora atual (curva do histórico)
+  fila_min?: number;             // soma do tempo estimado das OS esperando mecânico na base
 }
 
 export function avaliarOS(input: AlgoritmoInput): Recomendacao {
@@ -81,6 +77,21 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     return reserva("C1_ANOMALIA", `moto não entrou na oficina há ${input.min_open_to_awaiting}min`, base);
   }
 
+  // Piso esperando demais SEM diagnóstico: moto em piso, aberta há muito tempo, e o
+  // diagnóstico nem começou (sem estimativa de tempo). Não vai ficar pronta no prazo
+  // → reserva. (Sem essa regra, OS sem diagnóstico escapavam, pois não há tempo p/ estimar.)
+  if (
+    input.is_piso === 1 &&
+    input.tempo_estimado_min === 0 &&
+    input.min_desde_open > THRESHOLDS.espera_sem_diag_min
+  ) {
+    return reserva(
+      "C1_ESPERA_SEM_DIAG",
+      `em piso há ${input.min_desde_open}min e ainda sem diagnóstico — esperando demais`,
+      base
+    );
+  }
+
   // ── CAMADA 2: Estoque ──────────────────────────────────────────────────
 
   if (input.n_sem_estoque > 0) {
@@ -89,98 +100,66 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 3: Complexidade ─────────────────────────────────────────────
 
-  if (input.n_pecas_criticas > 0) {
-    return reserva("C3_PECA_CRITICA", `peça crítica: ${input.pecas_criticas}`, base);
-  }
-  if (input.n_pecas >= THRESHOLDS.diversas_avarias) {
-    return reserva("C3_DIVERSAS_AVARIAS", `diversas avarias (${input.n_pecas} tipos de peça)`, base);
-  }
+  // Peça crítica e nº de peças foram REMOVIDOS como critério (decisão da operação):
+  // ter um Motor ou muitas peças não significa, por si só, passar de 3h — quem decide
+  // é o tempo. Quando a estimativa de tempo for recalibrada, ela já captura essas peças.
   if (input.tempo_estimado_min > THRESHOLDS.tempo_estimado_max) {
     return reserva("C3_TEMPO_ALTO", `trabalho estimado em ${input.tempo_estimado_min}min`, base);
   }
 
-  // ── CAMADA 3.5: Tempo total combinado (sem dados de mecânico) ──────────
+  // ── CAMADA 3.5: Tempo total combinado (sem capacidade) ─────────────────
   // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
   const tempoRestanteC3 = input.status_atual === "IN_PROGRESS"
     ? Math.max(0, input.tempo_estimado_min - input.min_no_status)
     : input.tempo_estimado_min;
-  const totalSemMec = input.min_desde_open + tempoRestanteC3;
+  const totalSemMec = input.min_desde_open + tempoRestanteC3 + THRESHOLDS.qa_min;
   if (input.tempo_estimado_min > 0 && input.min_desde_open < 480 && totalSemMec > THRESHOLDS.tempo_total_max) {
     return reserva(
       "C3_TEMPO_COMBINADO",
-      `já esperou ${input.min_desde_open}min + restante ~${tempoRestanteC3}min = ${totalSemMec}min total`,
+      `já esperou ${input.min_desde_open}min + restante ~${tempoRestanteC3}min + ${THRESHOLDS.qa_min}min QA = ${totalSemMec}min total`,
       base
     );
   }
 
-  // ── CAMADA 4: Mecânico disponível ─────────────────────────────────────
-  // Só roda se temos dados de mecânicos (injetados em route.ts).
-  // Verifica se existe mecânico com skill suficiente, quando fica livre,
-  // e se o tempo total (espera + fila + serviço) ainda cabe em 3h.
+  // ── CAMADA 4: Capacidade da oficina (modelo de presença) ───────────────
+  // Usa a CAPACIDADE ESPERADA de mecânicos na base/hora (curva do histórico,
+  // injetada em route.ts) + a fila de trabalho esperando mecânico, pra estimar
+  // quanto tempo até esta OS ser atendida. Substitui o antigo proxy de "quem
+  // está mexendo numa moto agora" (que despencava no almoço e na troca de turno).
+  const cap = input.capacidade_esperada ?? 0;
+  if (cap > 0 && input.tempo_estimado_min > 0) {
+    const filaMin = input.fila_min ?? 0;
+    const tempoEspera = Math.round(filaMin / cap);   // fila de serviço ÷ mecânicos em paralelo
+    base.tempo_para_inicio_min = tempoEspera;
+    const tempoTotal = input.min_desde_open + tempoEspera + tempoRestanteC3 + THRESHOLDS.qa_min;
+    base.tempo_previsto_min = tempoTotal;
 
-  const mecanicos = input.mecanicos;
-  if (mecanicos && mecanicos.length > 0) {
-    // Skill mínimo necessário para esta OS
-    // complexidade_max >= 5 → peça de MEC2 (balança, disco, chicote nível 5+)
-    const skillNecessario = input.complexidade_max >= 5 ? 5 : 3;
-
-    // Mecânicos elegíveis: mesma base + skill suficiente
-    const elegiveis = mecanicos.filter(
-      (m) => m.location_id === input.location_id && m.skill_level >= skillNecessario
-    );
-
-    if (elegiveis.length === 0) {
+    if (input.tempo_estimado_min > 0 && tempoTotal > THRESHOLDS.tempo_total_max) {
       return reserva(
-        "C4_SEM_MECANICO",
-        `nenhum mecânico ${skillNecessario >= 5 ? "MEC2+" : "MEC1+"} ativo na base`,
+        "C4_CAPACIDADE",
+        `oficina saturada: fila ~${tempoEspera}min (${filaMin}min de serviço ÷ ${cap} mec esperados) + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA, já esperou ${input.min_desde_open}min → ${tempoTotal}min`,
         base
       );
     }
 
-    // Melhor mecânico = menor tempo até ficar livre
-    const melhor = elegiveis.reduce((min, m) =>
-      m.min_restantes < min.min_restantes ? m : min
-    );
-
-    // Preenche sugestão de mecânico no output mesmo quando não reserva
-    base.mecanico_sugerido = melhor.email;
-    base.tempo_para_inicio_min = melhor.min_restantes;
-
-    // Fila longa: próximo elegível só fica livre daqui muito tempo
-    if (melhor.min_restantes > THRESHOLDS.fila_max) {
-      return reserva(
-        "C4_FILA_LONGA",
-        `próximo mecânico elegível livre em ~${melhor.min_restantes}min (limite: ${THRESHOLDS.fila_max}min)`,
-        base
-      );
-    }
-
-    // Tempo total com fila: espera atual + fila + execução > 3h
-    const totalComFila = input.min_desde_open + melhor.min_restantes + input.tempo_estimado_min;
-    if (input.tempo_estimado_min > 0 && totalComFila > THRESHOLDS.tempo_total_max) {
-      return reserva(
-        "C4_TEMPO_COM_FILA",
-        `${input.min_desde_open}min aberta + ${melhor.min_restantes}min fila + ${input.tempo_estimado_min}min serviço = ${totalComFila}min`,
-        base
-      );
-    }
-
-    // Passou por C4 determinístico sem reserva → dentro do prazo com mecânico disponível
     return {
       ...base,
       decision: "SEM_RESERVA" as ReservaDecision,
       rule_triggered: "C4_OK",
-      motivo: `${melhor.email} livre em ~${melhor.min_restantes}min, total estimado ${input.min_desde_open + melhor.min_restantes + input.tempo_estimado_min}min`,
+      motivo: `dentro do prazo: ~${tempoTotal}min (fila ~${tempoEspera}min com ${cap} mec esperados + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA)`,
       motivo_claude: null,
     };
   }
 
-  // ── Sem dados de mecânicos → passa pro Claude (C5) ─────────────────────
+  // ── Sem capacidade (curva indisponível) → decisão determinística ───────
+  const semDiag = input.tempo_estimado_min === 0;
   return {
     ...base,
     decision: "SEM_RESERVA" as ReservaDecision,
-    rule_triggered: "C4_PENDING",
-    motivo: `aberta há ${input.min_desde_open}min, estimado ${input.tempo_estimado_min}min — sem dados de mecânicos, passa para IA`,
+    rule_triggered: semDiag ? "C5_AGUARDA_DIAG" : "C5_DENTRO_PRAZO",
+    motivo: semDiag
+      ? `aguardando diagnóstico (aberta há ${input.min_desde_open}min, sem estimativa de tempo ainda)`
+      : `dentro do prazo: aberta há ${input.min_desde_open}min, estimado ${input.tempo_estimado_min}min`,
     motivo_claude: null,
   };
 }

@@ -1,0 +1,339 @@
+<title>RIVERS × Oficina — leitura executiva</title>
+<style>
+  :root {
+    --ink:#16232E; --paper:#F6F8FA; --card:#FFFFFF; --line:#E3E9EF;
+    --muted:#5B6B7A; --soft:#8DA0B0;
+    --rivers:#185FA5; --rivers-soft:#C9DCEF;
+    --oficina:#C97A10; --oficina-soft:#F2D9B0;
+    --good:#1F8A4C; --bad:#C03D3D; --bad-soft:#F3D2D2;
+  }
+  * { box-sizing:border-box; }
+  body { font-family:"Segoe UI",system-ui,-apple-system,sans-serif; color:var(--ink); background:var(--paper); margin:0; font-variant-numeric:tabular-nums; }
+  .wrap { max-width:960px; margin:0 auto; padding:34px 20px 64px; }
+  .eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--soft); font-weight:600; margin:0 0 6px; }
+  h1 { font-size:27px; font-weight:700; letter-spacing:-.015em; margin:0 0 6px; text-wrap:balance; }
+  .sub { color:var(--muted); font-size:14px; margin:0 0 22px; line-height:1.55; max-width:66ch; }
+  .verdict { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--rivers); border-radius:12px; padding:20px 24px; margin-bottom:14px; }
+  .verdict p { font-size:17px; line-height:1.55; margin:0; max-width:62ch; }
+  .verdict b { color:var(--rivers); }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:14px 0 26px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:13px 15px; }
+  .stat .n { font-size:24px; font-weight:700; letter-spacing:-.01em; }
+  .stat .l { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.35; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:22px 24px; margin-bottom:14px; }
+  section h2 { font-size:17px; font-weight:700; margin:0 0 3px; letter-spacing:-.01em; }
+  section .q { font-size:13px; color:var(--muted); margin:0 0 16px; max-width:74ch; }
+  .takeaway { font-size:14.5px; line-height:1.55; margin:16px 0 0; padding:12px 15px; background:#F2F6FA; border-radius:9px; color:#26394A; }
+  .takeaway b { color:var(--ink); }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); margin-top:10px; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:2.5px; margin-right:5px; vertical-align:-.5px; }
+  .track { display:flex; height:16px; border-radius:5px; overflow:hidden; background:#EDF1F5; }
+  .seg { height:100%; }
+  .rowbar { margin:8px 0; }
+  .rowbar .lbl { font-size:12.5px; margin-bottom:3px; display:flex; justify-content:space-between; gap:10px; }
+  .rowbar .lbl .nums { color:var(--soft); white-space:nowrap; }
+  .duo { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:22px; }
+  .duo h3 { font-size:13px; font-weight:600; margin:0 0 10px; color:var(--muted); }
+  .split { display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:12px; margin-top:14px; }
+  .split > div { border-radius:10px; padding:14px 16px; font-size:13.5px; line-height:1.55; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th { text-align:left; color:var(--soft); font-size:11px; text-transform:uppercase; letter-spacing:.08em; padding:7px 10px; border-bottom:1px solid var(--line); font-weight:600; }
+  td { padding:8px 10px; border-bottom:1px solid #F0F3F6; vertical-align:top; }
+  .regras-tbl td:first-child { white-space:nowrap; font-weight:600; }
+  .num-right td:last-child, .num-right th:last-child { text-align:right; }
+  .gloss { font-size:13px; color:var(--muted); line-height:1.7; margin-top:14px; }
+  .gloss b { color:var(--ink); font-weight:600; }
+  .acts { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
+  .acts > div { background:#F2F6FA; border-radius:10px; padding:15px 17px; font-size:13.5px; line-height:1.55; }
+  .acts b { display:block; margin-bottom:4px; color:var(--ink); }
+  .method { font-size:12px; color:var(--soft); line-height:1.7; margin-top:24px; max-width:80ch; }
+  .method b { color:var(--muted); }
+  svg { max-width:100%; height:auto; display:block; }
+</style>
+<div class="wrap">
+  <p class="eyebrow">Vammo · Manutenção · 25/jun – 10/jul (15 dias)</p>
+  <h1>RIVERS × Oficina: o algoritmo está acertando?</h1>
+  <p class="sub">O RIVERS decide sozinho quais clientes em piso devem receber moto reserva. Cruzamos, moto a moto, <b>o que ele sugeriu</b> com <b>o que a oficina de fato fez</b> no Maestro — e com o tempo real que cada moto levou <b>até ficar pronta</b>. As OS de <b>serviço especial (50) já estão excluídas</b> de todos os números: é um fluxo próprio, com decisão de reserva própria.</p>
+
+  <div class="verdict">
+    <p>Em 15 dias, o RIVERS pegou <b>88% das reservas</b> que a oficina deu e <b>apontou antes da decisão humana em 58% dos casos</b> (na última semana, 70%). Furos reais: 6 no período — e caindo semana a semana. O ponto de atenção virou o excesso: 1 em cada 4 tinha razão, mas a semana do feriado <b>inflou a regra de "oficina saturada" em Osasco</b> — recalibração já priorizada.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n">1.396</div><div class="l">OS de piso cruzadas<br>(de 1.648 check-ins)</div></div>
+    <div class="stat"><div class="n" style="color:var(--oficina)">130</div><div class="l">reservas decididas pela oficina (75 entregues)</div></div>
+    <div class="stat"><div class="n" style="color:var(--rivers)">360</div><div class="l">reservas sugeridas pelo RIVERS</div></div>
+    <div class="stat"><div class="n" style="color:var(--good)">115</div><div class="l">concordâncias — os dois reservaram</div></div>
+  </div>
+
+  <section style="background:#F2F6FA">
+    <h2>Mapa dos números — leia antes 🧭</h2>
+    <p class="q">Cada número deste relatório é um recorte de um funil só. Pra nenhum parecer contradizer outro:</p>
+    <table>
+      <tr><th>Número</th><th>O que é</th><th>Como se relaciona</th></tr>
+      <tr><td><b>1.648</b></td><td>Check-ins de manutenção no período</td><td>O ponto de partida</td></tr>
+      <tr><td><b>1.396</b></td><td>Universo analisado</td><td>1.648 − 50 de serviço especial (fluxo próprio, fora do escopo) − 202 não avaliadas (tela fechada/janela)</td></tr>
+      <tr><td><b>360</b></td><td><b>Todas</b> as sugestões do RIVERS (é o que o gráfico diário soma)</td><td>= 115 confirmadas pela oficina + 245 "só RIVERS"</td></tr>
+      <tr><td><b>245</b></td><td>Sugestões que <b>só</b> o RIVERS marcou (objeto da seção 3)</td><td>= 61 que passaram de 3h (razão) + 180 prontas antes (excesso) + 4 em atendimento</td></tr>
+      <tr><td><b>130</b></td><td>Decisões de reserva da oficina <b>registradas no fluxo formal do check-in</b> (75 entregues + 55 só ofertadas)</td><td>⚠️ Não é o total de motos reserva entregues na Vammo: no mesmo período houve <b>~670 entregas reais</b> somando todos os fluxos (rua, devolução, placa, fins de semana) — só ~18% passam pelo fluxo formal com motivo. Detalhe completo na <a href="https://claude.ai/code/artifact/6311c2f4-0176-46d3-be24-6778e804f543">investigação</a>.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>1 · Quem reservou o quê</h2>
+    <p class="q">Cada OS cai numa de quatro situações:</p>
+    <div id="overlap"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--good)"></span>Os dois (115)</span>
+      <span><span class="dot" style="background:var(--rivers)"></span>Só o RIVERS (245)</span>
+      <span><span class="dot" style="background:var(--bad)"></span>Só a oficina (15)</span>
+      <span><span class="dot" style="background:#C9D3DC"></span>Nenhum (1.021)</span>
+    </div>
+    <div class="split">
+      <div style="background:#EFF5FB; border:1px solid var(--rivers-soft); color:#1C3A57">
+        <b>Só o RIVERS mandou (245):</b> <b>61 motos passaram de 3h até ficar prontas</b> — a reserva devia ter saído e não saiu. As demais ficaram prontas antes do limite, mas perto: <b>mediana de 131min</b> (o corte é 180). A quebra por critério está na seção 3.
+      </div>
+      <div style="background:#FBF1F1; border:1px solid var(--bad-soft); color:#5A2323">
+        <b>Só a oficina reservou (14 válidas*):</b> <b>6 furos reais</b> — motos que passaram de 3h, concentradas em "serviço complexo" de dias e agora também 2 em SBC (aguardando peça). Nas outras 8, a moto ficou pronta <b>dentro das 3h</b>. <span style="color:#9B5B5B">*1 OS cancelada fora da conta.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · Como o RIVERS decide</h2>
+    <p class="q">Na raiz, o RIVERS reserva por <b>dois critérios</b>: <b>TEMPO</b> (a moto não fica pronta em 3h) e <b>PEÇA</b> (sem estoque, o conserto não sai hoje). O critério Tempo tem <b>quatro caminhos</b> de chegar na mesma conclusão — eles são regras separadas no código (a primeira que dispara decide), mas medem parcelas da mesma conta: <i>já esperou + fila + serviço restante + QA &gt; 180min</i>.</p>
+    <div style="overflow-x:auto"><table class="regras-tbl">
+      <tr><th>Caminho</th><th>Dispara quando</th><th>Racional</th></tr>
+      <tr><td colspan="3" style="background:#F2F6FA; font-weight:700; color:#26394A">⏱ CRITÉRIO TEMPO — não fica pronta em 3h</td></tr>
+      <tr><td>· Esperando sem diagnóstico</td><td>Piso + OS aberta há <b>mais de 2h30</b> sem diagnóstico iniciado</td><td>Mesmo um serviço rápido (30min + QA) já não caberia nas 3h.</td></tr>
+      <tr><td>· Serviço estimado longo</td><td>Execução estimada <b>acima de 120min</b> (minutos por peça calibrados com ~13 mil OS + 25min fixos)</td><td>Com espera típica e QA (8min), estoura as 3h. Corte mais largo da família — em recalibração (Marcelo pediu tempos menores).</td></tr>
+      <tr><td>· Tempo total estoura 3h</td><td>Já esperado + serviço restante + 8min QA <b>&gt; 180min</b></td><td>A conta direta do prazo.</td></tr>
+      <tr><td>· Oficina saturada</td><td>Fila da base ÷ mecânicos escalados (RHID do dia) + serviço + espera <b>&gt; 180min</b></td><td>Serviço curto também estoura se a fila está grande pro time escalado.</td></tr>
+      <tr><td>· Anomalia de fluxo</td><td>Mais de 4h sem a moto nem entrar na oficina</td><td>Fluxo travado — o prazo já era.</td></tr>
+      <tr><td colspan="3" style="background:#F2F6FA; font-weight:700; color:#26394A">🔩 CRITÉRIO PEÇA — o conserto não sai hoje</td></tr>
+      <tr><td>· Peça sem estoque</td><td>O diagnóstico pede peça que não tem na base</td><td>Independe de tempo: sem a peça, não conclui.</td></tr>
+      <tr><td colspan="3" style="background:#F2F6FA; font-weight:700; color:#26394A">🚨 RESERVA IMEDIATA — sem conta</td></tr>
+      <tr><td>· Situação crítica</td><td>Moto imobilizada, acidente, guincho ou vistoria de seguro</td><td>Não precisa estimar nada.</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>3 · A quebra dos 245 "só RIVERS": ele tinha razão?</h2>
+    <p class="q">Das 360 sugestões do RIVERS, 115 a oficina confirmou (validadas por ela) — aqui olhamos <b>as 245 restantes, que só ele marcou</b>. Por critério (e, dentro do Tempo, por caminho): quantas <b>de fato passaram de 3h</b> (ele tinha razão — a oficina é que não deu) e quantas ficaram prontas antes (excesso dele).</p>
+    <div id="fpquebra"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--rivers)"></span>passou de 3h — RIVERS tinha razão</span>
+      <span><span class="dot" style="background:#C9D3DC"></span>ficou pronta antes de 3h — excesso</span>
+      <span><span class="dot" style="background:#E8DFC9"></span>ainda em atendimento</span>
+    </div>
+    <p class="takeaway">🎯 Dentro do critério Tempo, os caminhos têm precisões muito diferentes: <b>"esperando sem diagnóstico" segue 100% certeira (19 de 19)</b>, enquanto <b>"oficina saturada" (68 excessos)</b> e <b>"serviço estimado longo" (59)</b> têm cortes largos. Atenção nova: na semana do feriado (09/07), a "oficina saturada" <b>explodiu em Osasco (39 excessos na semana)</b> — escala reduzida fez o algoritmo superestimar a fila. É a recalibração nº 1.</p>
+  </section>
+
+  <section>
+    <h2>4 · Por que cada um reservou</h2>
+    <p class="q">Os critérios do RIVERS × os motivos registrados pela oficina no Maestro.</p>
+    <div class="duo">
+      <div>
+        <h3>Critérios do RIVERS — 360 sugestões</h3>
+        <div id="regras"></div>
+        <div class="legend"><span><span class="dot" style="background:var(--good)"></span>oficina confirmou</span><span><span class="dot" style="background:#C9D3DC"></span>oficina não deu</span></div>
+      </div>
+      <div>
+        <h3>Motivos da oficina — 130 reservas</h3>
+        <div id="motivos"></div>
+        <div class="legend"><span><span class="dot" style="background:var(--rivers)"></span>RIVERS pegou</span><span><span class="dot" style="background:var(--bad)"></span>RIVERS perdeu</span></div>
+      </div>
+    </div>
+    <p class="gloss"><b>Glossário dos motivos da oficina:</b> <b>Serviço complexo</b> = conserto grande, várias frentes · <b>Oficina cheia</b> = sem rampa/mecânico livre · <b>Aguardando peça</b> = falta peça pra concluir · <b>Aguardando placa</b> = moto sem emplacamento liberado · <b>Erro de abertura</b> = OS criada errada no sistema; reserva dada enquanto corrige · <b>Trinca</b> = dano estrutural (chassi), moto recolhida. As regras marcadas <b>"regra antiga"</b> existiram até 27/06 (peça crítica / diversas avarias) e foram substituídas pela decisão por tempo.</p>
+  </section>
+
+  <section>
+    <h2>5 · Quem apontou primeiro</h2>
+    <p class="q">Nas 115 concordâncias: quanto antes (ou depois) da oficina o RIVERS marcou a moto.</p>
+    <div id="hist"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--oficina)"></span>Oficina antes (48)</span>
+      <span><span class="dot" style="background:var(--rivers)"></span>RIVERS antes (67)</span>
+      <span><span class="dot" style="background:var(--oficina-soft)"></span>tom claro = regra de espera (dispara às 2h30 por desenho)</span>
+    </div>
+    <p class="takeaway">⏱️ <b>O RIVERS aponta primeiro em 58% dos casos no acumulado — e 70% na última semana</b>, a tendência é clara conforme a versão calibrada acumula dados. Quando "perde" por 1–3h, é quase sempre a regra de espera, que aguarda 2h30 de propósito. <b>Com o agendamento automático (cron), a vantagem cresce.</b></p>
+  </section>
+
+  <section>
+    <h2>6 · Volume dia a dia</h2>
+    <p class="q">A cada dia: a barra âmbar é o que a <b>oficina</b> reservou; a barra ao lado é o que o <b>RIVERS</b> sugeriu, quebrada nas <b>mesmas cores da seção 1</b> — verde (os dois concordaram) embaixo, azul (só o RIVERS) em cima. As duas partes somadas dão o total sugerido pelo RIVERS naquele dia; somando todos os dias: verde = 115, azul = 245, total = 360. 10/07 é dia parcial (~12h). Dias sem barra (fins de semana e o feriado de 09/07) são períodos sem tela aberta — o que o cron elimina.</p>
+    <div id="daily"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--oficina)"></span>Oficina reservou</span>
+      <span><span class="dot" style="background:var(--good)"></span>RIVERS — os dois concordaram (115)</span>
+      <span><span class="dot" style="background:var(--rivers)"></span>RIVERS — só o RIVERS (245)</span>
+    </div>
+    <p class="takeaway">📍 Olhando por base (fora deste gráfico), o desequilíbrio está em <b>Osasco: 106 sugestões só-RIVERS contra 15 confirmadas</b> — e piorou na semana do feriado (escala menor → fila superestimada). A recalibração da "oficina saturada" começa por lá.</p>
+  </section>
+
+  <section>
+    <h2>7 · Os furos reais</h2>
+    <p class="q">Reservas dadas pela oficina que o RIVERS não marcou e cuja moto de fato passou de 3h até ficar pronta:</p>
+    <table class="num-right">
+      <tr><th>Moto</th><th>Base</th><th>Motivo da oficina</th><th>Tempo até ficar pronta</th></tr>
+      <tr><td><b>GHS5D63</b></td><td>SBC</td><td>Aguardando peça</td><td><b style="color:var(--bad)">95h — em atendimento</b></td></tr>
+      <tr><td><b>TLA0I86</b></td><td>SBC</td><td>Serviço complexo</td><td><b style="color:var(--bad)">49h — em atendimento</b></td></tr>
+      <tr><td><b>TKL0B32</b></td><td>Mooca</td><td>Serviço complexo</td><td><b style="color:var(--bad)">49h</b></td></tr>
+      <tr><td><b>TIX8F41</b></td><td>Mooca</td><td>Serviço complexo</td><td>47h</td></tr>
+      <tr><td><b>TLM4A92</b></td><td>Mooca</td><td>Oficina cheia</td><td>43h</td></tr>
+      <tr><td><b>UDD2D62</b></td><td>Osasco</td><td>Serviço complexo</td><td>20h</td></tr>
+    </table>
+    <p class="takeaway">💡 Os 6 furos foram investigados um a um: <b>nenhum foi erro de cálculo</b> — o RIVERS não estava olhando na hora certa (janela de busca de 1 dia + tela fechada). Correção de 1 linha proposta. Autópsia completa na <a href="https://claude.ai/code/artifact/6311c2f4-0176-46d3-be24-6778e804f543">investigação</a>. Nota: os furos vêm caindo — 4 na primeira semana, 2 na última.</p>
+  </section>
+
+  <section>
+    <h2>O que fazer com isso</h2>
+    <div class="acts">
+      <div><b>1 · Recalibrar a "oficina saturada" (Osasco primeiro)</b>Virou a maior fonte de excesso (81 no acumulado, 39 só em Osasco na semana do feriado). Ajustar o cálculo de fila/escala — inclui os tempos por peça que o Marcelo pediu pra reduzir.</div>
+      <div><b>2 · Ligar o agendamento (cron)</b>Os buracos de fim de semana e feriado no gráfico 6 são exatamente isso: sem tela aberta, o RIVERS não roda. Com cron, roda 24/7 e a antecipação (já 70% na última semana) cresce.</div>
+      <div><b>3 · Capturar o serviço complexo de dias</b>Os 6 furos reais são todos desse perfil. Melhorar a estimativa pros serviços pesados na próxima rodada de calibração.</div>
+    </div>
+  </section>
+
+  <p class="method">
+    <b>Método e ressalvas.</b> Cruzamento por OS (os_id): log do RIVERS (primeira decisão RESERVA por OS) × check-ins de manutenção do Maestro (reserva ofertada/entregue + motivo). <b>Tempo que importa = até a moto ficar pronta</b> (abertura → entrada em "aguardando cliente" ou conclusão, o que vier primeiro) — medir até a retirada distorce: cliente com reserva na mão demora dias pra buscar a moto pronta. OS canceladas ficam fora das contas de espera. <b>Serviço especial (50 OS) excluído do universo por decisão da operação</b> — fluxo com decisão de reserva própria; a exclusão vale para os dois lados (acertos e furos). Snapshot único: 10/07 ~12h; contagens do cruzamento verificadas por recontagem independente. "Oficina reservou" = ofertou ou entregou (75 entregues, 55 só ofertadas — a oferta depende de haver moto reserva disponível, então "só RIVERS" não significa erro dele). O RIVERS avaliou ~85% dos check-ins; as lacunas são períodos sem tela aberta (fins de semana e feriado de 09/07). A janela cobre duas versões do algoritmo — a atual (tempos calibrados) domina desde 02/07; as regras "peça crítica" e "diversas avarias" do histórico foram desativadas em 27/06. A medição de "quem apontou primeiro" depende do momento do log — melhora com o cron.
+  </p>
+</div>
+<script>
+// [label, confirmadas, não-confirmadas, isSub]
+const REGRAS = [
+  ["⏱ Critério TEMPO — não fica pronta em 3h",108,191,false],
+  ["Serviço estimado longo (>2h)",43,73,true],
+  ["Oficina saturada (fila)",27,81,true],
+  ["Esperando sem diagnóstico",26,19,true],
+  ["Tempo total estoura 3h",11,16,true],
+  ["Anomalia de fluxo",1,2,true],
+  ["🔩 Critério PEÇA — sem estoque",7,45,false],
+  ["Regras antigas (desativadas 27/06)",0,9,false],
+];
+const MOTIVOS = [
+  ["Serviço complexo",85,11],
+  ["Erro de abertura",7,2],
+  ["Oficina cheia",7,1],
+  ["Aguardando peça",7,1],
+  ["Aguardando placa",6,0],
+  ["Trinca",3,0],
+];
+// [label, passou3h, naoPassou, emAtendimento, isSub]
+const FPQUEBRA = [
+  ["⏱ Critério TEMPO",55,135,1,false],
+  ["Oficina saturada (fila)",13,68,0,true],
+  ["Serviço estimado longo (>2h)",13,59,1,true],
+  ["Esperando sem diagnóstico",19,0,0,true],
+  ["Tempo total estoura 3h",8,8,0,true],
+  ["Anomalia de fluxo",2,0,0,true],
+  ["🔩 Critério PEÇA — sem estoque",4,38,3,false],
+  ["Regras antigas (desativadas 27/06)",2,7,0,false],
+];
+const DELTAS = [[-1600,0],[-1056,0],[53,0],[6,0],[-45,0],[-773,0],[-249,0],[-86,0],[-168,1],[-231,1],[-113,1],[-145,1],[102,0],[-21,1],[24,0],[-106,1],[-136,1],[4,0],[14,0],[-339,0],[-61,1],[18,0],[-81,0],[-44,0],[-29,0],[114,0],[12,1],[90,0],[-136,1],[137,0],[-100,0],[76,0],[-120,1],[40,0],[31,0],[-75,1],[11,0],[8,0],[-147,1],[1347,1],[8,0],[3,0],[-145,1],[-120,1],[-90,0],[38,1],[39,0],[82,0],[14,0],[25,0],[-83,0],[-22,0],[14,0],[-98,1],[-124,1],[18,0],[-134,1],[4,0],[8,0],[15,0],[14,0],[-65,0],[9,0],[6,0],[-128,1],[30,0],[13,0],[109,0],[-77,0],[18,0],[135,0],[-14,0],[50,0],[45,0],[107,0],[-86,0],[82,0],[55,0],[28,0],[-65,0],[-44,0],[91,0],[23,0],[9,0],[24,0],[131,0],[13,0],[-144,1],[31,0],[25,0],[-146,1],[44,0],[218,0],[165,0],[-71,0],[84,0],[27,0],[80,0],[-108,1],[106,0],[105,0],[-66,1],[-17,0],[-19,0],[7,0],[9,0],[10,0],[26,0],[7,0],[7,0],[-83,0],[-148,1],[-18,0],[20,0],[4,0]];
+// [dia, oficina, tp (os dois), fp (só RIVERS)]
+const PORDIA = [
+  ["25/06",2,0,14],["26/06",5,5,14],["27/06",4,2,1],["29/06",4,3,5],["30/06",16,14,23],
+  ["01/07",16,15,26],["02/07",17,16,26],["03/07",10,9,21],["06/07",13,12,32],["07/07",16,15,46],
+  ["08/07",18,15,25],["10/07*",9,9,12],
+];
+
+(function(){
+  const total = 1396, parts = [[115,"var(--good)"],[245,"var(--rivers)"],[15,"var(--bad)"],[1021,"#C9D3DC"]];
+  let html = '<div class="track" style="height:30px;border-radius:8px">';
+  for (const [n,c] of parts) html += `<div class="seg" style="width:${(100*n/total).toFixed(2)}%;background:${c}" title="${n} OS"></div>`;
+  document.getElementById("overlap").innerHTML = html + '</div>';
+})();
+
+function stack2(el, rows, cGood, cBad){
+  const max = Math.max(...rows.map(r => r[1]+r[2]));
+  document.getElementById(el).innerHTML = rows.map(r => {
+    const tot = r[1]+r[2]; if (!tot) return "";
+    const sub = r[3] === true;
+    const wrap = sub ? 'style="margin:5px 0 5px 22px;opacity:.85"' : "";
+    const lblStyle = sub ? 'style="font-size:11.5px;color:var(--muted)"' : 'style="font-weight:600"';
+    const h = sub ? 11 : 16;
+    return `<div class="rowbar" ${wrap}><div class="lbl" ${lblStyle}><span>${sub ? "└ " : ""}${r[0]}</span><span class="nums">${r[1]} ✓ · ${r[2]} ✗</span></div>
+      <div class="track" style="width:${(100*tot/max).toFixed(1)}%;height:${h}px">
+        <div class="seg" style="width:${(100*r[1]/tot).toFixed(1)}%;background:${cGood}"></div>
+        <div class="seg" style="width:${(100*r[2]/tot).toFixed(1)}%;background:${cBad}"></div>
+      </div></div>`;
+  }).join("");
+}
+stack2("regras", REGRAS, "var(--good)", "#C9D3DC");
+stack2("motivos", MOTIVOS, "var(--rivers)", "var(--bad)");
+
+(function(){
+  const max = Math.max(...FPQUEBRA.map(r => r[1]+r[2]+r[3]));
+  document.getElementById("fpquebra").innerHTML = FPQUEBRA.map(r => {
+    const tot = r[1]+r[2]+r[3]; if (!tot) return "";
+    const pct = Math.round(100*r[1]/tot);
+    const sub = r[4] === true;
+    const wrap = sub ? 'style="margin:5px 0 5px 22px;opacity:.85"' : "";
+    const lblStyle = sub ? 'style="font-size:11.5px;color:var(--muted)"' : 'style="font-weight:600"';
+    const h = sub ? 11 : 16;
+    return `<div class="rowbar" ${wrap}><div class="lbl" ${lblStyle}><span>${sub ? "└ " : ""}${r[0]}</span><span class="nums">${r[1]} de ${tot} passaram de 3h (${pct}%)</span></div>
+      <div class="track" style="width:${(100*tot/max).toFixed(1)}%;height:${h}px">
+        <div class="seg" style="width:${(100*r[1]/tot).toFixed(1)}%;background:var(--rivers)"></div>
+        <div class="seg" style="width:${(100*r[2]/tot).toFixed(1)}%;background:#C9D3DC"></div>
+        <div class="seg" style="width:${(100*r[3]/tot).toFixed(1)}%;background:#E8DFC9"></div>
+      </div></div>`;
+  }).join("");
+})();
+
+(function(){
+  const bins = [
+    ["> 4h", d => d <= -240],["2–4h", d => d > -240 && d <= -120],["1–2h", d => d > -120 && d <= -60],["até 1h", d => d > -60 && d < -5],
+    ["±5min", d => d >= -5 && d <= 5],
+    ["até 1h ", d => d > 5 && d <= 60],["1–2h ", d => d > 60 && d <= 120],["> 2h ", d => d > 120],
+  ];
+  const W = 900, H = 250, PB = 62, PT = 26, PL = 8;
+  const bw = (W - PL*2) / bins.length;
+  const counts = bins.map(([,f]) => {
+    const all = DELTAS.filter(([d]) => f(d));
+    return [all.filter(([,e]) => e === 1).length, all.length];
+  });
+  const maxC = Math.max(...counts.map(([,t]) => t));
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histograma de antecipação">`;
+  bins.forEach(([lbl], i) => {
+    const [esp, tot] = counts[i];
+    const x = PL + i*bw + 9, bwid = bw - 18;
+    const hTot = tot ? (H - PB - PT) * tot / maxC : 0;
+    const hEsp = tot ? hTot * esp / tot : 0;
+    const y = H - PB - hTot;
+    const baseCol = i < 4 ? "#C97A10" : i === 4 ? "#9AAAB8" : "#185FA5";
+    const espCol = i < 4 ? "#F2D9B0" : i === 4 ? "#C9D3DC" : "#A8C6E4";
+    s += `<rect x="${x}" y="${y+hEsp}" width="${bwid}" height="${Math.max(0,hTot-hEsp)}" rx="5" fill="${baseCol}"/>`;
+    if (hEsp > 0) s += `<rect x="${x}" y="${y}" width="${bwid}" height="${hEsp}" rx="5" fill="${espCol}"/>`;
+    if (tot) s += `<text x="${x+bwid/2}" y="${y-7}" text-anchor="middle" font-size="14" font-weight="700" fill="#16232E">${tot}</text>`;
+    s += `<text x="${x+bwid/2}" y="${H-PB+18}" text-anchor="middle" font-size="11.5" fill="#5B6B7A">${lbl.trim()}</text>`;
+  });
+  s += `<text x="${PL+2*bw}" y="${H-16}" text-anchor="middle" font-size="12" font-weight="600" fill="#C97A10">← oficina apontou primeiro</text>`;
+  s += `<text x="${PL+6*bw}" y="${H-16}" text-anchor="middle" font-size="12" font-weight="600" fill="#185FA5">RIVERS apontou primeiro →</text>`;
+  document.getElementById("hist").innerHTML = s + "</svg>";
+})();
+
+(function(){
+  const W = 900, H = 225, PB = 36, PT = 24, PL = 8;
+  const gw = (W - PL*2) / PORDIA.length;
+  const maxV = Math.max(...PORDIA.map(([,o,tp,fp]) => Math.max(o, tp+fp)));
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Volume por dia: oficina vs RIVERS">`;
+  PORDIA.forEach(([d,o,tp,fp], i) => {
+    const x = PL + i*gw + 7, bwid = (gw - 22) / 2;
+    const esc = (v) => (H-PB-PT)*v/maxV;
+    // oficina (âmbar) à esquerda
+    s += `<rect x="${x}" y="${H-PB-esc(o)}" width="${bwid}" height="${esc(o)}" rx="4" fill="#C97A10"/>`;
+    if (o) s += `<text x="${x+bwid/2}" y="${H-PB-esc(o)-5}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#8A5509">${o}</text>`;
+    // RIVERS à direita: verde (os dois) embaixo + azul (só RIVERS) em cima — mesmas cores da seção 1
+    const tot = tp+fp;
+    let y = H-PB;
+    for (const [v,c] of [[tp,"#1F8A4C"],[fp,"#185FA5"]]) {
+      const h = esc(v); y -= h;
+      if (v) s += `<rect x="${x+bwid+4}" y="${y}" width="${bwid}" height="${h}" fill="${c}"/>`;
+    }
+    if (tot) s += `<text x="${x+bwid+4+bwid/2}" y="${y-5}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#185FA5">${tot}</text>`;
+    s += `<text x="${x+bwid+2}" y="${H-PB+16}" text-anchor="middle" font-size="10" fill="#5B6B7A">${d}</text>`;
+  });
+  document.getElementById("daily").innerHTML = s + "</svg>";
+})();
+</script>

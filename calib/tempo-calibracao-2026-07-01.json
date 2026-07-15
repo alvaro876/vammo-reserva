@@ -1,0 +1,1287 @@
+{
+  "metrics": {
+    "n_treino": 9630,
+    "n_teste": 3155,
+    "mae_teste_novo": 31.6,
+    "mae_teste_formula_atual": 35.1,
+    "medape_teste_novo": 43,
+    "medape_teste_formula_atual": 38.5,
+    "mae_treino_novo": 28.6
+  },
+  "anchors": {
+    "os_34732_novo": 94,
+    "os_34732_formula_atual": 122,
+    "os_34732_marcelo": 74,
+    "intercepto_base_min": 25
+  },
+  "cut_teste": "2026-06-18",
+  "tabela": [
+    {
+      "id": 273,
+      "nome": "Pastilha de freio dianteiro",
+      "n_os": 5083,
+      "antigo_time_target": 7,
+      "calibrado_min": 5.2
+    },
+    {
+      "id": 274,
+      "nome": "Pastilha de freio traseiro",
+      "n_os": 4606,
+      "antigo_time_target": 7,
+      "calibrado_min": 5.8
+    },
+    {
+      "id": 289,
+      "nome": "Pneu traseiro",
+      "n_os": 2934,
+      "antigo_time_target": 10,
+      "calibrado_min": 8.8
+    },
+    {
+      "id": 246,
+      "nome": "Manete de freio traseiro",
+      "n_os": 1929,
+      "antigo_time_target": 3,
+      "calibrado_min": 7.1
+    },
+    {
+      "id": 306,
+      "nome": "Roda traseira_v1",
+      "n_os": 1535,
+      "antigo_time_target": 12,
+      "calibrado_min": 3.6
+    },
+    {
+      "id": 340,
+      "nome": "Rolamento superior completo da direção",
+      "n_os": 1346,
+      "antigo_time_target": 20,
+      "calibrado_min": 5.3
+    },
+    {
+      "id": 229,
+      "nome": "Disco de freio traseiro",
+      "n_os": 1344,
+      "antigo_time_target": 30,
+      "calibrado_min": 29.9
+    },
+    {
+      "id": 179,
+      "nome": "Amortecedor traseiro",
+      "n_os": 1310,
+      "antigo_time_target": 8,
+      "calibrado_min": 3.7
+    },
+    {
+      "id": 330,
+      "nome": "Tampa do motor CPX",
+      "n_os": 1247,
+      "antigo_time_target": 15,
+      "calibrado_min": 24.2
+    },
+    {
+      "id": 309,
+      "nome": "Rolamento da roda",
+      "n_os": 1226,
+      "antigo_time_target": 14,
+      "calibrado_min": 4.9
+    },
+    {
+      "id": 245,
+      "nome": "Manete de freio dianteiro",
+      "n_os": 1209,
+      "antigo_time_target": 3,
+      "calibrado_min": 4.4
+    },
+    {
+      "id": 240,
+      "nome": "Garfo dianteiro",
+      "n_os": 1198,
+      "antigo_time_target": 0,
+      "calibrado_min": 13.7
+    },
+    {
+      "id": 321,
+      "nome": "Suporte celular",
+      "n_os": 1186,
+      "antigo_time_target": 4,
+      "calibrado_min": 7.4
+    },
+    {
+      "id": 310,
+      "nome": "Rolamento da tampa do motor l/roda",
+      "n_os": 1164,
+      "antigo_time_target": 30,
+      "calibrado_min": 0
+    },
+    {
+      "id": 359,
+      "nome": "Pista do rolamento inferior ",
+      "n_os": 1154,
+      "antigo_time_target": 20,
+      "calibrado_min": 23.5
+    },
+    {
+      "id": 303,
+      "nome": "Retentor da roda",
+      "n_os": 1150,
+      "antigo_time_target": 15,
+      "calibrado_min": 1.4
+    },
+    {
+      "id": 228,
+      "nome": "Disco de freio dianteiro",
+      "n_os": 1080,
+      "antigo_time_target": 15,
+      "calibrado_min": 15
+    },
+    {
+      "id": 288,
+      "nome": "Pneu dianteiro",
+      "n_os": 1061,
+      "antigo_time_target": 12,
+      "calibrado_min": 11.6
+    },
+    {
+      "id": 197,
+      "nome": "Carenagem dianteira esquerda CPX",
+      "n_os": 1029,
+      "antigo_time_target": 3,
+      "calibrado_min": 12.8
+    },
+    {
+      "id": 199,
+      "nome": "Carenagem frontal",
+      "n_os": 936,
+      "antigo_time_target": 3,
+      "calibrado_min": 16.7
+    },
+    {
+      "id": 195,
+      "nome": "Carenagem dianteira direita CPX",
+      "n_os": 865,
+      "antigo_time_target": 3,
+      "calibrado_min": 6
+    },
+    {
+      "id": 348,
+      "nome": "Circuito de proteção - CAN",
+      "n_os": 793,
+      "antigo_time_target": 5,
+      "calibrado_min": 5.9
+    },
+    {
+      "id": 341,
+      "nome": "Espelho retrovisor LE",
+      "n_os": 790,
+      "antigo_time_target": 3,
+      "calibrado_min": 4.7
+    },
+    {
+      "id": 271,
+      "nome": "Paralama traseiro",
+      "n_os": 786,
+      "antigo_time_target": 5,
+      "calibrado_min": 13.6
+    },
+    {
+      "id": 198,
+      "nome": "Carenagem dianteira esquerda COMFORT",
+      "n_os": 773,
+      "antigo_time_target": 3,
+      "calibrado_min": 8.8
+    },
+    {
+      "id": 308,
+      "nome": "Rolamento inferior da direção",
+      "n_os": 756,
+      "antigo_time_target": 0,
+      "calibrado_min": 0
+    },
+    {
+      "id": 234,
+      "nome": "Espelho retrovisor LD",
+      "n_os": 726,
+      "antigo_time_target": 3,
+      "calibrado_min": 3.1
+    },
+    {
+      "id": 261,
+      "nome": "Bolha/Parabrisa",
+      "n_os": 725,
+      "antigo_time_target": 4,
+      "calibrado_min": 0
+    },
+    {
+      "id": 313,
+      "nome": "Sensor descanso",
+      "n_os": 725,
+      "antigo_time_target": 4,
+      "calibrado_min": 13.6
+    },
+    {
+      "id": 196,
+      "nome": "Carenagem dianteira direita COMFORT",
+      "n_os": 658,
+      "antigo_time_target": 3,
+      "calibrado_min": 4.9
+    },
+    {
+      "id": 242,
+      "nome": "IOT Vammo",
+      "n_os": 651,
+      "antigo_time_target": 12,
+      "calibrado_min": 19.5
+    },
+    {
+      "id": 212,
+      "nome": "Chave",
+      "n_os": 649,
+      "antigo_time_target": 5,
+      "calibrado_min": 35.9
+    },
+    {
+      "id": 187,
+      "nome": "Bau 93L",
+      "n_os": 637,
+      "antigo_time_target": 10,
+      "calibrado_min": 0
+    },
+    {
+      "id": 338,
+      "nome": "Válvula pneu",
+      "n_os": 631,
+      "antigo_time_target": 2,
+      "calibrado_min": 7.6
+    },
+    {
+      "id": 325,
+      "nome": "Suporte do paralama",
+      "n_os": 628,
+      "antigo_time_target": 7,
+      "calibrado_min": 7.9
+    },
+    {
+      "id": 307,
+      "nome": "Roda traseira_v2",
+      "n_os": 623,
+      "antigo_time_target": 12,
+      "calibrado_min": 0
+    },
+    {
+      "id": 270,
+      "nome": "Paralama dianteiro",
+      "n_os": 604,
+      "antigo_time_target": 5,
+      "calibrado_min": 5.2
+    },
+    {
+      "id": 322,
+      "nome": "Suporte da bolha",
+      "n_os": 589,
+      "antigo_time_target": 3,
+      "calibrado_min": 2.6
+    },
+    {
+      "id": 312,
+      "nome": "Sensor de freio traseiro",
+      "n_os": 568,
+      "antigo_time_target": 3,
+      "calibrado_min": 12.3
+    },
+    {
+      "id": 331,
+      "nome": "Tampa do motor COMFORT v1",
+      "n_os": 557,
+      "antigo_time_target": 15,
+      "calibrado_min": 18.4
+    },
+    {
+      "id": 221,
+      "nome": "Conjunto do acelerador",
+      "n_os": 503,
+      "antigo_time_target": 12,
+      "calibrado_min": 16.3
+    },
+    {
+      "id": 204,
+      "nome": "Carenagem posterior LD",
+      "n_os": 476,
+      "antigo_time_target": 8,
+      "calibrado_min": 18.2
+    },
+    {
+      "id": 216,
+      "nome": "Chicote secundário - CPX",
+      "n_os": 472,
+      "antigo_time_target": 17,
+      "calibrado_min": 12.1
+    },
+    {
+      "id": 332,
+      "nome": "Tampa do motor COMFORT v2",
+      "n_os": 468,
+      "antigo_time_target": 15,
+      "calibrado_min": 16.6
+    },
+    {
+      "id": 272,
+      "nome": "Suporte da bolha inferior (Parte superior mesa suspensão diant.)",
+      "n_os": 463,
+      "antigo_time_target": 4,
+      "calibrado_min": 6.4
+    },
+    {
+      "id": 315,
+      "nome": "Seta LE",
+      "n_os": 450,
+      "antigo_time_target": 6,
+      "calibrado_min": 3.7
+    },
+    {
+      "id": 335,
+      "nome": "Usb 5W - CPX",
+      "n_os": 425,
+      "antigo_time_target": 2,
+      "calibrado_min": 4.8
+    },
+    {
+      "id": 299,
+      "nome": "Refletor do paralama traseiro",
+      "n_os": 415,
+      "antigo_time_target": 2,
+      "calibrado_min": 4.9
+    },
+    {
+      "id": 227,
+      "nome": "Descanso lateral",
+      "n_os": 410,
+      "antigo_time_target": 4,
+      "calibrado_min": 7
+    },
+    {
+      "id": 205,
+      "nome": "Carenagem posterior LE",
+      "n_os": 397,
+      "antigo_time_target": 8,
+      "calibrado_min": 7.6
+    },
+    {
+      "id": 300,
+      "nome": "Refletor lateral",
+      "n_os": 369,
+      "antigo_time_target": 2,
+      "calibrado_min": 3.3
+    },
+    {
+      "id": 249,
+      "nome": "Mascara do farol",
+      "n_os": 350,
+      "antigo_time_target": 4,
+      "calibrado_min": 11.1
+    },
+    {
+      "id": 277,
+      "nome": "Peso do guidão",
+      "n_os": 343,
+      "antigo_time_target": 3,
+      "calibrado_min": 1
+    },
+    {
+      "id": 178,
+      "nome": "Amortecedor dianteiro LE",
+      "n_os": 340,
+      "antigo_time_target": 5,
+      "calibrado_min": 11.8
+    },
+    {
+      "id": 314,
+      "nome": "Seta LD",
+      "n_os": 340,
+      "antigo_time_target": 6,
+      "calibrado_min": 8.9
+    },
+    {
+      "id": 244,
+      "nome": "Logotipo LD",
+      "n_os": 336,
+      "antigo_time_target": 2,
+      "calibrado_min": 16.1
+    },
+    {
+      "id": 339,
+      "nome": "Velocímetro",
+      "n_os": 324,
+      "antigo_time_target": 6,
+      "calibrado_min": 9.8
+    },
+    {
+      "id": 207,
+      "nome": "Carenagem traseira esquerda",
+      "n_os": 322,
+      "antigo_time_target": 9,
+      "calibrado_min": 16.2
+    },
+    {
+      "id": 206,
+      "nome": "Carenagem traseira direita",
+      "n_os": 313,
+      "antigo_time_target": 9,
+      "calibrado_min": 8.5
+    },
+    {
+      "id": 237,
+      "nome": "Farol",
+      "n_os": 310,
+      "antigo_time_target": 7,
+      "calibrado_min": 0
+    },
+    {
+      "id": 311,
+      "nome": "Sensor de freio dianteiro",
+      "n_os": 309,
+      "antigo_time_target": 3,
+      "calibrado_min": 10.6
+    },
+    {
+      "id": 349,
+      "nome": "Logotipo LE",
+      "n_os": 303,
+      "antigo_time_target": 2,
+      "calibrado_min": 4.1
+    },
+    {
+      "id": 177,
+      "nome": "Amortecedor dianteiro LD",
+      "n_os": 294,
+      "antigo_time_target": 5,
+      "calibrado_min": 11
+    },
+    {
+      "id": 241,
+      "nome": "Guidão",
+      "n_os": 284,
+      "antigo_time_target": 17,
+      "calibrado_min": 8.4
+    },
+    {
+      "id": 358,
+      "nome": "Usb 18W - COMFORT",
+      "n_os": 270,
+      "antigo_time_target": 2,
+      "calibrado_min": 0
+    },
+    {
+      "id": 345,
+      "nome": "Mangueira de freio frontal direta",
+      "n_os": 250,
+      "antigo_time_target": 20,
+      "calibrado_min": 21.6
+    },
+    {
+      "id": 326,
+      "nome": "Suporte do pedal direito do passageiro",
+      "n_os": 249,
+      "antigo_time_target": 4,
+      "calibrado_min": 4
+    },
+    {
+      "id": 220,
+      "nome": "Conjunto de seta",
+      "n_os": 236,
+      "antigo_time_target": 15,
+      "calibrado_min": 13.2
+    },
+    {
+      "id": 210,
+      "nome": "Chapa do baú",
+      "n_os": 234,
+      "antigo_time_target": 0,
+      "calibrado_min": 1.9
+    },
+    {
+      "id": 201,
+      "nome": "Carenagem frontal posterior PP",
+      "n_os": 231,
+      "antigo_time_target": 23,
+      "calibrado_min": 9.8
+    },
+    {
+      "id": 281,
+      "nome": "Parafuso guia da pinça traseira",
+      "n_os": 207,
+      "antigo_time_target": 5,
+      "calibrado_min": 14
+    },
+    {
+      "id": 191,
+      "nome": "Buzina",
+      "n_os": 206,
+      "antigo_time_target": 3,
+      "calibrado_min": 9.3
+    },
+    {
+      "id": 226,
+      "nome": "Descanso central",
+      "n_os": 200,
+      "antigo_time_target": 9,
+      "calibrado_min": 0
+    },
+    {
+      "id": 256,
+      "nome": "Mola secundária - descanso lateral",
+      "n_os": 199,
+      "antigo_time_target": 3,
+      "calibrado_min": 6.7
+    },
+    {
+      "id": 243,
+      "nome": "Lanterna traseira",
+      "n_os": 196,
+      "antigo_time_target": 12,
+      "calibrado_min": 8
+    },
+    {
+      "id": 254,
+      "nome": "Mola principal - descanso lateral",
+      "n_os": 196,
+      "antigo_time_target": 5,
+      "calibrado_min": 6.3
+    },
+    {
+      "id": 824,
+      "nome": "Borracha de vedação Bolha",
+      "n_os": 192,
+      "antigo_time_target": 0,
+      "calibrado_min": 0.4
+    },
+    {
+      "id": 184,
+      "nome": "Balança traseira",
+      "n_os": 185,
+      "antigo_time_target": 36,
+      "calibrado_min": 28.7
+    },
+    {
+      "id": 193,
+      "nome": "Caixa do banco",
+      "n_os": 184,
+      "antigo_time_target": 7,
+      "calibrado_min": 21
+    },
+    {
+      "id": 189,
+      "nome": "Bau 110L",
+      "n_os": 178,
+      "antigo_time_target": 10,
+      "calibrado_min": 7.1
+    },
+    {
+      "id": 343,
+      "nome": "Chicote - IOT Vammo",
+      "n_os": 172,
+      "antigo_time_target": 12,
+      "calibrado_min": 25.6
+    },
+    {
+      "id": 328,
+      "nome": "Suporte pinça dianteira",
+      "n_os": 170,
+      "antigo_time_target": 15,
+      "calibrado_min": 21.2
+    },
+    {
+      "id": 185,
+      "nome": "Banco do motorista",
+      "n_os": 162,
+      "antigo_time_target": 5,
+      "calibrado_min": 10.5
+    },
+    {
+      "id": 279,
+      "nome": "Suporte da pinça traseira",
+      "n_os": 160,
+      "antigo_time_target": 15,
+      "calibrado_min": 18.2
+    },
+    {
+      "id": 182,
+      "nome": "Bagageiro do banco direito",
+      "n_os": 152,
+      "antigo_time_target": 6,
+      "calibrado_min": 5.5
+    },
+    {
+      "id": 305,
+      "nome": "Roda dianteira",
+      "n_os": 150,
+      "antigo_time_target": 20,
+      "calibrado_min": 13.6
+    },
+    {
+      "id": 183,
+      "nome": "Bagageiro do banco esquerdo",
+      "n_os": 149,
+      "antigo_time_target": 6,
+      "calibrado_min": 14.7
+    },
+    {
+      "id": 222,
+      "nome": "Controladora 3500W",
+      "n_os": 147,
+      "antigo_time_target": 12,
+      "calibrado_min": 35.5
+    },
+    {
+      "id": 344,
+      "nome": "Mangueira de freio frontal da pinça",
+      "n_os": 142,
+      "antigo_time_target": 20,
+      "calibrado_min": 16.4
+    },
+    {
+      "id": 324,
+      "nome": "Suporte de placa",
+      "n_os": 140,
+      "antigo_time_target": 4,
+      "calibrado_min": 13
+    },
+    {
+      "id": 327,
+      "nome": "Suporte do pedal esquerdo do passageiro",
+      "n_os": 139,
+      "antigo_time_target": 4,
+      "calibrado_min": 5.7
+    },
+    {
+      "id": 590,
+      "nome": "Kit adaptação de posição - Sensor do descanso lateral",
+      "n_os": 137,
+      "antigo_time_target": 0,
+      "calibrado_min": 0.9
+    },
+    {
+      "id": 353,
+      "nome": "Parafuso do disco",
+      "n_os": 134,
+      "antigo_time_target": 8,
+      "calibrado_min": 5.1
+    },
+    {
+      "id": 257,
+      "nome": "Motor 3500W",
+      "n_os": 121,
+      "antigo_time_target": 33,
+      "calibrado_min": 45.4
+    },
+    {
+      "id": 259,
+      "nome": "Motor 4300W_v1",
+      "n_os": 120,
+      "antigo_time_target": 33,
+      "calibrado_min": 27.4
+    },
+    {
+      "id": 301,
+      "nome": "Relê do pisca",
+      "n_os": 117,
+      "antigo_time_target": 3,
+      "calibrado_min": 5.3
+    },
+    {
+      "id": 236,
+      "nome": "Extensão lateral LE PP",
+      "n_os": 116,
+      "antigo_time_target": 16,
+      "calibrado_min": 10.2
+    },
+    {
+      "id": 235,
+      "nome": "Extensão lateral LD PP",
+      "n_os": 111,
+      "antigo_time_target": 16,
+      "calibrado_min": 18.1
+    },
+    {
+      "id": 293,
+      "nome": "Porca travante direção",
+      "n_os": 111,
+      "antigo_time_target": 0,
+      "calibrado_min": 25.2
+    },
+    {
+      "id": 756,
+      "nome": "Suporte de placa Universal - Plástico",
+      "n_os": 106,
+      "antigo_time_target": 0,
+      "calibrado_min": 8.6
+    },
+    {
+      "id": 346,
+      "nome": "Mangueira de freio traseira",
+      "n_os": 105,
+      "antigo_time_target": 25,
+      "calibrado_min": 32.6
+    },
+    {
+      "id": 392,
+      "nome": "Conjunto trava rolamento direção",
+      "n_os": 105,
+      "antigo_time_target": 0,
+      "calibrado_min": 11.3
+    },
+    {
+      "id": 174,
+      "nome": "Acabamento frontal esquerdo",
+      "n_os": 101,
+      "antigo_time_target": 5,
+      "calibrado_min": 4.8
+    },
+    {
+      "id": 172,
+      "nome": "Abraçadeira de metal - freio",
+      "n_os": 98,
+      "antigo_time_target": 2,
+      "calibrado_min": 13.2
+    },
+    {
+      "id": 757,
+      "nome": "Suporte de Placa de Ferro",
+      "n_os": 98,
+      "antigo_time_target": 0,
+      "calibrado_min": 19.5
+    },
+    {
+      "id": 173,
+      "nome": "Acabamento frontal direito",
+      "n_os": 95,
+      "antigo_time_target": 5,
+      "calibrado_min": 0
+    },
+    {
+      "id": 317,
+      "nome": "Suporte baú",
+      "n_os": 88,
+      "antigo_time_target": 5,
+      "calibrado_min": 8
+    },
+    {
+      "id": 186,
+      "nome": "Banco do passageiro",
+      "n_os": 87,
+      "antigo_time_target": 1,
+      "calibrado_min": 9.3
+    },
+    {
+      "id": 194,
+      "nome": "Carenagem da balança",
+      "n_os": 82,
+      "antigo_time_target": 3,
+      "calibrado_min": 18.5
+    },
+    {
+      "id": 723,
+      "nome": "Rolamento 6305 TIMKEN - Tampa do Motor COMFORT V2",
+      "n_os": 77,
+      "antigo_time_target": 0,
+      "calibrado_min": 12.8
+    },
+    {
+      "id": 230,
+      "nome": "Disjuntor",
+      "n_os": 76,
+      "antigo_time_target": 6,
+      "calibrado_min": 12.6
+    },
+    {
+      "id": 260,
+      "nome": "Motor 4300W_v2",
+      "n_os": 74,
+      "antigo_time_target": 33,
+      "calibrado_min": 39.6
+    },
+    {
+      "id": 342,
+      "nome": "Suporte fixação - IOT Vammo",
+      "n_os": 71,
+      "antigo_time_target": 12,
+      "calibrado_min": 0
+    },
+    {
+      "id": 827,
+      "nome": "Parafuso da bolha",
+      "n_os": 68,
+      "antigo_time_target": 0,
+      "calibrado_min": 1.8
+    },
+    {
+      "id": 200,
+      "nome": "Carenagem frontal inferior PP",
+      "n_os": 67,
+      "antigo_time_target": 38,
+      "calibrado_min": 39.2
+    },
+    {
+      "id": 276,
+      "nome": "Pedaleira PP",
+      "n_os": 67,
+      "antigo_time_target": 5,
+      "calibrado_min": 15.9
+    },
+    {
+      "id": 247,
+      "nome": "Mangueira de freio - CBS",
+      "n_os": 62,
+      "antigo_time_target": 25,
+      "calibrado_min": 17.3
+    },
+    {
+      "id": 280,
+      "nome": "Pinça de freio traseira",
+      "n_os": 58,
+      "antigo_time_target": 4,
+      "calibrado_min": 24.7
+    },
+    {
+      "id": 175,
+      "nome": "Acabamento frontal superior",
+      "n_os": 55,
+      "antigo_time_target": 4,
+      "calibrado_min": 0
+    },
+    {
+      "id": 214,
+      "nome": "Chicote principal - CPX",
+      "n_os": 51,
+      "antigo_time_target": 38,
+      "calibrado_min": 40.7
+    },
+    {
+      "id": 215,
+      "nome": "Chicote principal - COMFORT",
+      "n_os": 49,
+      "antigo_time_target": 38,
+      "calibrado_min": 62.6
+    },
+    {
+      "id": 354,
+      "nome": "Parafuso da Pinça dianteira M8x32",
+      "n_os": 49,
+      "antigo_time_target": 5,
+      "calibrado_min": 9.7
+    },
+    {
+      "id": 355,
+      "nome": "Parafuso da Pinça traseira M8x12",
+      "n_os": 49,
+      "antigo_time_target": 5,
+      "calibrado_min": 13.2
+    },
+    {
+      "id": 255,
+      "nome": "Mola secundária - cavalete central",
+      "n_os": 48,
+      "antigo_time_target": 3,
+      "calibrado_min": 9.4
+    },
+    {
+      "id": 253,
+      "nome": "Mola principal - cavalete central",
+      "n_os": 45,
+      "antigo_time_target": 5,
+      "calibrado_min": 0
+    },
+    {
+      "id": 232,
+      "nome": "Eixo roda dianteira",
+      "n_os": 44,
+      "antigo_time_target": 20,
+      "calibrado_min": 21.8
+    },
+    {
+      "id": 224,
+      "nome": "Controladora 4300W",
+      "n_os": 41,
+      "antigo_time_target": 12,
+      "calibrado_min": 28.6
+    },
+    {
+      "id": 323,
+      "nome": "Suporte de fixação do bagageiro",
+      "n_os": 41,
+      "antigo_time_target": 7,
+      "calibrado_min": 7
+    },
+    {
+      "id": 278,
+      "nome": "Pinça de freio dianteira",
+      "n_os": 39,
+      "antigo_time_target": 16,
+      "calibrado_min": 29.2
+    },
+    {
+      "id": 320,
+      "nome": "Suporte carenagem lateral LE",
+      "n_os": 38,
+      "antigo_time_target": 3,
+      "calibrado_min": 6.4
+    },
+    {
+      "id": 203,
+      "nome": "Carenagem posterior central",
+      "n_os": 37,
+      "antigo_time_target": 6,
+      "calibrado_min": 7.2
+    },
+    {
+      "id": 213,
+      "nome": "Chaveta da coluna de direção",
+      "n_os": 36,
+      "antigo_time_target": 5,
+      "calibrado_min": 8.4
+    },
+    {
+      "id": 318,
+      "nome": "Suporte carenagem frontal",
+      "n_os": 36,
+      "antigo_time_target": 6,
+      "calibrado_min": 19.4
+    },
+    {
+      "id": 425,
+      "nome": "Adaptador do suporte da pinça",
+      "n_os": 34,
+      "antigo_time_target": 0,
+      "calibrado_min": 24.8
+    },
+    {
+      "id": 758,
+      "nome": "Suporte da placa de metal Original",
+      "n_os": 34,
+      "antigo_time_target": 0,
+      "calibrado_min": 18.9
+    },
+    {
+      "id": 319,
+      "nome": "Suporte carenagem lateral LD",
+      "n_os": 31,
+      "antigo_time_target": 3,
+      "calibrado_min": 10.3
+    },
+    {
+      "id": 218,
+      "nome": "Complemento mesa superior da direção",
+      "n_os": 29,
+      "antigo_time_target": 5,
+      "calibrado_min": 14.3
+    },
+    {
+      "id": 298,
+      "nome": "Rabeta (superior)",
+      "n_os": 28,
+      "antigo_time_target": 3,
+      "calibrado_min": 12.1
+    },
+    {
+      "id": 334,
+      "nome": "Trava eletrônica do banco",
+      "n_os": 25,
+      "antigo_time_target": 8,
+      "calibrado_min": 13.7
+    },
+    {
+      "id": 302,
+      "nome": "Reservatório de freio - Traseiro",
+      "n_os": 24,
+      "antigo_time_target": 10,
+      "calibrado_min": 27.9
+    },
+    {
+      "id": 239,
+      "nome": "Gancho carenagem frontal PP",
+      "n_os": 23,
+      "antigo_time_target": 2,
+      "calibrado_min": 0
+    },
+    {
+      "id": 284,
+      "nome": "Pino descanso central",
+      "n_os": 23,
+      "antigo_time_target": 4,
+      "calibrado_min": 8.4
+    },
+    {
+      "id": 347,
+      "nome": "Reservatório de freio - Dianteiro",
+      "n_os": 21,
+      "antigo_time_target": 10,
+      "calibrado_min": 26.1
+    },
+    {
+      "id": 250,
+      "nome": "Mesa superior suspensão dianteira",
+      "n_os": 20,
+      "antigo_time_target": 24,
+      "calibrado_min": 15
+    },
+    {
+      "id": 263,
+      "nome": "Parafuso da pinça traseira",
+      "n_os": 20,
+      "antigo_time_target": 5,
+      "calibrado_min": 3.5
+    },
+    {
+      "id": 623,
+      "nome": "Parafuso do miolo da chave",
+      "n_os": 20,
+      "antigo_time_target": 0,
+      "calibrado_min": 14.5
+    },
+    {
+      "id": 283,
+      "nome": "Pino banco/selim",
+      "n_os": 19,
+      "antigo_time_target": 3,
+      "calibrado_min": 13.2
+    },
+    {
+      "id": 225,
+      "nome": "Conversor dc-dc",
+      "n_os": 17,
+      "antigo_time_target": 5,
+      "calibrado_min": 11.1
+    },
+    {
+      "id": 251,
+      "nome": "Mola da pinça de freio dianteira",
+      "n_os": 17,
+      "antigo_time_target": 5,
+      "calibrado_min": 16
+    },
+    {
+      "id": 252,
+      "nome": "Mola da pinça de freio traseira",
+      "n_os": 17,
+      "antigo_time_target": 5,
+      "calibrado_min": 15
+    },
+    {
+      "id": 297,
+      "nome": "Rabeta (inferior)",
+      "n_os": 17,
+      "antigo_time_target": 16,
+      "calibrado_min": 14
+    },
+    {
+      "id": 265,
+      "nome": "Parafuso do contra-peso do guidão",
+      "n_os": 16,
+      "antigo_time_target": 0,
+      "calibrado_min": 12.9
+    },
+    {
+      "id": 316,
+      "nome": "Suporte banco do passageiro",
+      "n_os": 16,
+      "antigo_time_target": 1,
+      "calibrado_min": 11.5
+    },
+    {
+      "id": 190,
+      "nome": "Pino do descanso lateral",
+      "n_os": 15,
+      "antigo_time_target": 0,
+      "calibrado_min": 14.2
+    },
+    {
+      "id": 828,
+      "nome": "Braçadeira de aço",
+      "n_os": 15,
+      "antigo_time_target": 0,
+      "calibrado_min": 7.7
+    },
+    {
+      "id": 217,
+      "nome": "Chicote secundário - COMFORT",
+      "n_os": 14,
+      "antigo_time_target": 17,
+      "calibrado_min": 23.6
+    },
+    {
+      "id": 264,
+      "nome": "Parafuso da roda",
+      "n_os": 14,
+      "antigo_time_target": 0,
+      "calibrado_min": 11
+    },
+    {
+      "id": 295,
+      "nome": "Porta pacote - Interno",
+      "n_os": 13,
+      "antigo_time_target": 5,
+      "calibrado_min": 1.1
+    },
+    {
+      "id": 357,
+      "nome": "Eixo da balança traseira",
+      "n_os": 13,
+      "antigo_time_target": 36,
+      "calibrado_min": 33
+    },
+    {
+      "id": 192,
+      "nome": "Cabo da fechadura do banco/selim",
+      "n_os": 12,
+      "antigo_time_target": 10,
+      "calibrado_min": 6.1
+    },
+    {
+      "id": 262,
+      "nome": "Parafuso da pinça dianteira",
+      "n_os": 12,
+      "antigo_time_target": 5,
+      "calibrado_min": 2.6
+    },
+    {
+      "id": 491,
+      "nome": "Roda traseira Dual suspension",
+      "n_os": 11,
+      "antigo_time_target": 0,
+      "calibrado_min": 37.5
+    },
+    {
+      "id": 524,
+      "nome": "Lacre azul - placa da moto",
+      "n_os": 10,
+      "antigo_time_target": 0,
+      "calibrado_min": 18.8
+    },
+    {
+      "id": 202,
+      "nome": "Carenagem inferior",
+      "n_os": 9,
+      "antigo_time_target": 2,
+      "calibrado_min": 6.6
+    },
+    {
+      "id": 336,
+      "nome": "Vacina de pneu",
+      "n_os": 7,
+      "antigo_time_target": 5,
+      "calibrado_min": 7.2
+    },
+    {
+      "id": 825,
+      "nome": "Arruela da coluna de direção",
+      "n_os": 7,
+      "antigo_time_target": 0,
+      "calibrado_min": 20.6
+    },
+    {
+      "id": 180,
+      "nome": "Anel de borracha",
+      "n_os": 6,
+      "antigo_time_target": 0,
+      "calibrado_min": 9.9
+    },
+    {
+      "id": 275,
+      "nome": "Pcontra pino 3x25",
+      "n_os": 6,
+      "antigo_time_target": 2,
+      "calibrado_min": 5.2
+    },
+    {
+      "id": 208,
+      "nome": "Carregador COMFORT",
+      "n_os": 5,
+      "antigo_time_target": 0,
+      "calibrado_min": 15.5
+    },
+    {
+      "id": 286,
+      "nome": "Placa adaptadora da controladora LE",
+      "n_os": 5,
+      "antigo_time_target": 12,
+      "calibrado_min": 19.7
+    },
+    {
+      "id": 329,
+      "nome": "Tampa da bateria",
+      "n_os": 5,
+      "antigo_time_target": 0,
+      "calibrado_min": 12.4
+    },
+    {
+      "id": 690,
+      "nome": "Bucha inferior - Amortecedor traseiro",
+      "n_os": 5,
+      "antigo_time_target": 0,
+      "calibrado_min": 16.1
+    },
+    {
+      "id": 211,
+      "nome": "Chapa fixação ECU/Alarme",
+      "n_os": 4,
+      "antigo_time_target": 5,
+      "calibrado_min": 9.6
+    },
+    {
+      "id": 233,
+      "nome": "Espaçador roda dianteira",
+      "n_os": 4,
+      "antigo_time_target": 0,
+      "calibrado_min": 24.9
+    },
+    {
+      "id": 248,
+      "nome": "Manopla LE",
+      "n_os": 4,
+      "antigo_time_target": 3,
+      "calibrado_min": 1.5
+    },
+    {
+      "id": 356,
+      "nome": "Parafuso da extensão lateral",
+      "n_os": 4,
+      "antigo_time_target": 1,
+      "calibrado_min": 3.6
+    },
+    {
+      "id": 656,
+      "nome": "Carregador CPX",
+      "n_os": 4,
+      "antigo_time_target": 0,
+      "calibrado_min": 15.4
+    },
+    {
+      "id": 267,
+      "nome": "Parafuso sextavado",
+      "n_os": 3,
+      "antigo_time_target": 0,
+      "calibrado_min": 12.4
+    },
+    {
+      "id": 285,
+      "nome": "Placa adaptadora da controladora LD",
+      "n_os": 3,
+      "antigo_time_target": 12,
+      "calibrado_min": 17.9
+    },
+    {
+      "id": 304,
+      "nome": "Retentor de bengala dianteira",
+      "n_os": 3,
+      "antigo_time_target": 0,
+      "calibrado_min": 11.7
+    },
+    {
+      "id": 333,
+      "nome": "Tampa manutenção da controladora",
+      "n_os": 3,
+      "antigo_time_target": 12,
+      "calibrado_min": 16
+    }
+  ]
+}
