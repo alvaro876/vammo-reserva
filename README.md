@@ -6,7 +6,6 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-149ECA?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Vercel](https://img.shields.io/badge/deploy-Vercel-000?logo=vercel)](https://vammo-reserva.vercel.app)
 [![ClickHouse](https://img.shields.io/badge/data-ClickHouse-FFCC01?logo=clickhouse&logoColor=black)](https://clickhouse.com)
 [![Supabase](https://img.shields.io/badge/log-Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 
@@ -65,19 +64,9 @@ flowchart TD
     D -->|nao| N[Sem reserva<br/>dentro do prazo]
 ```
 
-No fundo são **dois critérios** (tempo e peça) mais os casos óbvios. A conta de tempo é onde mora a engenharia — e depende de dois modelos.
+ O modelo para estimar a capacidade da oficina no dia:
 
-## Os dois modelos
-
-### 1. Tempo de serviço — regressão não-negativa (NNLS)
-
-O cadastro de tempos de peça estava furado (muita peça zerada), então **aprendemos os tempos do histórico**: uma regressão de mínimos quadrados com coeficientes não-negativos sobre milhares de ordens de serviço concluídas. O alvo é o tempo real de rampa; as variáveis são as peças trocadas; os coeficientes que saem são os **minutos por peça**, mais um intercepto (custo fixo por OS). Validação com **separação temporal** (treina no passado, testa nos últimos dias) — e supera a fórmula antiga na métrica que importa: classificar quem passa de 3h.
-
-> ⚠️ Limitação conhecida: o modelo é **aditivo** — soma o tempo de cada peça — mas o mecânico faz várias em paralelo na mesma desmontagem. Superestima em moto multi-peça; correção (desconto sublinear) no roadmap.
-
-Código: [`scripts/calibra-tempo.mjs`](scripts/calibra-tempo.mjs) → gera [`src/lib/tempo-pecas.ts`](src/lib/tempo-pecas.ts).
-
-### 2. Capacidade da oficina — média condicional vs. escala
+### 1. Capacidade da oficina — média condicional vs. escala
 
 Para estimar a fila, o RIVERS precisa saber quantos mecânicos estão produzindo por base e hora. A intuição é de **teoria de filas**: espera ≈ trabalho acumulado ÷ ritmo de atendimento. Testamos dois estimadores:
 
@@ -88,9 +77,9 @@ No backtest honesto a média condicional errou menos — mas escolhemos a **esca
 
 ## Como sabemos que funciona
 
-Acurácia aqui não é opinião. Cruzamos, moto a moto: **o que o RIVERS sugeriu** × **o que a oficina fez** (registrado no Maestro) × **o desfecho real** (a moto passou de 3h?).
+Cruzando os dados da oficina versus o que o RIVERS sugeriu, moto a moto: **o que o RIVERS sugeriu** × **o que a oficina fez** (registrado no Maestro) × **o desfecho real** (a moto passou de 3h?).
 
-> Régua que importa: medimos o tempo **até a moto ficar pronta**, não até o cliente buscar — porque cliente com reserva na mão não tem pressa de devolver, o que distorcia a conta.
+> Régua que importa: medi o tempo **até a moto ficar pronta**, não até o cliente buscar — porque cliente com reserva na mão não tem pressa de devolver, o que distorcia a conta.
 
 Nos primeiros 15 dias, o RIVERS **capturou a grande maioria** das reservas que a oficina deu, **apontou antes** da decisão humana na maior parte dos casos, e os poucos furos foram investigados um a um: nenhum foi erro de conta — foi o motor não estar "olhando" na hora certa (o que o cron resolve). Os relatórios completos, com método e ressalvas, estão em [`calib/`](calib/).
 
@@ -160,9 +149,10 @@ O RIVERS está **em produção** nas 3 bases, medindo acurácia contra o Maestro
 - [ ] **Agendador (cron)** — hoje o motor só roda com a tela aberta; o cron faz rodar 24/7
 - [ ] **Recalibração** — desconto multi-peça no tempo + fila de Osasco
 - [ ] **Governança** — registro de motivo obrigatório na entrega da reserva
+- [ ] **Logica de filas** - para conseguir estimar quantas motos tem pré diag
 
 ## Stack
 
-**Next.js 16** · **React 19** · **TypeScript** · **Tailwind 4** — deploy serverless na **Vercel**. Dados via **ClickHouse** (réplicas peerdb, leitura ao vivo). Log de decisões em **Supabase** (Postgres). Calibração e análise em **Node** + **Python**.
+**Next.js 16** · **React 19** · **TypeScript** · **Tailwind 4** . Dados via **ClickHouse** (réplicas peerdb, leitura ao vivo). Log de decisões em **Supabase** (Postgres). Calibração e análise em **Node** + **Python**.
 
 <div align="center"><sub>Vammo · Data & Analytics</sub></div>
