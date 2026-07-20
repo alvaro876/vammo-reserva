@@ -1,0 +1,42 @@
+# RIVERS — agendador (cron)
+#
+# Chama GET /api/cron a cada 10 minutos durante a janela da oficina.
+# O endpoint avalia todas as OS, grava o log e notifica no Slack só as
+# reservas NOVAS (dedup de 48h). Fora do horário (7h–21h SP) a própria
+# rota responde "skipped" — o guard de horário mora no servidor.
+#
+# Auth: header Authorization: Bearer <RIVERS_CRON_SECRET>
+# (mesmo valor da env CRON_SECRET no Vercel).
+#
+# Obs: o schedule do GitHub é em UTC e pode atrasar alguns minutos em
+# horários de pico — sem problema pro nosso caso (janela de 10min).
+
+name: rivers-cron
+
+on:
+  schedule:
+    # a cada 10min, 10:00–23:59 UTC = 07:00–20:59 em São Paulo
+    - cron: "*/10 10-23 * * *"
+  workflow_dispatch: {} # permite disparo manual pra teste
+
+concurrency:
+  group: rivers-cron
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Chama o motor do RIVERS
+        run: |
+          resp=$(curl -sS --max-time 120 --retry 2 --retry-delay 5 \
+            -H "Authorization: Bearer ${{ secrets.RIVERS_CRON_SECRET }}" \
+            -w "\nHTTP_STATUS:%{http_code}" \
+            "https://vammo-reserva.vercel.app/api/cron")
+          echo "$resp"
+          status=$(echo "$resp" | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
+          if [ "$status" != "200" ]; then
+            echo "::error::cron respondeu HTTP $status"
+            exit 1
+          fi
