@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
         placa: o.placa,
         location_id: o.location_id,
         motivo: o.recomendacao!.motivo,
+        auto: o.acao_automatica,
       }))
     );
 

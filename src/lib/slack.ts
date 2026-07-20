@@ -11,6 +11,8 @@ export interface ReservaNotificavel {
   placa: string | null;
   location_id: number | null;
   motivo: string | null;
+  // regra de alta precisão → a operação pode acatar direto (marcada com ⚡ na mensagem)
+  auto?: boolean;
 }
 
 // Posta UMA mensagem com a lista de reservas novas. Devolve quantas foram avisadas.
@@ -22,13 +24,16 @@ export async function notifyReserva(itens: ReservaNotificavel[]): Promise<number
     .map((i) => {
       const base = BASES[i.location_id ?? 0] ?? `base ${i.location_id ?? "?"}`;
       const placa = i.placa || "sem placa";
-      return `• *${placa}* (${base}) — ${i.motivo ?? "reserva sugerida"}  _OS ${i.os_id}_`;
+      const tag = i.auto ? "⚡ " : "• ";
+      return `${tag}*${placa}* (${base}) — ${i.motivo ?? "reserva sugerida"}  _OS ${i.os_id}_`;
     })
     .join("\n");
+  const temAuto = itens.some((i) => i.auto);
 
   const text =
     `🛵 *RIVERS — ${itens.length} reserva(s) sugerida(s)*\n` +
     linhas +
+    (temAuto ? `\n_⚡ = regra de alta precisão — pode acatar direto_` : "") +
     `\n<https://vammo-reserva.vercel.app|abrir o painel>`;
 
   try {

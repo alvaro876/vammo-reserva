@@ -34,7 +34,7 @@ export async function GET() {
           (o) => o.recomendacao?.decision === "RESERVA" && o.is_piso === 1 && !jaLogadas.has(o.os_id)
         );
         await notifyReserva(
-          novas.map((o) => ({ os_id: o.os_id, placa: o.placa, location_id: o.location_id, motivo: o.recomendacao!.motivo }))
+          novas.map((o) => ({ os_id: o.os_id, placa: o.placa, location_id: o.location_id, motivo: o.recomendacao!.motivo, auto: o.acao_automatica }))
         );
       }
     } catch (e) {

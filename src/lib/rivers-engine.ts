@@ -7,6 +7,7 @@
 
 import { query } from "@/lib/clickhouse";
 import { avaliarOS, AlgoritmoInput, ALGO_VERSION } from "@/lib/algorithm";
+import { isAcaoAutomatica } from "@/lib/autonomia";
 import { logRiversSuggestions, SuggestionLog } from "@/lib/supabase";
 import { MINUTOS_POR_PECA, TEMPO_BASE_MIN, TEMPO_FALLBACK_MIN } from "@/lib/tempo-pecas";
 import { Recomendacao } from "@/types";
@@ -265,7 +266,11 @@ GROUP BY base
 
 // Tipo estendido do que o SQL retorna (inclui campos não presentes em AlgoritmoInput)
 export type OSRow = AlgoritmoInput & { mecanico_atual: string };
-export type OSComRecomendacao = OSRow & { recomendacao: Recomendacao | null };
+export type OSComRecomendacao = OSRow & {
+  recomendacao: Recomendacao | null;
+  // true = regra de alta precisão + cliente em piso → a operação pode acatar direto
+  acao_automatica: boolean;
+};
 
 // Statuses onde reserva ainda faz sentido — cliente está esperando
 const STATUSES_AVALIAVEIS = new Set([
@@ -298,7 +303,11 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
         } as AlgoritmoInput)
       : null;
 
-    return { ...row, recomendacao };
+    const acao_automatica = recomendacao
+      ? isAcaoAutomatica(recomendacao.rule_triggered, recomendacao.decision, row.is_piso === 1)
+      : false;
+
+    return { ...row, recomendacao, acao_automatica };
   });
 
   // Grava as sugestões no Supabase (no-op se não configurado). Idempotente.
@@ -334,6 +343,7 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
           tempo_para_inicio_min: o.recomendacao!.tempo_para_inicio_min,
           capacidade_esperada: capByBase[o.location_id] ?? 0,
           fila_min: filaByBase[o.location_id] ?? 0,
+          acao_automatica: o.acao_automatica,
         },
       }));
     await logRiversSuggestions(logs);

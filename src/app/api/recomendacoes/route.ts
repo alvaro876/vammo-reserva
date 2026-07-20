@@ -36,6 +36,9 @@ export async function GET(req: Request) {
         motivo: o.recomendacao!.motivo, // texto legível do porquê
         regra: o.recomendacao!.rule_triggered, // código da regra que decidiu
         tempo_previsto_min: o.recomendacao!.tempo_previsto_min,
+        // true = regra de alta precisão (~90%) + cliente em piso → pode acatar
+        // direto, sem revisão. false = sugestão pra revisão humana.
+        acao_automatica: o.acao_automatica,
       }));
 
     return NextResponse.json({
