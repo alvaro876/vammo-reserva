@@ -16,6 +16,14 @@ import { Recomendacao } from "@/types";
 const TEMPO_IDS = Object.keys(MINUTOS_POR_PECA).join(",");
 const TEMPO_MINS = Object.values(MINUTOS_POR_PECA).join(",");
 
+// Fator de correção por nº de peças (recalibração 20/07, scripts/recal-multipeca.mjs):
+// o modelo aditivo SUPERESTIMA OS pequenas (1-3 peças) e acerta as grandes — medido em
+// 14,4 mil OS, validado out-of-sample (MAE 29,2→28,3; decisão @180 inalterada).
+// Obs: o "1,68x multi-peça" dos excessos era viés de seleção (só os FPs); a população
+// inteira mostra o oposto. Benefício extra: deflaciona a FILA (soma de estimativas
+// das OS aguardando), reduzindo o excesso do C4_CAPACIDADE.
+const FATOR_N_PECAS = "transform(least(uniqExact(si.item_group_id), 8), [1,2,3,4,5,6,7,8], [0.2,0.42,0.65,0.91,0.96,1.0,0.99,1.0], 1.0)";
+
 // Peças BLOQUEANTES: a falta delas impede liberar a moto (tração/freio/rodante/direção).
 // Peça cosmética/acessório em falta NÃO segura a moto — a oficina libera e fica pendência.
 // Validado no histórico (jul/26): dos 189 disparos do C2, o top era borracha da bolha,
@@ -97,7 +105,7 @@ pecas_diag AS (
         count(DISTINCT si.item_group_id) AS n_pecas,
         round(sum(si.quantity * coalesce(
             nullIf(transform(si.item_group_id, [${TEMPO_IDS}], [${TEMPO_MINS}], 0), 0),
-            nullIf(ig.time_target, 0), ${TEMPO_FALLBACK_MIN})) + ${TEMPO_BASE_MIN}) AS tempo_estimado_min,
+            nullIf(ig.time_target, 0), ${TEMPO_FALLBACK_MIN})) * ${FATOR_N_PECAS} + ${TEMPO_BASE_MIN}) AS tempo_estimado_min,
         max(coalesce(isk.skill, 1)) AS complexidade_max,
         sumIf(1, si.item_group_id IN (257,258,259,260,184,357,250,308,340,359,296,240)) AS n_pecas_criticas,
         argMaxIf(ig.name, coalesce(isk.skill, 1), si.item_group_id > 0) AS peca_principal,
@@ -109,6 +117,7 @@ pecas_diag AS (
       AND si._peerdb_is_deleted = 0
       AND si.quantity > 0
       AND si.item_group_id > 0
+      AND si.deleted_at IS NULL
     GROUP BY si.so_id
 ),
 estoque AS (

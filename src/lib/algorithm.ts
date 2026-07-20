@@ -7,7 +7,10 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.4.0"; // 0.4.0 = C2 só dispara p/ peça BLOQUEANTE + estoque conta
+export const ALGO_VERSION = "0.4.1"; // 0.4.1 = fator por nº de peças na estimativa (recalibração
+                                     // 20/07: aditivo superestimava OS de 1-3 peças; validado OOS)
+                                     // + deleted_at filtrado nas peças do diagnóstico.
+                                     // 0.4.0 = C2 só dispara p/ peça BLOQUEANTE + estoque conta
                                      // todos os depósitos da base (antes: cosmético disparava e
                                      // peça na bancada/recebimento contava como "sem estoque");
                                      // janela de OS avaliadas: 1 → 7 dias (causa dos furos).
