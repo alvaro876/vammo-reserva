@@ -286,20 +286,30 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
   const capByBase: Record<number, number> = {};
   for (const c of capRows) capByBase[c.location_id] = c.capacidade;
 
-  // Fila de trabalho esperando mecânico, por base (soma do tempo estimado das OS em AWAITING_MECHANIC).
+  // Fila que REALMENTE bloqueia o cliente de piso: só o trabalho de OUTRAS OSs de PISO
+  // aguardando mecânico. Medido na decomposição de 20/07: o piso fura a fila (espera
+  // real mediana de 4-5min) — somar a fila inteira (incl. não-piso) superestimava o C4
+  // e era a maior fonte de excesso do algoritmo.
   const filaByBase: Record<number, number> = {};
   for (const row of rows) {
-    if (row.status_atual === "AWAITING_MECHANIC") {
+    if (row.status_atual === "AWAITING_MECHANIC" && row.is_piso === 1) {
       filaByBase[row.location_id] = (filaByBase[row.location_id] ?? 0) + (row.tempo_estimado_min || 0);
     }
   }
 
   const osComRecomendacao: OSComRecomendacao[] = rows.map((row) => {
+    // fila À FRENTE desta OS: se ela própria está na fila de piso, desconta o próprio tempo
+    const filaBase = filaByBase[row.location_id] ?? 0;
+    const filaAFrente =
+      row.status_atual === "AWAITING_MECHANIC" && row.is_piso === 1
+        ? Math.max(0, filaBase - (row.tempo_estimado_min || 0))
+        : filaBase;
+
     const recomendacao = STATUSES_AVALIAVEIS.has(row.status_atual)
       ? avaliarOS({
           ...row,
           capacidade_esperada: capByBase[row.location_id] ?? 0,
-          fila_min: filaByBase[row.location_id] ?? 0,
+          fila_min: filaAFrente,
         } as AlgoritmoInput)
       : null;
 
@@ -342,7 +352,11 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
           mecanico_sugerido: o.recomendacao!.mecanico_sugerido,
           tempo_para_inicio_min: o.recomendacao!.tempo_para_inicio_min,
           capacidade_esperada: capByBase[o.location_id] ?? 0,
-          fila_min: filaByBase[o.location_id] ?? 0,
+          // fila que ESTA OS viu (só piso à frente; desconta a própria se estava na fila)
+          fila_min:
+            o.status_atual === "AWAITING_MECHANIC" && o.is_piso === 1
+              ? Math.max(0, (filaByBase[o.location_id] ?? 0) - (o.tempo_estimado_min || 0))
+              : filaByBase[o.location_id] ?? 0,
           acao_automatica: o.acao_automatica,
         },
       }));

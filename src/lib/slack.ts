@@ -15,6 +15,22 @@ export interface ReservaNotificavel {
   auto?: boolean;
 }
 
+// Posta um texto simples no canal (alertas do monitor de precisão etc.).
+export async function notifyTexto(text: string): Promise<boolean> {
+  const webhook = process.env.SLACK_WEBHOOK_URL;
+  if (!webhook) return false;
+  try {
+    const r = await fetch(webhook, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 // Posta UMA mensagem com a lista de reservas novas. Devolve quantas foram avisadas.
 export async function notifyReserva(itens: ReservaNotificavel[]): Promise<number> {
   const webhook = process.env.SLACK_WEBHOOK_URL;

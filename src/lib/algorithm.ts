@@ -7,7 +7,10 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.4.1"; // 0.4.1 = fator por nº de peças na estimativa (recalibração
+export const ALGO_VERSION = "0.5.0"; // 0.5.0 = fila do C4 conta só o trabalho de PISO à frente
+                                     // (decomposição 20/07: piso fura a fila — espera real 4-5min;
+                                     // a fila cheia superestimava e era a maior fonte de excesso).
+                                     // 0.4.1 = fator por nº de peças na estimativa (recalibração
                                      // 20/07: aditivo superestimava OS de 1-3 peças; validado OOS)
                                      // + deleted_at filtrado nas peças do diagnóstico.
                                      // 0.4.0 = C2 só dispara p/ peça BLOQUEANTE + estoque conta

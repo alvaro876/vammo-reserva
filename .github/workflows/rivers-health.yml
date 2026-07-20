@@ -1,0 +1,30 @@
+# RIVERS — monitor diário de precisão por regra
+#
+# 1x/dia (20h30 SP), chama /api/health?alert=1: calcula a precisão de cada
+# regra nos últimos 14 dias e, se alguma regra AUTOMÁTICA estiver abaixo do
+# piso (70% com 5+ casos), posta alerta no Slack pra tirar do modo automático.
+
+name: rivers-health
+
+on:
+  schedule:
+    - cron: "30 23 * * *" # 23:30 UTC = 20:30 em São Paulo
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Health-check de precisão por regra
+        run: |
+          resp=$(curl -sS --max-time 120 --retry 2 --retry-delay 5 \
+            -H "Authorization: Bearer ${{ secrets.RIVERS_CRON_SECRET }}" \
+            -w "\nHTTP_STATUS:%{http_code}" \
+            "https://vammo-reserva.vercel.app/api/health?alert=1")
+          echo "$resp"
+          status=$(echo "$resp" | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
+          if [ "$status" != "200" ]; then
+            echo "::error::health respondeu HTTP $status"
+            exit 1
+          fi
