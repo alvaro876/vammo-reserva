@@ -1,6 +1,6 @@
-import { fileURLToPath as __furl } from "url";
-const ROOT = __furl(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
-const DL = process.env.METABASE_DIR || (ROOT + "\\data");
+import { dirname as __dir, join as __join } from "path";
+const ROOT = __join(import.meta.dirname, "..");
+const DL = process.env.METABASE_DIR || __join(ROOT, "data");
 // Comparativo semanal RIVERS × Oficina: "esta semana" (últimos 7 dias do snapshot)
 // vs a semana anterior. Mesmas definições do cross-analysis (tempo até pronta,
 // canceladas fora, serviço especial excluído).

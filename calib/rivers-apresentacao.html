@@ -1,0 +1,369 @@
+<title>RIVERS — Apresentação</title>
+<style>
+  :root{
+    --paper:#FFFFFF; --paper-2:#F7F8F9; --ink:#0A0B0C; --muted:#5C6670;
+    --line:#E4E7EA; --accent:#2EC2FF; --accent-ink:#0B84C2;
+    --shadow:0 14px 34px -26px rgba(10,11,12,.4);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#000000; --paper-2:#0C0F12; --ink:#FFFFFF; --muted:#93A0AB;
+      --line:#20262B; --accent:#2EC2FF; --accent-ink:#2EC2FF;
+      --shadow:0 20px 44px -28px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#FFFFFF; --paper-2:#F7F8F9; --ink:#0A0B0C; --muted:#5C6670;
+    --line:#E4E7EA; --accent:#2EC2FF; --accent-ink:#0B84C2; --shadow:0 14px 34px -26px rgba(10,11,12,.4);
+  }
+  :root[data-theme="dark"]{
+    --paper:#000000; --paper-2:#0C0F12; --ink:#FFFFFF; --muted:#93A0AB;
+    --line:#20262B; --accent:#2EC2FF; --accent-ink:#2EC2FF; --shadow:0 20px 44px -28px rgba(0,0,0,.9);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    font-variant-numeric:tabular-nums; overflow:hidden; -webkit-font-smoothing:antialiased;
+  }
+  .deck{position:fixed; inset:0}
+  .slide{
+    position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
+    padding:clamp(32px,6vw,120px); opacity:0; visibility:hidden;
+    transition:opacity .4s ease, visibility .4s;
+  }
+  .slide.active{opacity:1; visibility:visible}
+  .content{max-width:1060px; width:100%; margin:0 auto}
+  .slide .content > *{opacity:0; transform:translateY(13px)}
+  .slide.active .content > *{opacity:1; transform:none; transition:opacity .5s cubic-bezier(.2,.7,.2,1), transform .5s cubic-bezier(.2,.7,.2,1)}
+  .slide.active .content > *:nth-child(2){transition-delay:.07s}
+  .slide.active .content > *:nth-child(3){transition-delay:.14s}
+  .slide.active .content > *:nth-child(4){transition-delay:.21s}
+  .slide.active .content > *:nth-child(5){transition-delay:.28s}
+
+  .eyebrow{
+    font-size:clamp(11px,1.1vw,13px); text-transform:uppercase; letter-spacing:.24em;
+    color:var(--accent-ink); font-weight:700; margin-bottom:24px; display:flex; align-items:center; gap:12px;
+  }
+  .eyebrow::before{content:""; width:26px; height:2px; background:var(--accent); display:inline-block}
+  h1{font-size:clamp(29px,4.6vw,54px); font-weight:700; line-height:1.08; letter-spacing:-.022em; text-wrap:balance; margin-bottom:26px}
+  .lead{font-size:clamp(18px,2.1vw,26px); line-height:1.45; color:var(--ink); max-width:34ch; font-weight:600}
+  .body{font-size:clamp(16px,1.75vw,21px); line-height:1.6; color:var(--muted); max-width:46ch}
+  .body + .body{margin-top:18px}
+
+  /* cover */
+  .cover .content{display:flex; flex-direction:column}
+  .cover .brand{font-size:clamp(74px,15vw,200px); font-weight:800; letter-spacing:-.055em; line-height:.9}
+  .cover .brand .dot{color:var(--accent)}
+  .cover .tag{font-size:clamp(18px,2.3vw,28px); color:var(--muted); margin-top:22px; max-width:34ch; line-height:1.35}
+  .cover .art{position:absolute; right:clamp(24px,7vw,140px); top:50%; transform:translateY(-50%); width:min(38vw,440px); color:var(--ink); opacity:.9; pointer-events:none}
+  .flowline{position:relative; height:3px; width:min(520px,66%); margin-top:34px; background:color-mix(in srgb,var(--accent) 30%, transparent); overflow:hidden}
+  .flowline::after{content:""; position:absolute; top:0; left:-40%; height:100%; width:40%;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:flow 3s linear infinite}
+  @keyframes flow{to{left:120%}}
+
+  /* stats — hairline separators */
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-top:10px; border-top:1px solid var(--line)}
+  .stat{padding:28px 26px 6px 0; border-right:1px solid var(--line)}
+  .stat:last-child{border-right:0; padding-right:0}
+  .stat .n{font-size:clamp(38px,5.4vw,64px); font-weight:800; letter-spacing:-.025em; line-height:1; color:var(--accent-ink)}
+  .stat .l{font-size:15px; line-height:1.45; color:var(--muted); margin-top:14px; max-width:26ch}
+
+  /* fluxo de decisão */
+  .flow{display:flex; align-items:stretch; gap:14px; margin-top:6px; flex-wrap:wrap}
+  .gate{flex:1; min-width:150px; background:var(--paper-2); border:1px solid var(--line); padding:22px 20px}
+  .gate .q{font-size:clamp(15px,1.6vw,18px); font-weight:650; line-height:1.3}
+  .gate .s{font-size:13px; color:var(--muted); margin-top:8px; line-height:1.4}
+  .arrow{align-self:center; color:var(--muted); font-size:20px; flex:0 0 auto}
+  .res{flex:0 0 auto; align-self:center; background:var(--accent); color:#00161f; padding:22px 26px; font-weight:750; font-size:clamp(16px,1.8vw,20px)}
+
+  /* dois modelos */
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:0; margin-top:8px; border-top:1px solid var(--line)}
+  .col{padding:30px 34px 8px 0; border-right:1px solid var(--line)}
+  .col:last-child{border-right:0; padding:30px 0 8px 34px}
+  .col .k{font-size:12px; text-transform:uppercase; letter-spacing:.16em; font-weight:700; color:var(--muted); margin-bottom:14px}
+  .col h3{font-size:clamp(19px,2.1vw,25px); font-weight:700; letter-spacing:-.01em; margin-bottom:14px; line-height:1.15; color:var(--accent-ink)}
+  .col p{font-size:15.5px; line-height:1.6; color:var(--muted)}
+
+  /* próximos passos */
+  .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-top:8px; border-top:1px solid var(--line)}
+  .step{padding:26px 26px 8px 0; border-right:1px solid var(--line)}
+  .step:last-child{border-right:0; padding-right:0}
+  .step .num{font-size:14px; font-weight:800; color:var(--accent-ink); margin-bottom:12px}
+  .step h3{font-size:clamp(17px,1.9vw,21px); font-weight:700; margin-bottom:10px}
+  .step p{font-size:14.5px; line-height:1.55; color:var(--muted); max-width:26ch}
+
+  /* jornada da manutenção */
+  .journey{display:flex; align-items:flex-start; gap:0; margin-top:12px}
+  .jstep{flex:1; text-align:center; position:relative; padding:0 6px}
+  .jstep .ic{width:46px; height:46px; margin:0 auto 12px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; background:var(--paper-2)}
+  .jstep.on .ic{border-color:var(--accent); background:var(--accent); color:#00161f}
+  .jstep .ic svg{width:24px; height:24px}
+  .jstep .t{font-size:14px; font-weight:650; line-height:1.2}
+  .jstep .c{font-size:12px; color:var(--muted); margin-top:5px; line-height:1.35}
+  .jstep::after{content:""; position:absolute; top:23px; left:calc(50% + 30px); right:calc(-50% + 30px); height:1px; background:var(--line)}
+  .jstep:last-child::after{display:none}
+  .jstep.on .t{color:var(--accent-ink)}
+
+  .note{margin-top:26px; font-size:14.5px; color:var(--muted); border-left:3px solid var(--accent); padding:6px 0 6px 16px; max-width:64ch; line-height:1.55}
+  .note strong{color:var(--ink); font-weight:650}
+
+  /* chrome */
+  .bar{position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center;
+    padding:22px clamp(24px,4vw,48px); z-index:10; pointer-events:none}
+  .wordmark{font-size:20px; font-weight:800; letter-spacing:-.04em; color:var(--ink)}
+  .wordmark span{color:var(--accent)}
+  .counter{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .progress{position:fixed; left:0; bottom:0; height:3px; background:var(--accent); width:0; transition:width .4s cubic-bezier(.2,.7,.2,1); z-index:10}
+  .nav{position:fixed; bottom:16px; right:clamp(20px,4vw,44px); display:flex; gap:8px; z-index:11}
+  .nav button{width:42px; height:42px; border:1px solid var(--line); background:var(--paper-2); color:var(--ink);
+    font-size:18px; cursor:pointer; transition:transform .15s, border-color .15s}
+  .nav button:hover{transform:translateY(-2px); border-color:var(--accent)}
+  .nav button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .hint{position:fixed; bottom:24px; left:clamp(20px,4vw,44px); font-size:12px; color:var(--muted); z-index:11; letter-spacing:.04em}
+
+  @media (max-width:760px){
+    .stats,.split,.flow,.steps{grid-template-columns:1fr; display:grid; border-top:0}
+    .stat,.col,.step{border-right:0; border-bottom:1px solid var(--line); padding:22px 0}
+    .col:last-child{padding:22px 0} .arrow{display:none}
+    .cover .art{display:none}
+    .journey{flex-wrap:wrap; gap:18px} .jstep{flex:0 0 44%; text-align:left}
+    .jstep .ic{margin:0 0 10px} .jstep::after{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .slide .content > *{opacity:1; transform:none; transition:none}
+    .flowline::after{animation:none} .progress{transition:none}
+  }
+</style>
+
+<div class="bar"><span class="wordmark">vammo<span>.</span></span><span class="counter" id="counter">1 / 13</span></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · Cover -->
+  <section class="slide cover active">
+    <svg class="art" viewBox="0 0 260 170" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="64" cy="126" r="32"/><circle cx="196" cy="126" r="32"/>
+      <circle cx="64" cy="126" r="5" fill="currentColor" stroke="none"/><circle cx="196" cy="126" r="5" fill="currentColor" stroke="none"/>
+      <path d="M64 126 L84 82 L126 82"/>
+      <path d="M126 82 C152 78 160 78 176 76"/>
+      <path d="M176 76 L196 126"/>
+      <path d="M96 126 L160 126"/>
+      <path d="M176 76 L190 58 L210 58" stroke="var(--accent)"/>
+    </svg>
+    <div class="content">
+      <div class="brand">rivers<span class="dot">.</span></div>
+      <div class="tag">Recomendação automática de moto reserva na oficina.</div>
+      <div class="flowline"></div>
+    </div>
+  </section>
+
+  <!-- 2 · O nome -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">O nome</div>
+      <h1>O que quer dizer RIVERS</h1>
+      <p class="lead">Reserva Inteligente: Verifica, Estima, Recomenda e Sinaliza.</p>
+      <p class="body">É a sequência do que ele faz em cada moto que entra: verifica a ordem de serviço, estima o tempo de conserto, recomenda ou não a reserva, e sinaliza pra oficina.</p>
+    </div>
+  </section>
+
+  <!-- 3 · Como funciona a manutenção -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Contexto · a oficina</div>
+      <h1>Como funciona a manutenção</h1>
+      <p class="body" style="margin-bottom:34px">Toda moto que precisa de reparo passa por estas etapas dentro da base:</p>
+      <div class="journey">
+        <div class="jstep">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+          <div class="t">Check-in</div><div class="c">cliente deixa a moto na base</div>
+        </div>
+        <div class="jstep">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="13" y2="17"/></svg></div>
+          <div class="t">Fila</div><div class="c">aguarda um mecânico livre</div>
+        </div>
+        <div class="jstep on">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><line x1="20" y1="20" x2="15.5" y2="15.5"/></svg></div>
+          <div class="t">Diagnóstico</div><div class="c">define serviço e peças</div>
+        </div>
+        <div class="jstep">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></div>
+          <div class="t">Conserto</div><div class="c">execução na rampa</div>
+        </div>
+        <div class="jstep">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></svg></div>
+          <div class="t">Qualidade</div><div class="c">conferência final</div>
+        </div>
+        <div class="jstep">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="21" x2="6" y2="4"/><path d="M6 5h11l-2.2 3L17 11H6"/></svg></div>
+          <div class="t">Pronta</div><div class="c">cliente busca a moto</div>
+        </div>
+      </div>
+      <p class="note">Se o total desde o check-in passar de <strong>3 horas</strong>, o cliente deveria sair com uma <strong>moto reserva</strong> — e é logo após o <strong>diagnóstico</strong> que dá pra prever isso. É aí que o RIVERS entra.</p>
+    </div>
+  </section>
+
+  <!-- 4 · Contexto (reserva manual) -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">O problema</div>
+      <h1>Como a reserva é decidida hoje</h1>
+      <p class="body">A regra é dar moto reserva quando o conserto vai passar de 3 horas. Hoje quem faz essa conta é o líder de turno, no meio do plantão.</p>
+      <p class="body">Por isso ela varia de pessoa pra pessoa, costuma sair tarde, e é difícil explicar depois por que uma moto ganhou reserva e outra não.</p>
+    </div>
+  </section>
+
+  <!-- 5 · O que faz -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">A proposta</div>
+      <h1>O que o RIVERS faz</h1>
+      <p class="body">Ele acompanha todas as motos em manutenção e, logo depois do diagnóstico, calcula se cada uma vai passar das 3 horas.</p>
+      <p class="body">Quando vai, sugere a reserva — e mostra o motivo em texto, pra qualquer pessoa conferir e questionar.</p>
+    </div>
+  </section>
+
+  <!-- 6 · A pergunta -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">A lógica</div>
+      <h1>A pergunta que ele responde</h1>
+      <p class="lead">“Essa moto fica pronta em 3 horas?”</p>
+      <p class="body">Só há dois motivos para a resposta ser não: o tempo estoura (serviço longo ou fila grande demais) ou falta a peça no estoque. Casos óbvios — guincho, acidente, moto que não anda — ganham reserva direto.</p>
+    </div>
+  </section>
+
+  <!-- 7 · Como decide -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Como decide</div>
+      <h1>As perguntas, em ordem</h1>
+      <div class="flow">
+        <div class="gate"><div class="q">Caso crítico?</div><div class="s">Guincho, acidente, imobilizada</div></div>
+        <div class="arrow">→</div>
+        <div class="gate"><div class="q">Falta peça?</div><div class="s">Sem estoque na base</div></div>
+        <div class="arrow">→</div>
+        <div class="gate"><div class="q">Passa de 3h?</div><div class="s">Espera + fila + serviço</div></div>
+        <div class="arrow">→</div>
+        <div class="res">Reserva</div>
+      </div>
+      <p class="note">A primeira pergunta respondida com “sim” decide. Se nenhuma for, a moto fica sem reserva — dentro do prazo — e o sistema mostra a conta que levou a isso.</p>
+    </div>
+  </section>
+
+  <!-- 8 · Os dois modelos -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Por dentro</div>
+      <h1>Os dois modelos por trás da conta</h1>
+      <div class="split">
+        <div class="col">
+          <div class="k">Quanto dura o serviço</div>
+          <h3>Aprendido do histórico</h3>
+          <p>O cadastro de tempos estava furado. Em vez de confiar nele, deixamos milhares de consertos reais mostrarem quanto tempo cada peça costuma levar.</p>
+        </div>
+        <div class="col">
+          <div class="k">Quanto a fila atrasa</div>
+          <h3>A capacidade da oficina</h3>
+          <p>Um serviço rápido estoura se tem muita moto na frente e poucos mecânicos. O RIVERS trata a oficina como fila: o trabalho acumulado dividido por quem está produzindo naquela hora.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · Validação -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Validação</div>
+      <h1>Como medimos se está certo</h1>
+      <p class="body">Comparamos, moto a moto, o que o RIVERS sugeriu com o que a oficina fez e com o que aconteceu de verdade — a moto passou mesmo de 3 horas?</p>
+      <p class="note">A régua é o tempo <strong>até a moto ficar pronta</strong>, não até o cliente buscar: quem está com uma reserva na mão não tem pressa de devolver, e isso distorcia a conta.</p>
+    </div>
+  </section>
+
+  <!-- 10 · Resultados -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Resultados · primeiras 2 semanas</div>
+      <h1>O que os números mostram</h1>
+      <div class="stats">
+        <div class="stat"><div class="n">≈9/10</div><div class="l">das reservas dadas pela oficina o RIVERS também tinha marcado</div></div>
+        <div class="stat"><div class="n">7/10</div><div class="l">das vezes, sugeriu a reserva antes da decisão manual</div></div>
+        <div class="stat"><div class="n">6</div><div class="l">casos que ele deixou passar — todos por não estar rodando na hora, não por erro de cálculo</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 · Achado bônus -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Um achado extra</div>
+      <h1>O que mais a análise mostrou</h1>
+      <p class="body">Só cerca de 1 em cada 5 entregas de moto reserva tem o motivo registrado no sistema.</p>
+      <p class="body">E moto que fica pronta rápido pode passar dias parada esperando o cliente devolver a reserva. Dois pontos de operação que valem atenção, além do algoritmo.</p>
+    </div>
+  </section>
+
+  <!-- 12 · O que falta -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Próximos passos</div>
+      <h1>O que vem agora</h1>
+      <div class="steps">
+        <div class="step"><div class="num">01</div><h3>Rodar o tempo todo</h3><p>Hoje ele só roda com a tela aberta. Um agendador faz ele trabalhar de madrugada, fim de semana e feriado.</p></div>
+        <div class="step"><div class="num">02</div><h3>Recalibrar</h3><p>Afinar a estimativa de tempo em motos com muitas peças e a fila da base de Osasco.</p></div>
+        <div class="step"><div class="num">03</div><h3>Registro do motivo</h3><p>Tornar obrigatório anotar o motivo na entrega da reserva.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 · Fecho -->
+  <section class="slide">
+    <div class="content">
+      <div class="eyebrow">Resumo</div>
+      <h1>Onde chegamos</h1>
+      <p class="body">O RIVERS já decide a reserva de forma automática e explicada nas três bases, com boa concordância com a oficina e chegando antes na maioria das vezes.</p>
+      <p class="body">O que falta é colocar ele pra rodar o tempo todo e afinar os pontos que a medição apontou.</p>
+      <div class="flowline"></div>
+      <p class="body" style="margin-top:26px; font-size:15px">Perguntas?</p>
+    </div>
+  </section>
+
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="hint">← → para navegar</div>
+<div class="nav">
+  <button id="prev" aria-label="Anterior">‹</button>
+  <button id="next" aria-label="Próximo">›</button>
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const counter=document.getElementById('counter');
+  const progress=document.getElementById('progress');
+  let i=0;
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    progress.style.width=(i/(slides.length-1)*100)+'%';
+    counter.textContent=(i+1)+' / '+slides.length;
+    history.replaceState(null,'','#'+(i+1));
+  }
+  function go(d){show(i+d)}
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight',' ','PageDown','ArrowDown'].includes(e.key)){e.preventDefault();go(1)}
+    else if(['ArrowLeft','PageUp','ArrowUp'].includes(e.key)){e.preventDefault();go(-1)}
+    else if(e.key==='Home'){show(0)} else if(e.key==='End'){show(slides.length-1)}
+  });
+  document.getElementById('next').addEventListener('click',()=>go(1));
+  document.getElementById('prev').addEventListener('click',()=>go(-1));
+  document.getElementById('deck').addEventListener('click',e=>{
+    if(e.target.closest('.nav')) return;
+    go(e.clientX < window.innerWidth*0.32 ? -1 : 1);
+  });
+  const start=parseInt(location.hash.slice(1));
+  show(Number.isFinite(start)&&start>0?start-1:0);
+</script>

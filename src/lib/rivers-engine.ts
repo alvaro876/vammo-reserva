@@ -16,6 +16,23 @@ import { Recomendacao } from "@/types";
 const TEMPO_IDS = Object.keys(MINUTOS_POR_PECA).join(",");
 const TEMPO_MINS = Object.values(MINUTOS_POR_PECA).join(",");
 
+// Peças BLOQUEANTES: a falta delas impede liberar a moto (tração/freio/rodante/direção).
+// Peça cosmética/acessório em falta NÃO segura a moto — a oficina libera e fica pendência.
+// Validado no histórico (jul/26): dos 189 disparos do C2, o top era borracha da bolha,
+// sensor de descanso, baú, USB, paralama... e as motos saíram em <3h (precisão 6%).
+// A regra C2 passa a considerar SÓ estas (ids de ims_r.item_group):
+const PECAS_BLOQUEANTES = [
+  // motor / tração / elétrica essencial / chave
+  257, 258, 259, 260, 222, 223, 224, 214, 215, 216, 217, 296, 212,
+  // freios (discos, manetes, mangueiras, pastilhas, pinças e suportes, válvula CBS)
+  219, 228, 229, 245, 246, 247, 344, 345, 346, 273, 274, 278, 280, 337, 279, 328,
+  // rodante / direção / suspensão
+  288, 289, 305, 306, 307, 491, 309, 310, 723, 303, 304, 232, 184, 357, 240, 250,
+  177, 178, 179, 308, 340, 359, 241,
+  // segurança mínima de rodagem
+  237, 338,
+].join(",");
+
 // SQL que busca OS ativas com tudo que o algoritmo e a tabela precisam
 // Já validado manualmente no ClickHouse em 11/05/2026
 const OS_QUERY = `
@@ -62,7 +79,7 @@ os_meta AS (
     GROUP BY so.id, so.so_type, so.location_id, so.asset_model,
              so.maintenance_metadata, so.so_description, so.created_at
     HAVING status_atual IN ('OPEN', 'IN_PROGRESS', 'IN_DIAGNOSIS', 'AWAITING_MECHANIC', 'PAUSED', 'AWAITING_QA', 'IN_QA', 'QA_REJECTED', 'AWAITING_VMGMT')
-       AND toDate(so.created_at, 'America/Sao_Paulo') >= toDate(now('America/Sao_Paulo')) - 1
+       AND toDate(so.created_at, 'America/Sao_Paulo') >= toDate(now('America/Sao_Paulo')) - 7
 ),
 mecanico_atual AS (
     SELECT
@@ -103,7 +120,11 @@ estoque AS (
     INNER JOIN ims_r.item i FINAL ON i.id = inv.item_id
     INNER JOIN ims_r.deposit d FINAL ON d.id = inv.deposit_id
     WHERE inv.status = 'AVAILABLE'
-      AND d.type IN ('STORAGE', 'STAGING')
+      -- Conta tudo que está FISICAMENTE NA BASE: prateleira (STORAGE/STAGING),
+      -- bancada/área de manutenção (MAINTENANCE), com o mecânico (PERSON) e
+      -- recebido aguardando guarda (RECEIPT — o estoquista processa no mesmo dia;
+      -- ignorar RECEIPT causava "sem estoque" falso nas manhãs pré-reposição).
+      AND d.type IN ('STORAGE', 'STAGING', 'MAINTENANCE', 'PERSON', 'RECEIPT')
       AND d.location_id IN (1, 34, 166)
       AND inv._peerdb_is_deleted = 0
       AND i._peerdb_is_deleted = 0
@@ -118,11 +139,21 @@ sem_estoque AS (
             arrayFilter(x -> x != '',
                 groupArray(if(if(e.qty_disponivel > 0, e.qty_disponivel, 0) < si.qty_s, ig2.name, ''))
             ), ', '
-        ) AS pecas_sem_estoque
+        ) AS pecas_sem_estoque,
+        -- Só as BLOQUEANTES disparam reserva (C2); as demais ficam no log/tela como aviso
+        sumIf(1, if(e.qty_disponivel > 0, e.qty_disponivel, 0) < si.qty_s
+                 AND si.item_group_id IN (${PECAS_BLOQUEANTES})) AS n_sem_estoque_bloq,
+        arrayStringConcat(
+            arrayFilter(x -> x != '',
+                groupArray(if(if(e.qty_disponivel > 0, e.qty_disponivel, 0) < si.qty_s
+                              AND si.item_group_id IN (${PECAS_BLOQUEANTES}), ig2.name, ''))
+            ), ', '
+        ) AS pecas_sem_estoque_bloq
     FROM (
         SELECT so_id AS so_id, item_group_id AS item_group_id, sum(quantity) AS qty_s
         FROM oms_r.so_item FINAL
         WHERE origin IN ('DIAGNOSIS','MECHANIC') AND _peerdb_is_deleted = 0 AND quantity > 0
+          AND deleted_at IS NULL  -- peça removida da OS não conta como faltante
         GROUP BY so_id, item_group_id
     ) si
     INNER JOIN os_meta om ON om.os_id = si.so_id
@@ -175,6 +206,8 @@ SELECT
     coalesce(p.todas_pecas_diag, '') AS todas_pecas_diag,
     coalesce(se.n_sem_estoque, 0) AS n_sem_estoque,
     coalesce(se.pecas_sem_estoque, '') AS pecas_sem_estoque,
+    coalesce(se.n_sem_estoque_bloq, 0) AS n_sem_estoque_bloq,
+    coalesce(se.pecas_sem_estoque_bloq, '') AS pecas_sem_estoque_bloq,
     coalesce(pcn.pecas_criticas, '') AS pecas_criticas,
     if(ip.os_id IS NOT NULL, 1, 0) AS is_piso
 FROM os_meta om
@@ -283,6 +316,8 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
           pecas_criticas: o.pecas_criticas,
           n_sem_estoque: o.n_sem_estoque,
           pecas_sem_estoque: o.pecas_sem_estoque,
+          n_sem_estoque_bloq: o.n_sem_estoque_bloq,
+          pecas_sem_estoque_bloq: o.pecas_sem_estoque_bloq,
           complexidade_max: o.complexidade_max,
           tempo_estimado_min: o.tempo_estimado_min,
           tempo_previsto_min: o.recomendacao!.tempo_previsto_min,

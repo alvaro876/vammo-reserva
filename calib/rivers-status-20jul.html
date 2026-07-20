@@ -1,0 +1,154 @@
+<title>RIVERS — Status (dados até 20/jul)</title>
+<style>
+  :root{
+    --paper:#F6F8FA; --card:#FFFFFF; --ink:#16232E; --muted:#5B6B7A; --soft:#8DA0B0;
+    --line:#E3E9EF; --rivers:#185FA5; --rivers-soft:#D6E4F2; --oficina:#C97A10;
+    --good:#1F8A4C; --bad:#C03D3D; --bad-soft:#F3D2D2; --warn:#B4740F; --warn-soft:#FBEFD8;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--paper:#0E1720;--card:#16222E;--ink:#E7EEF4;--muted:#9DB0BE;--soft:#6E8393;
+      --line:#233240;--rivers:#4C9BE0;--rivers-soft:#1C3346;--oficina:#E0982F;
+      --good:#43B879;--bad:#E0685F;--bad-soft:#3A2222;--warn:#E0982F;--warn-soft:#332811;}
+  }
+  :root[data-theme="dark"]{--paper:#0E1720;--card:#16222E;--ink:#E7EEF4;--muted:#9DB0BE;--soft:#6E8393;
+      --line:#233240;--rivers:#4C9BE0;--rivers-soft:#1C3346;--oficina:#E0982F;
+      --good:#43B879;--bad:#E0685F;--bad-soft:#3A2222;--warn:#E0982F;--warn-soft:#332811;}
+  :root[data-theme="light"]{--paper:#F6F8FA;--card:#FFFFFF;--ink:#16232E;--muted:#5B6B7A;--soft:#8DA0B0;
+      --line:#E3E9EF;--rivers:#185FA5;--rivers-soft:#D6E4F2;--oficina:#C97A10;
+      --good:#1F8A4C;--bad:#C03D3D;--bad-soft:#F3D2D2;--warn:#B4740F;--warn-soft:#FBEFD8;}
+  *{box-sizing:border-box}
+  body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--paper);margin:0;font-variant-numeric:tabular-nums}
+  .wrap{max-width:900px;margin:0 auto;padding:34px 20px 64px}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft);font-weight:600;margin:0 0 6px}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.015em;margin:0 0 6px;text-wrap:balance}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;line-height:1.55;max-width:70ch}
+  section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:14px}
+  section h2{font-size:17px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+  section .q{font-size:13px;color:var(--muted);margin:0 0 16px;max-width:76ch;line-height:1.5}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 4px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .stat .n{font-size:26px;font-weight:700;letter-spacing:-.01em}
+  .stat .l{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.35}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0}
+  th{text-align:left;color:var(--soft);font-size:11px;text-transform:uppercase;letter-spacing:.07em;padding:8px 10px;border-bottom:1px solid var(--line);font-weight:600}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .num-right td:not(:first-child),.num-right th:not(:first-child){text-align:right}
+  .defbox{background:var(--paper);border:1px dashed var(--line);border-radius:10px;padding:6px 4px}
+  .defbox td:first-child{font-weight:600;white-space:nowrap}
+  .defbox td{border-bottom:1px solid var(--line)}
+  .takeaway{font-size:14.5px;line-height:1.55;margin:16px 0 0;padding:12px 15px;background:var(--rivers-soft);border-radius:9px;color:var(--ink)}
+  .warn{background:var(--warn-soft)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+  .split > div{border-radius:10px;padding:14px 16px;font-size:13.5px;line-height:1.55}
+  .ok{background:#EAF5EE;border:1px solid #CDE5D4;color:#1D3A28}
+  .at{background:var(--bad-soft);border:1px solid var(--bad-soft);color:var(--ink)}
+  @media(prefers-color-scheme:dark){.ok{background:#16281D;border-color:#24402E;color:#CDE8D6}}
+  b.g{color:var(--good)} b.r{color:var(--bad)} b.b{color:var(--rivers)} b.o{color:var(--oficina)}
+  .method{font-size:12px;color:var(--soft);line-height:1.7;margin-top:22px;max-width:82ch}
+  ul{margin:6px 0;padding-left:20px} li{font-size:14px;line-height:1.5;margin:5px 0}
+  .big{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:2px 0 10px}
+</style>
+<div class="wrap">
+  <p class="eyebrow">Vammo · Data &amp; Analytics · atualizado 20/jul (~15h50)</p>
+  <h1>RIVERS — status e resumo dos últimos dias</h1>
+  <p class="sub">Como o RIVERS (recomendador de moto reserva) vem se comportando na oficina. Janela: <b>25/jun a 20/jul (26 dias)</b>, nas 3 bases. Este é o <b>resumo com os números fechados</b>; o relatório completo com todos os gráficos é o de sempre (dados até 10/jul — este aqui é a atualização). Todo número abaixo tem a definição explícita na tabela da primeira seção, pra não sobrar dúvida de interpretação.</p>
+
+  <!-- Glossário -->
+  <section>
+    <h2>Como ler os números (leia antes)</h2>
+    <p class="q">Cada termo abaixo tem UM significado fixo neste documento. Se um número parecer não bater com outro, é porque são recortes diferentes do mesmo funil — a definição aqui resolve.</p>
+    <div class="defbox"><table>
+      <tr><td>Check-in</td><td>Toda moto que passou pela oficina no período (o ponto de partida). Foram 2.631; tirando serviço especial (56, fluxo próprio) e não-avaliadas, o <b>universo analisado é 2.342</b>.</td></tr>
+      <tr><td>Oficina decidiu</td><td>A oficina ofertou <b>ou</b> entregou uma reserva pra aquela moto (registro no Maestro). No período: <b>207</b> (115 entregues + 92 só ofertadas).</td></tr>
+      <tr><td>RIVERS sugeriu</td><td>O algoritmo recomendou reserva pra aquela OS. No período: <b>550</b> no total.</td></tr>
+      <tr><td>Os dois (TP)</td><td>Casos em que RIVERS <b>e</b> oficina reservaram — concordância. Foram <b>173</b>.</td></tr>
+      <tr><td>Só RIVERS</td><td>Só o algoritmo marcou; a oficina não. Foram <b>377</b>. <i>(550 = 173 + 377.)</i></td></tr>
+      <tr><td>Furo</td><td>Só a oficina reservou, o RIVERS não — <b>e</b> a moto de fato passou de 3h. São os erros que doem.</td></tr>
+      <tr><td>Recall</td><td>Das reservas que a oficina deu, a fração que o RIVERS também tinha marcado. = 173 ÷ 207.</td></tr>
+      <tr><td>Passou de 3h</td><td>Tempo real da moto <b>até ficar pronta</b> (não até o cliente buscar) maior que 180 min.</td></tr>
+    </table></div>
+  </section>
+
+  <!-- Acumulado -->
+  <section>
+    <h2>O acumulado (26 dias)</h2>
+    <p class="q">A foto do período inteiro. Os quatro números que importam:</p>
+    <div class="stats">
+      <div class="stat"><div class="n" style="color:var(--good)">84%</div><div class="l">recall — pegou <b>173 das 207</b> reservas que a oficina deu</div></div>
+      <div class="stat"><div class="n" style="color:var(--rivers)">54%</div><div class="l">das vezes, o RIVERS marcou <b>antes</b> da decisão humana (94 de 173)</div></div>
+      <div class="stat"><div class="n" style="color:var(--bad)">10</div><div class="l">furos reais em 26 dias (moto passou de 3h e ele não marcou)</div></div>
+      <div class="stat"><div class="n">89%</div><div class="l">de cobertura — avaliou 89% dos check-ins do período</div></div>
+    </div>
+    <table class="num-right" style="margin-top:14px">
+      <tr><th>Quem reservou o quê</th><th>Quantidade</th></tr>
+      <tr><td><b class="o">Oficina decidiu</b> (ofertou ou entregou)</td><td>207</td></tr>
+      <tr><td><b class="b">RIVERS sugeriu</b> (total)</td><td>550</td></tr>
+      <tr><td>&nbsp;&nbsp;├ os dois concordaram</td><td>173</td></tr>
+      <tr><td>&nbsp;&nbsp;└ só o RIVERS</td><td>377</td></tr>
+      <tr><td>Furos (só a oficina, e passou de 3h)</td><td>10</td></tr>
+    </table>
+    <p class="takeaway">📊 <b>Os 377 "só RIVERS" — o que aconteceu com essas motos?</b> Em <b class="b">106 delas (28%)</b>, a moto de fato passou de 3h: o RIVERS <b>avisou certo</b>, a oficina não deu a reserva, e o cliente ficou esperando sem moto. <u>Não são erros do algoritmo — são acertos dele que a operação não aproveitou.</u> Nas outras ~271, a moto ficou pronta antes das 3h (aí sim, sugestão desnecessária) — mas <b>por pouco</b>: mediana de 136 min, com o corte em 180.</p>
+    <p class="takeaway" style="background:var(--paper);border:1px solid var(--line)">🎯 <b>Juntando os dois lados:</b> no período, <b>116 motos passaram de 3h sem ganhar reserva</b>. O RIVERS tinha avisado em <b class="b">106</b> delas (91%); só em <b class="r">10</b> ele também não viu (os "furos"). O gargalo hoje não é o algoritmo enxergar — é a sugestão virar ação.</p>
+  </section>
+
+  <!-- Tendência semanal -->
+  <section>
+    <h2>A tendência: esta semana vs. a anterior</h2>
+    <p class="q">Comparando os últimos 7 dias (14–20/jul) com os 7 anteriores (07–13/jul). Aqui aparece uma queda que é importante explicar com honestidade.</p>
+    <table class="num-right">
+      <tr><th></th><th>07–13/jul</th><th>14–20/jul</th></tr>
+      <tr><td>Recall (pegou da oficina)</td><td>89%</td><td><b class="r">71%</b></td></tr>
+      <tr><td>Chegou antes do humano</td><td>64%</td><td><b class="r">43%</b></td></tr>
+      <tr><td>Furos reais na semana</td><td>1</td><td>4</td></tr>
+      <tr><td>Excesso que passou de 3h</td><td>28%</td><td>28%</td></tr>
+    </table>
+    <p class="takeaway warn">⚠️ <b>Por que caiu:</b> não é o algoritmo piorando — é <b>cobertura</b>. O RIVERS só roda quando alguém está com a tela aberta, e no fim de semana (18 e 19/jul) ele quase não rodou: <b>6 e 3 sugestões no dia</b>, contra ~30 num dia normal. Sem rodar, ele "perde" reservas que a oficina deu → o recall cai. É exatamente o buraco que o <b>agendador automático (cron)</b> resolve — e é a razão nº 1 dele ser a próxima entrega de infra.</p>
+  </section>
+
+  <!-- Leitura -->
+  <section>
+    <h2>Leitura rápida</h2>
+    <div class="split">
+      <div class="ok">
+        <b>O que está indo bem</b>
+        <ul>
+          <li>No acumulado, <b>recall de 84%</b> e <b>chega antes</b> do humano em mais da metade dos casos — mesmo sem rodar 24/7.</li>
+          <li>O over-trigger de <b>Osasco normalizou</b> — era efeito da escala reduzida no feriado, já passou.</li>
+          <li>O "excesso" segue <b>colado na linha</b> (mediana 136 min), não é chute.</li>
+        </ul>
+      </div>
+      <div class="at">
+        <b>Pontos de atenção</b>
+        <ul>
+          <li><b>Cobertura</b> derrubou a última semana (fim de semana sem rodar). Cron resolve.</li>
+          <li><b>Furos subiram</b> no acumulado (6 → 10) — perfil de serviço complexo de vários dias, que a estimativa de tempo ainda não captura bem.</li>
+          <li>A estimativa <b>superestima</b> moto com muitas peças (ajuste de calibração pendente).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Destaque diagnóstico -->
+  <section>
+    <h2>Destaque: a fila de diagnóstico é onde mora o problema</h2>
+    <p class="q">Uma regra se destacou muito no acumulado — e ela aponta exatamente para onde o produto precisa evoluir.</p>
+    <div class="big">Regra "esperando sem diagnóstico": <b class="b">48 de 54</b> passaram de 3h (89%)</div>
+    <p class="q" style="margin:0">Essa regra dispara quando a moto está parada há mais de 2h30 <b>só esperando ser diagnosticada</b> — antes de qualquer conserto começar. Quando só ela marcou, quase 9 em 10 vezes a moto de fato estourou as 3h. É a regra mais certeira do sistema, e prova, com dado, que a <b>fila de diagnóstico</b> (a espera <i>antes</i> do reparo) é um gargalo real — e hoje é o nosso maior ponto cego, porque o algoritmo estima bem o conserto, mas mal a espera que vem antes dele.</p>
+  </section>
+
+  <!-- Próximo passo: lógica de fila -->
+  <section style="border-color:var(--rivers)">
+    <h2>Próximo passo no algoritmo: a lógica de fila (proposta do Simon)</h2>
+    <p class="q">Isso liga direto no doc de arquitetura v1 que o Simon escreveu. Em linguagem simples, o que vem:</p>
+    <ul>
+      <li><b>Hoje:</b> o RIVERS estima a fila de um jeito simples — trabalho acumulado ÷ mecânicos escalados. Funciona, mas erra nos picos (foi o que quebrou em Osasco no feriado) e <b>não enxerga a fila de diagnóstico</b>.</li>
+      <li><b>O que vamos implementar:</b> uma <b>lógica de fila mais fiel</b>, que modela a espera <b>por etapa</b> — incluindo a fila de diagnóstico (o ponto cego de cima) — e usa o histórico recente de chegadas, não só o instante. Assim a estimativa para de quebrar quando a carga muda.</li>
+      <li><b>O que NÃO muda:</b> a <b>decisão continua uma regra clara e auditável</b>. A lógica de fila melhora a <i>estimativa de tempo</i>; quem decide reservar continua sendo a camada de produto, explicável. É <b>evolução do que já existe, não reescrita.</b></li>
+    </ul>
+    <p class="takeaway">🛠️ <b>Primeiro passo concreto (esta semana):</b> decompor o tempo da OS em 6 etapas (fila→diagnóstico · diagnóstico · fila→mecânico · execução · qualidade · entrega) e medir <b>onde os 3h se perdem, por base</b>. É o que diz onde a lógica de fila mais rende — e é o próximo passo nº1 do próprio doc do Simon.</p>
+  </section>
+
+  <p class="method">
+    <b>Método e ressalvas.</b> Cruzamento por OS: log do RIVERS (1ª decisão de reserva por OS) × check-in de manutenção do Maestro (ofertou/entregou + motivo) × desfecho real no ClickHouse. Tempo medido <b>até a moto ficar pronta</b> (não até a retirada — cliente com reserva não tem pressa de devolver). OS canceladas fora das contas de espera. Serviço especial (56) excluído dos dois lados. Snapshot único: 20/jul ~15h50. Janela 25/jun–20/jul (26 dias) — por isso os totais são maiores que os do relatório de 10/jul (janela menor); o recall acumulado caiu de 88% (até 10/jul) para 84%, puxado pela cobertura menor da última semana (fim de semana sem rodar), não por piora do algoritmo. "Oficina decidiu" = ofertou ou entregou; a oferta depende de haver reserva disponível, então "só RIVERS" não é necessariamente erro dele. A janela cobre 2 versões do algoritmo (a atual, com tempos calibrados, domina). Números verificados por recontagem independente.
+  </p>
+</div>

@@ -7,7 +7,11 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.3.0"; // 0.3.0 = estimativa de tempo calibrada (tempo-pecas.ts)
+export const ALGO_VERSION = "0.4.0"; // 0.4.0 = C2 só dispara p/ peça BLOQUEANTE + estoque conta
+                                     // todos os depósitos da base (antes: cosmético disparava e
+                                     // peça na bancada/recebimento contava como "sem estoque");
+                                     // janela de OS avaliadas: 1 → 7 dias (causa dos furos).
+                                     // 0.3.0 = estimativa de tempo calibrada (tempo-pecas.ts)
 
 const THRESHOLDS = {
   anomalia_min: 240,         // C1: OS aberta há mais de 4h antes do diag fechar
@@ -45,6 +49,8 @@ export interface AlgoritmoInput {
   n_pecas_criticas: number;
   n_sem_estoque: number;
   pecas_sem_estoque: string;
+  n_sem_estoque_bloq: number;      // só peças BLOQUEANTES (tração/freio/rodante) em falta
+  pecas_sem_estoque_bloq: string;  // nomes das bloqueantes em falta
   pecas_criticas: string;
   is_piso: number;
   min_no_status: number;
@@ -94,8 +100,14 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 2: Estoque ──────────────────────────────────────────────────
 
-  if (input.n_sem_estoque > 0) {
-    return reserva("C2_SEM_ESTOQUE", `sem estoque: ${input.pecas_sem_estoque}`, base);
+  // Só peça BLOQUEANTE em falta segura a moto (cosmético/acessório em falta → a oficina
+  // libera a moto e fica pendência; validado no histórico: precisão do C2 antigo era 6%).
+  if (input.n_sem_estoque_bloq > 0) {
+    return reserva(
+      "C2_SEM_ESTOQUE",
+      `peça bloqueante sem estoque na base: ${input.pecas_sem_estoque_bloq}`,
+      base
+    );
   }
 
   // ── CAMADA 3: Complexidade ─────────────────────────────────────────────

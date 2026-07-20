@@ -1,99 +1,99 @@
 {
- "gerado_em": "2026-07-10T14:58:18.050Z",
+ "gerado_em": "2026-07-20T18:43:56.417Z",
  "definicoes": "oficina=ofertada|entregue; rivers=1º log RESERVA; desfecho=abertura→COMPLETED",
  "contagens": {
-  "universo": 1396,
-  "tp": 115,
-  "fp": 245,
-  "miss": 15,
-  "tn": 1021,
-  "oficina_total": 130,
-  "rivers_total": 360,
-  "fora_do_radar": 4,
-  "recall": 88
+  "universo": 2342,
+  "tp": 173,
+  "fp": 377,
+  "miss": 34,
+  "tn": 1758,
+  "oficina_total": 207,
+  "rivers_total": 550,
+  "fora_do_radar": 6,
+  "recall": 84
  },
  "desfechos": {
   "fp": {
-   "n": 245,
-   "mensuraveis": 231,
-   "passou_3h_mensuraveis": 51,
+   "n": 377,
+   "mensuraveis": 355,
+   "passou_3h_mensuraveis": 87,
    "canceladas": 0,
-   "em_atendimento": 14,
-   "em_atendimento_ja_passou_3h": 10,
-   "passou_3h_total": 61,
-   "validas": 245,
-   "mediana_min": 131
+   "em_atendimento": 22,
+   "em_atendimento_ja_passou_3h": 19,
+   "passou_3h_total": 106,
+   "validas": 377,
+   "mediana_min": 136
   },
   "miss": {
-   "n": 15,
-   "mensuraveis": 12,
-   "passou_3h_mensuraveis": 4,
-   "canceladas": 1,
-   "em_atendimento": 2,
-   "em_atendimento_ja_passou_3h": 2,
-   "passou_3h_total": 6,
-   "validas": 14,
-   "mediana_min": 162
+   "n": 34,
+   "mensuraveis": 30,
+   "passou_3h_mensuraveis": 9,
+   "canceladas": 3,
+   "em_atendimento": 1,
+   "em_atendimento_ja_passou_3h": 1,
+   "passou_3h_total": 10,
+   "validas": 31,
+   "mediana_min": 151
   },
   "tp": {
-   "n": 115,
-   "mensuraveis": 96,
-   "passou_3h_mensuraveis": 66,
+   "n": 173,
+   "mensuraveis": 158,
+   "passou_3h_mensuraveis": 118,
    "canceladas": 0,
-   "em_atendimento": 19,
-   "em_atendimento_ja_passou_3h": 16,
-   "passou_3h_total": 82,
-   "validas": 115,
-   "mediana_min": 213
+   "em_atendimento": 15,
+   "em_atendimento_ja_passou_3h": 15,
+   "passou_3h_total": 133,
+   "validas": 173,
+   "mediana_min": 232
   }
  },
  "tpRegra": {
   "C4_CAPACIDADE": 27,
-  "C3_TEMPO_ALTO": 43,
-  "C1_ANOMALIA": 1,
-  "C1_ESPERA_SEM_DIAG": 26,
-  "C3_TEMPO_COMBINADO": 11,
-  "C2_SEM_ESTOQUE": 7
+  "C3_TEMPO_ALTO": 62,
+  "C1_ANOMALIA": 2,
+  "C1_ESPERA_SEM_DIAG": 39,
+  "C3_TEMPO_COMBINADO": 28,
+  "C2_SEM_ESTOQUE": 15
  },
  "fpRegra": {
   "C3_DIVERSAS_AVARIAS": 4,
   "C3_PECA_CRITICA": 5,
-  "C2_SEM_ESTOQUE": 45,
-  "C3_TEMPO_COMBINADO": 16,
+  "C2_SEM_ESTOQUE": 84,
+  "C3_TEMPO_COMBINADO": 40,
   "C4_CAPACIDADE": 81,
-  "C3_TEMPO_ALTO": 73,
-  "C1_ANOMALIA": 2,
-  "C1_ESPERA_SEM_DIAG": 19
+  "C3_TEMPO_ALTO": 106,
+  "C1_ANOMALIA": 3,
+  "C1_ESPERA_SEM_DIAG": 54
  },
  "tpMotivo": {
-  "complex_service": 85,
-  "so_opening_error": 7,
-  "workshop_busy": 7,
-  "awaiting_plate": 6,
-  "awaiting_part": 7,
-  "relocation_crack": 3
+  "complex_service": 123,
+  "so_opening_error": 10,
+  "workshop_busy": 12,
+  "awaiting_plate": 9,
+  "awaiting_part": 14,
+  "relocation_crack": 5
  },
  "missMotivo": {
-  "complex_service": 11,
-  "workshop_busy": 1,
-  "so_opening_error": 2,
+  "complex_service": 28,
+  "workshop_busy": 2,
+  "so_opening_error": 3,
   "awaiting_part": 1
  },
  "porBase": {
   "1": {
-   "tp": 93,
-   "fp": 111,
-   "miss": 10
+   "tp": 134,
+   "fp": 179,
+   "miss": 27
   },
   "34": {
-   "tp": 15,
-   "fp": 106,
-   "miss": 1
+   "tp": 21,
+   "fp": 142,
+   "miss": 2
   },
   "166": {
-   "tp": 7,
-   "fp": 28,
-   "miss": 4
+   "tp": 18,
+   "fp": 56,
+   "miss": 5
   }
  },
  "timing": [
@@ -554,8 +554,240 @@
    "regra": "C3_TEMPO_ALTO"
   },
   {
+   "delta": 64,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": -17,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 17,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
    "delta": 4,
    "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 8,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": 8,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -77,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": -74,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 33,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 96,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 107,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": -97,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": -9,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": 53,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 29,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": 21,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -28,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -41,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -25,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": -66,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": 100,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -123,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": 6,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -101,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": -45,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 42,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": -90,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -6,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -11,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -34,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -13,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -11,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 25,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 68,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": -129,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -476,
+   "regra": "C1_ANOMALIA"
+  },
+  {
+   "delta": -49,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 23,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": 1,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": -103,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -71,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 14,
+   "regra": "C2_SEM_ESTOQUE"
+  },
+  {
+   "delta": -3,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -45,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 13,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 2,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 6,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 82,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -28,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 40,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": 53,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 193,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 96,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": 21,
+   "regra": "C3_TEMPO_ALTO"
+  },
+  {
+   "delta": -95,
+   "regra": "C3_TEMPO_COMBINADO"
+  },
+  {
+   "delta": -140,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": -90,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": -85,
+   "regra": "C1_ESPERA_SEM_DIAG"
+  },
+  {
+   "delta": -150,
+   "regra": "C1_ESPERA_SEM_DIAG"
   }
  ],
  "porDia": {
@@ -637,11 +869,67 @@
    "rivers_sbc": 4
   },
   "07-10": {
+   "oficina": 23,
+   "rivers": 49,
+   "rivers_mooca": 24,
+   "rivers_osasco": 15,
+   "rivers_sbc": 10
+  },
+  "07-13": {
+   "oficina": 8,
+   "rivers": 28,
+   "rivers_mooca": 13,
+   "rivers_osasco": 6,
+   "rivers_sbc": 9
+  },
+  "07-14": {
+   "oficina": 15,
+   "rivers": 34,
+   "rivers_mooca": 18,
+   "rivers_osasco": 10,
+   "rivers_sbc": 6
+  },
+  "07-15": {
    "oficina": 9,
-   "rivers": 21,
-   "rivers_mooca": 11,
-   "rivers_osasco": 9,
-   "rivers_sbc": 1
+   "rivers": 28,
+   "rivers_mooca": 18,
+   "rivers_osasco": 6,
+   "rivers_sbc": 4
+  },
+  "07-16": {
+   "oficina": 12,
+   "rivers": 26,
+   "rivers_mooca": 21,
+   "rivers_osasco": 3,
+   "rivers_sbc": 2
+  },
+  "07-17": {
+   "oficina": 10,
+   "rivers": 24,
+   "rivers_mooca": 15,
+   "rivers_osasco": 6,
+   "rivers_sbc": 3
+  },
+  "07-18": {
+   "oficina": 4,
+   "rivers": 6,
+   "rivers_mooca": 5,
+   "rivers_osasco": 1,
+   "rivers_sbc": 0
+  },
+  "07-20": {
+   "oficina": 5,
+   "rivers": 13,
+   "rivers_mooca": 3,
+   "rivers_osasco": 4,
+   "rivers_sbc": 6
+  },
+  "07-19": {
+   "oficina": 0,
+   "rivers": 3,
+   "rivers_mooca": 3,
+   "rivers_osasco": 0,
+   "rivers_sbc": 0
   }
  },
  "pioresMiss": [
@@ -650,7 +938,7 @@
    "placa": "GHS5D63",
    "base": 166,
    "motivo": "awaiting_part",
-   "horas": 94.8,
+   "horas": 338.6,
    "em_atendimento": true
   },
   {
@@ -658,8 +946,8 @@
    "placa": "TLA0I86",
    "base": 166,
    "motivo": "complex_service",
-   "horas": 49.2,
-   "em_atendimento": true
+   "horas": 228.6,
+   "em_atendimento": false
   },
   {
    "os_id": 33463,
@@ -694,11 +982,59 @@
    "em_atendimento": false
   },
   {
+   "os_id": 39725,
+   "placa": "SVE7B43",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 4.2,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 38892,
+   "placa": "SVN4A65",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 3.2,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 40083,
+   "placa": "TKP4B47",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 3.2,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 40690,
+   "placa": "TJE8C35",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 3.2,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 41345,
+   "placa": "TKM8J08",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 3,
+   "em_atendimento": false
+  },
+  {
    "os_id": 35038,
    "placa": "TJR0H46",
    "base": 1,
    "motivo": "complex_service",
    "horas": 2.9,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 40234,
+   "placa": "TLU8A54",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 2.8,
    "em_atendimento": false
   },
   {
@@ -710,8 +1046,40 @@
    "em_atendimento": false
   },
   {
+   "os_id": 41350,
+   "placa": "SVL4F84",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 2.7,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 39003,
+   "placa": "TLX6J35",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 2.5,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 41766,
+   "placa": "UEK5D75",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 2.5,
+   "em_atendimento": false
+  },
+  {
    "os_id": 34895,
    "placa": "UFM3A98",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 2.3,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 38887,
+   "placa": "QSW3D71",
    "base": 1,
    "motivo": "complex_service",
    "horas": 2.3,
@@ -723,6 +1091,46 @@
    "base": 1,
    "motivo": "complex_service",
    "horas": 2.2,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 37707,
+   "placa": "UDQ2H98",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 2,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 39605,
+   "placa": "TJV1G34",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 2,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 37802,
+   "placa": "QST5A14",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 1.8,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 39739,
+   "placa": "UDV6G31",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 1.7,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 40926,
+   "placa": "UEM5G07",
+   "base": 1,
+   "motivo": "complex_service",
+   "horas": 1.6,
    "em_atendimento": false
   },
   {
@@ -742,6 +1150,14 @@
    "em_atendimento": false
   },
   {
+   "os_id": 39749,
+   "placa": "UOL5D06",
+   "base": 1,
+   "motivo": "workshop_busy",
+   "horas": 1.4,
+   "em_atendimento": false
+  },
+  {
    "os_id": 37134,
    "placa": "SUG4C35",
    "base": 166,
@@ -754,6 +1170,14 @@
    "placa": "UFL5A03",
    "base": 1,
    "motivo": "so_opening_error",
+   "horas": 1.1,
+   "em_atendimento": false
+  },
+  {
+   "os_id": 37658,
+   "placa": "TLA3H72",
+   "base": 1,
+   "motivo": "complex_service",
    "horas": 1.1,
    "em_atendimento": false
   }
@@ -770,13 +1194,13 @@
    "em_atendimento": 0
   },
   "C2_SEM_ESTOQUE": {
-   "passou_3h": 4,
-   "nao_passou": 38,
-   "em_atendimento": 3
+   "passou_3h": 5,
+   "nao_passou": 78,
+   "em_atendimento": 1
   },
   "C3_TEMPO_COMBINADO": {
-   "passou_3h": 8,
-   "nao_passou": 8,
+   "passou_3h": 15,
+   "nao_passou": 25,
    "em_atendimento": 0
   },
   "C4_CAPACIDADE": {
@@ -785,32 +1209,32 @@
    "em_atendimento": 0
   },
   "C3_TEMPO_ALTO": {
-   "passou_3h": 13,
-   "nao_passou": 59,
-   "em_atendimento": 1
+   "passou_3h": 20,
+   "nao_passou": 84,
+   "em_atendimento": 2
   },
   "C1_ANOMALIA": {
-   "passou_3h": 2,
+   "passou_3h": 3,
    "nao_passou": 0,
    "em_atendimento": 0
   },
   "C1_ESPERA_SEM_DIAG": {
-   "passou_3h": 19,
-   "nao_passou": 0,
+   "passou_3h": 48,
+   "nao_passou": 6,
    "em_atendimento": 0
   }
  },
  "check": {
-  "snapshot": "2026-07-10T14:58:18.050Z",
-  "especiais_excluidas": 50,
-  "checkins_total": 1648,
-  "cobertura_rivers_pct": 85,
-  "ofertadas_sem_entrega": 55,
-  "entregues": 75,
-  "recall_sistema_incl_fora_radar": 86,
+  "snapshot": "2026-07-20T18:43:56.417Z",
+  "especiais_excluidas": 56,
+  "checkins_total": 2631,
+  "cobertura_rivers_pct": 89,
+  "ofertadas_sem_entrega": 92,
+  "entregues": 115,
+  "recall_sistema_incl_fora_radar": 81,
   "reservaPorVersao": {
    "so_v02": 630,
-   "so_v03": 686,
+   "so_v03": 1589,
    "ambas": 93
   }
  },

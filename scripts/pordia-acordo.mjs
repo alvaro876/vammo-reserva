@@ -1,6 +1,6 @@
-import { fileURLToPath as __furl } from "url";
-const ROOT = __furl(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
-const DL = process.env.METABASE_DIR || (ROOT + "\\data");
+import { dirname as __dir, join as __join } from "path";
+const ROOT = __join(import.meta.dirname, "..");
+const DL = process.env.METABASE_DIR || __join(ROOT, "data");
 // Recomputa, por dia, a quebra das sugestões do RIVERS em:
 //   - TP  (os dois reservaram)
 //   - FP  (só o RIVERS)
