@@ -7,7 +7,15 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.5.1"; // 0.5.1 = C1_ANOMALIA enxerga moto presa em OPEN que nunca
+export const ALGO_VERSION = "0.6.0"; // 0.6.0 = ataque ao excesso das regras de tempo (semana 20-26:
+                                     // 39 sugestões de piso ficaram prontas <3h): (a) C3_TEMPO_ALTO
+                                     // sobe 120→140 (faixa 121-140 acertou 36%; 141+ acertou 100%);
+                                     // (b) restante = estimativa − execução ACUMULADA (episódios
+                                     // IN_PROGRESS somados; antes só o episódio atual descontava e
+                                     // pause/retoma re-somava trabalho feito). Simulado na semana:
+                                     // excesso C3 39→~6/sem, capturas 39/39 mantidas (5 ~15-50min
+                                     // mais tarde via C3.5/C4 conforme o relógio acumula).
+                                     // 0.5.1 = C1_ANOMALIA enxerga moto presa em OPEN que nunca
                                      // entrou na oficina (maxIf sem match virava epoch 1970 →
                                      // dateDiff negativo → regra cega; furo de dom 26/07, OS 44862).
                                      // 0.5.0 = fila do C4 conta só o trabalho de PISO à frente
@@ -25,7 +33,9 @@ export const ALGO_VERSION = "0.5.1"; // 0.5.1 = C1_ANOMALIA enxerga moto presa e
 const THRESHOLDS = {
   anomalia_min: 240,         // C1: OS aberta há mais de 4h antes do diag fechar
   diversas_avarias: 9,       // C3: 9+ tipos de peça diferentes no diag
-  tempo_estimado_max: 120,   // C3: tempo estimado total > 120 min
+  tempo_estimado_max: 140,   // C3: tempo estimado total > 140 min (120→140 em 27/07: na semana
+                             // 20-26 a faixa 121-140 acertou 36% no piso e 141+ acertou 100%;
+                             // 121-140 continua coberta pelo C3.5 quando o relógio confirma)
   tempo_total_max: 180,      // C3.5 / C4: espera + execução > 180 min
   qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
   espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
@@ -64,6 +74,7 @@ export interface AlgoritmoInput {
   is_piso: number;
   min_no_status: number;
   min_desde_open: number;
+  exec_acum_min?: number;        // execução acumulada (todos os episódios IN_PROGRESS), em min
   capacidade_esperada?: number;  // nº esperado de mecânicos na base/hora atual (curva do histórico)
   fila_min?: number;             // soma do tempo estimado das OS esperando mecânico na base
 }
@@ -130,9 +141,12 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 3.5: Tempo total combinado (sem capacidade) ─────────────────
   // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
-  const tempoRestanteC3 = input.status_atual === "IN_PROGRESS"
-    ? Math.max(0, input.tempo_estimado_min - input.min_no_status)
-    : input.tempo_estimado_min;
+  // Restante desconta a execução ACUMULADA (todos os episódios IN_PROGRESS): o
+  // desconto antigo via min_no_status zerava a cada pausa/retomada e re-somava
+  // trabalho já feito. Fallback pro comportamento antigo se o campo não vier.
+  const execFeita = input.exec_acum_min ??
+    (input.status_atual === "IN_PROGRESS" ? input.min_no_status : 0);
+  const tempoRestanteC3 = Math.max(0, input.tempo_estimado_min - execFeita);
   const totalSemMec = input.min_desde_open + tempoRestanteC3 + THRESHOLDS.qa_min;
   if (input.tempo_estimado_min > 0 && input.min_desde_open < 480 && totalSemMec > THRESHOLDS.tempo_total_max) {
     return reserva(

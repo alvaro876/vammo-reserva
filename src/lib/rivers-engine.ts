@@ -84,7 +84,15 @@ os_meta AS (
            if(argMax(ss.status, ss.created_at) = 'OPEN',
               dateDiff('minute', so.created_at, now('America/Sao_Paulo')),
               0)) AS min_open_to_awaiting,
-        dateDiff('minute', max(ss.created_at), now('America/Sao_Paulo')) AS min_no_status
+        dateDiff('minute', max(ss.created_at), now('America/Sao_Paulo')) AS min_no_status,
+        arraySort(x -> x.1, groupArray((toUnixTimestamp(ss.created_at), ss.status))) AS _evs,
+        -- execução ACUMULADA (soma de TODOS os episódios IN_PROGRESS até agora).
+        -- O desconto antigo (min_no_status, só do episódio atual) re-somava trabalho
+        -- já feito quando a OS pausava/retomava → projeção estourava pra moto quase
+        -- pronta (11 dos 14 excessos de execução do C3.5 na semana 20-26/07).
+        toUInt32(round(arraySum(arrayMap(i -> if(_evs[i].2 = 'IN_PROGRESS',
+            (if(i = length(_evs), toUnixTimestamp(now()), _evs[i + 1].1) - _evs[i].1), 0),
+          arrayEnumerate(_evs))) / 60)) AS exec_acum_min
     FROM oms_r.so so FINAL
     JOIN oms_r.so_status ss FINAL ON ss.so_id = so.id
     WHERE so.asset_type = 'BIKE'
@@ -211,6 +219,7 @@ SELECT
     om.status_atual AS status_atual,
     om.min_desde_open AS min_desde_open,
     om.min_no_status AS min_no_status,
+    om.exec_acum_min AS exec_acum_min,
     om.imobilizada AS imobilizada,
     om.acidente AS acidente,
     om.guincho AS guincho,
@@ -347,6 +356,7 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
         features: {
           min_desde_open: o.min_desde_open,
           min_no_status: o.min_no_status,
+          exec_acum_min: o.exec_acum_min,
           n_pecas: o.n_pecas,
           n_pecas_criticas: o.n_pecas_criticas,
           pecas_criticas: o.pecas_criticas,
