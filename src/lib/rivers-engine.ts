@@ -75,7 +75,15 @@ os_meta AS (
         argMax(ss.status, ss.created_at) AS status_atual,
         maxIf(ss.created_at, ss.status = 'AWAITING_MECHANIC') AS ts_awaiting_mec,
         dateDiff('minute', so.created_at, now('America/Sao_Paulo')) AS min_desde_open,
-        dateDiff('minute', so.created_at, maxIf(ss.created_at, ss.status = 'AWAITING_MECHANIC')) AS min_open_to_awaiting,
+        -- maxIf sem match devolve epoch 1970 (não NULL) → dateDiff negativo e a anomalia
+        -- nunca dispara pra moto presa em OPEN que NUNCA entrou na oficina. Nesses casos o
+        -- relógio continua correndo (min_desde_open); quem já passou de OPEN sem fila
+        -- (direto pra diagnóstico/execução) não é anomalia de entrada → 0.
+        if(maxIf(ss.created_at, ss.status = 'AWAITING_MECHANIC') > toDateTime('2000-01-01'),
+           dateDiff('minute', so.created_at, maxIf(ss.created_at, ss.status = 'AWAITING_MECHANIC')),
+           if(argMax(ss.status, ss.created_at) = 'OPEN',
+              dateDiff('minute', so.created_at, now('America/Sao_Paulo')),
+              0)) AS min_open_to_awaiting,
         dateDiff('minute', max(ss.created_at), now('America/Sao_Paulo')) AS min_no_status
     FROM oms_r.so so FINAL
     JOIN oms_r.so_status ss FINAL ON ss.so_id = so.id

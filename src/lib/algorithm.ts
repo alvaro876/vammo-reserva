@@ -7,7 +7,10 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.5.0"; // 0.5.0 = fila do C4 conta só o trabalho de PISO à frente
+export const ALGO_VERSION = "0.5.1"; // 0.5.1 = C1_ANOMALIA enxerga moto presa em OPEN que nunca
+                                     // entrou na oficina (maxIf sem match virava epoch 1970 →
+                                     // dateDiff negativo → regra cega; furo de dom 26/07, OS 44862).
+                                     // 0.5.0 = fila do C4 conta só o trabalho de PISO à frente
                                      // (decomposição 20/07: piso fura a fila — espera real 4-5min;
                                      // a fila cheia superestimava e era a maior fonte de excesso).
                                      // 0.4.1 = fator por nº de peças na estimativa (recalibração
