@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runRivers } from "@/lib/rivers-engine";
 import { getLoggedReservaOsIds } from "@/lib/supabase";
 import { notifyReserva } from "@/lib/slack";
+import { basesTeste } from "@/lib/autonomia";
 import { ALGO_VERSION } from "@/lib/algorithm";
 
 // Janela de operação da oficina (horário de São Paulo). Fora disso não roda.
@@ -59,7 +60,10 @@ export async function GET(req: NextRequest) {
     const reservasPiso = result.filter(
       (o) => o.recomendacao?.decision === "RESERVA" && o.is_piso === 1
     );
-    const novas = reservasPiso.filter((o) => !jaLogadas.has(o.os_id));
+    // Piloto: notifica só as bases do teste (Mooca; env RIVERS_BASES_TESTE expande sem deploy)
+    const novas = reservasPiso.filter(
+      (o) => !jaLogadas.has(o.os_id) && basesTeste().has(o.location_id)
+    );
 
     // 6) Notifica só as novas
     const notificadas = await notifyReserva(

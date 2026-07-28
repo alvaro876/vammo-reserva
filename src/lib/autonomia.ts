@@ -16,6 +16,21 @@
 
 const DEFAULT_AUTO = "C1_HARD,C1_ANOMALIA,C1_ESPERA_SEM_DIAG";
 
+// ESCOPO DO TESTE (decisão de 28/07): o piloto roda SÓ NA MOOCA (location_id 1 no OMS).
+// Autonomia e notificações valem apenas pras bases desta lista; expandir pra Osasco (34)
+// e SBC (166) é mudar a env RIVERS_BASES_TESTE (csv de location_ids) — sem deploy.
+const DEFAULT_BASES_TESTE = "1";
+
+export function basesTeste(): Set<number> {
+  const raw = process.env.RIVERS_BASES_TESTE ?? DEFAULT_BASES_TESTE;
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0)
+  );
+}
+
 export function regrasAuto(): Set<string> {
   const raw = process.env.RIVERS_REGRAS_AUTO ?? DEFAULT_AUTO;
   return new Set(
@@ -27,11 +42,19 @@ export function regrasAuto(): Set<string> {
 }
 
 // Uma sugestão é "ação automática" quando: é RESERVA, o cliente está em piso
-// (esperando na base — onde o SLA de 3h vale) e a regra está na lista auto.
+// (esperando na base — onde o SLA de 3h vale), a regra está na lista auto e a
+// base está no escopo do teste.
 export function isAcaoAutomatica(
   rule: string | null,
   decision: string,
-  isPiso: boolean
+  isPiso: boolean,
+  locationId?: number | null
 ): boolean {
-  return decision === "RESERVA" && isPiso && rule != null && regrasAuto().has(rule);
+  return (
+    decision === "RESERVA" &&
+    isPiso &&
+    rule != null &&
+    regrasAuto().has(rule) &&
+    (locationId == null || basesTeste().has(locationId))
+  );
 }

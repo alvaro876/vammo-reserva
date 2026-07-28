@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { runRivers } from "@/lib/rivers-engine";
 import { getLoggedReservaOsIds } from "@/lib/supabase";
 import { notifyReserva } from "@/lib/slack";
+import { basesTeste } from "@/lib/autonomia";
 import { ALGO_VERSION } from "@/lib/algorithm";
 
 // Hora de São Paulo (0-23) — usada pra só notificar dentro do horário de operação.
@@ -30,8 +31,9 @@ export async function GET() {
     try {
       const hora = horaSP();
       if (hora >= 7 && hora < 21) {
+        // Piloto: notifica só as bases do teste (Mooca; env RIVERS_BASES_TESTE expande sem deploy)
         const novas = osComRecomendacao.filter(
-          (o) => o.recomendacao?.decision === "RESERVA" && o.is_piso === 1 && !jaLogadas.has(o.os_id)
+          (o) => o.recomendacao?.decision === "RESERVA" && o.is_piso === 1 && !jaLogadas.has(o.os_id) && basesTeste().has(o.location_id)
         );
         await notifyReserva(
           novas.map((o) => ({ os_id: o.os_id, placa: o.placa, location_id: o.location_id, motivo: o.recomendacao!.motivo, auto: o.acao_automatica, fronteira: o.recomendacao!.confianca === "fronteira" }))

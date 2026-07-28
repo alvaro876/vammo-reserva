@@ -7,7 +7,10 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.9.0"; // 0.9.0 = piso completo + termômetro: (a) is_piso = união do
+export const ALGO_VERSION = "0.9.1"; // 0.9.1 = escopo do piloto: autonomia (⚡) e notificações só nas
+                                     // bases do teste (RIVERS_BASES_TESTE, default Mooca=1); demais
+                                     // bases seguem avaliadas/logadas normalmente (tela/API/log).
+                                     // 0.9.0 = piso completo + termômetro: (a) is_piso = união do
                                      // "chamado no balcão" com client_present da fonte (o chamado
                                      // perdia 29% dos presentes; o client_present vira NÃO quando o
                                      // cliente sai com reserva — juntos cobrem o piso real);

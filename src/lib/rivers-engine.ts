@@ -371,7 +371,7 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
       : null;
 
     const acao_automatica = recomendacao
-      ? isAcaoAutomatica(recomendacao.rule_triggered, recomendacao.decision, row.is_piso === 1)
+      ? isAcaoAutomatica(recomendacao.rule_triggered, recomendacao.decision, row.is_piso === 1, row.location_id)
       : false;
 
     return { ...row, recomendacao, acao_automatica, pressao_piso: pressaoByBase[row.location_id] ?? 0 };
