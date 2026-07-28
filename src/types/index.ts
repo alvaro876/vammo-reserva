@@ -37,6 +37,9 @@ export interface Recomendacao {
   decision: ReservaDecision;
   rule_triggered: string | null;
   motivo: string;
+  // Confiança da projeção de tempo: "fronteira" = projeção a menos de 30min da linha
+  // das 3h (zona em que a variação natural do serviço decide o lado) → confirmar no piso.
+  confianca?: "alta" | "fronteira";
   tempo_previsto_min: number | null;
   mecanico_sugerido: string | null;
   tempo_para_inicio_min: number | null;

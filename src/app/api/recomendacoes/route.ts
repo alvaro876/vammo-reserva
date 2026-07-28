@@ -35,6 +35,9 @@ export async function GET(req: Request) {
         decisao: o.recomendacao!.decision, // RESERVA | SEM_RESERVA
         motivo: o.recomendacao!.motivo, // texto legível do porquê
         regra: o.recomendacao!.rule_triggered, // código da regra que decidiu
+        // "alta" | "fronteira" | null — fronteira = projeção a <30min da linha das 3h
+        // (decisão de foto de chegada; vale confirmar no piso). null = regra sem projeção.
+        confianca: o.recomendacao!.confianca ?? null,
         tempo_previsto_min: o.recomendacao!.tempo_previsto_min,
         // true = regra de alta precisão (~90%) + cliente em piso → pode acatar
         // direto, sem revisão. false = sugestão pra revisão humana.

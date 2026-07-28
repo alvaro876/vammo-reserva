@@ -7,7 +7,12 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.6.0"; // 0.6.0 = ataque ao excesso das regras de tempo (semana 20-26:
+export const ALGO_VERSION = "0.7.0"; // 0.7.0 = confiança na sugestão: projeção a <30min da linha das
+                                     // 3h sai marcada "fronteira" (zona cara-ou-coroa — o encarregado
+                                     // decide sabendo que é foto de chegada); demais saem "alta".
+                                     // Exposta na API/Slack/log. Não muda O QUE dispara, muda como
+                                     // a incerteza é comunicada.
+                                     // 0.6.0 = ataque ao excesso das regras de tempo (semana 20-26:
                                      // 39 sugestões de piso ficaram prontas <3h): (a) C3_TEMPO_ALTO
                                      // sobe 120→140 (faixa 121-140 acertou 36%; 141+ acertou 100%);
                                      // (b) restante = estimativa − execução ACUMULADA (episódios
@@ -39,6 +44,8 @@ const THRESHOLDS = {
   tempo_total_max: 180,      // C3.5 / C4: espera + execução > 180 min
   qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
   espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
+  fronteira_margem_min: 30,  // projeção a menos de 30min da linha das 3h = "fronteira"
+                             // (zona cara-ou-coroa: variação natural do serviço decide o lado)
 };
 
 // Peças que sozinhas justificam reserva imediata
@@ -95,12 +102,12 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 1: Regras duras ─────────────────────────────────────────────
 
-  if (input.imobilizada === 1) return reserva("C1_HARD", "moto imobilizada", base);
-  if (input.acidente === 1)    return reserva("C1_HARD", "acidente", base);
-  if (input.guincho === 1)     return reserva("C1_HARD", "veio de guincho", base);
-  if (input.so_type === "INSURANCE_QUOTE") return reserva("C1_HARD", "vistoria de seguro", base);
+  if (input.imobilizada === 1) return reserva("C1_HARD", "moto imobilizada", base, "alta");
+  if (input.acidente === 1)    return reserva("C1_HARD", "acidente", base, "alta");
+  if (input.guincho === 1)     return reserva("C1_HARD", "veio de guincho", base, "alta");
+  if (input.so_type === "INSURANCE_QUOTE") return reserva("C1_HARD", "vistoria de seguro", base, "alta");
   if (input.min_open_to_awaiting > THRESHOLDS.anomalia_min) {
-    return reserva("C1_ANOMALIA", `moto não entrou na oficina há ${input.min_open_to_awaiting}min`, base);
+    return reserva("C1_ANOMALIA", `moto não entrou na oficina há ${input.min_open_to_awaiting}min`, base, "alta");
   }
 
   // Piso esperando demais SEM diagnóstico: moto em piso, aberta há muito tempo, e o
@@ -114,7 +121,8 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     return reserva(
       "C1_ESPERA_SEM_DIAG",
       `em piso há ${input.min_desde_open}min e ainda sem diagnóstico — esperando demais`,
-      base
+      base,
+      "alta"
     );
   }
 
@@ -132,15 +140,6 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 3: Complexidade ─────────────────────────────────────────────
 
-  // Peça crítica e nº de peças foram REMOVIDOS como critério (decisão da operação):
-  // ter um Motor ou muitas peças não significa, por si só, passar de 3h — quem decide
-  // é o tempo. Quando a estimativa de tempo for recalibrada, ela já captura essas peças.
-  if (input.tempo_estimado_min > THRESHOLDS.tempo_estimado_max) {
-    return reserva("C3_TEMPO_ALTO", `trabalho estimado em ${input.tempo_estimado_min}min`, base);
-  }
-
-  // ── CAMADA 3.5: Tempo total combinado (sem capacidade) ─────────────────
-  // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
   // Restante desconta a execução ACUMULADA (todos os episódios IN_PROGRESS): o
   // desconto antigo via min_no_status zerava a cada pausa/retomada e re-somava
   // trabalho já feito. Fallback pro comportamento antigo se o campo não vier.
@@ -148,11 +147,27 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     (input.status_atual === "IN_PROGRESS" ? input.min_no_status : 0);
   const tempoRestanteC3 = Math.max(0, input.tempo_estimado_min - execFeita);
   const totalSemMec = input.min_desde_open + tempoRestanteC3 + THRESHOLDS.qa_min;
+  // Projeção a menos de 30min da linha = fronteira: a sugestão sai marcada pro
+  // encarregado saber que é decisão de foto de chegada, não de convicção.
+  const confiancaTempo = (proj: number): "alta" | "fronteira" =>
+    proj >= THRESHOLDS.tempo_total_max + THRESHOLDS.fronteira_margem_min ? "alta" : "fronteira";
+
+  // Peça crítica e nº de peças foram REMOVIDOS como critério (decisão da operação):
+  // ter um Motor ou muitas peças não significa, por si só, passar de 3h — quem decide
+  // é o tempo. Quando a estimativa de tempo for recalibrada, ela já captura essas peças.
+  if (input.tempo_estimado_min > THRESHOLDS.tempo_estimado_max) {
+    // faixa 141+ mediu 100% na semana 20-26 → confiança alta por construção
+    return reserva("C3_TEMPO_ALTO", `trabalho estimado em ${input.tempo_estimado_min}min`, base, "alta");
+  }
+
+  // ── CAMADA 3.5: Tempo total combinado (sem capacidade) ─────────────────
+  // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
   if (input.tempo_estimado_min > 0 && input.min_desde_open < 480 && totalSemMec > THRESHOLDS.tempo_total_max) {
     return reserva(
       "C3_TEMPO_COMBINADO",
       `já esperou ${input.min_desde_open}min + restante ~${tempoRestanteC3}min + ${THRESHOLDS.qa_min}min QA = ${totalSemMec}min total`,
-      base
+      base,
+      confiancaTempo(totalSemMec)
     );
   }
 
@@ -173,7 +188,8 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       return reserva(
         "C4_CAPACIDADE",
         `oficina saturada: fila ~${tempoEspera}min (${filaMin}min de serviço ÷ ${cap} mec esperados) + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA, já esperou ${input.min_desde_open}min → ${tempoTotal}min`,
-        base
+        base,
+        confiancaTempo(tempoTotal)
       );
     }
 
@@ -200,13 +216,15 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 function reserva(
   rule: string,
   motivo: string,
-  base: Omit<Recomendacao, "decision" | "rule_triggered" | "motivo">
+  base: Omit<Recomendacao, "decision" | "rule_triggered" | "motivo">,
+  confianca?: "alta" | "fronteira"
 ): Recomendacao {
   return {
     ...base,
     decision: "RESERVA",
     rule_triggered: rule,
     motivo,
+    confianca,
   };
 }
 

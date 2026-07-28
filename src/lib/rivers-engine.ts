@@ -367,6 +367,7 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
           complexidade_max: o.complexidade_max,
           tempo_estimado_min: o.tempo_estimado_min,
           tempo_previsto_min: o.recomendacao!.tempo_previsto_min,
+          confianca: o.recomendacao!.confianca ?? null,
           mecanico_sugerido: o.recomendacao!.mecanico_sugerido,
           tempo_para_inicio_min: o.recomendacao!.tempo_para_inicio_min,
           capacidade_esperada: capByBase[o.location_id] ?? 0,
