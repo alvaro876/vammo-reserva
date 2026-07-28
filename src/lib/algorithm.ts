@@ -7,7 +7,14 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.8.0"; // 0.8.0 = peça segurando a moto: (a) AWAITING_PARTS/AWAITING_SERVICE
+export const ALGO_VERSION = "0.9.0"; // 0.9.0 = piso completo + termômetro: (a) is_piso = união do
+                                     // "chamado no balcão" com client_present da fonte (o chamado
+                                     // perdia 29% dos presentes; o client_present vira NÃO quando o
+                                     // cliente sai com reserva — juntos cobrem o piso real);
+                                     // (b) pressao_piso por base exposta na API/log — insumo de
+                                     // POLÍTICA de piso cheio (validado: lotação não prevê estouro,
+                                     // 19,3%×19,4% — régua de agir é da operação).
+                                     // 0.8.0 = peça segurando a moto: (a) AWAITING_PARTS/AWAITING_SERVICE
                                      // entram no radar (OSs travadas sumiam — furos 42908/43397/44130);
                                      // (b) regra nova C2_TRAVADA_SEM_PECA (93,7% no histórico 45d:
                                      // parada 30min+ & relógio 90-480min), pega até OS sem item

@@ -200,6 +200,9 @@ pecas_criticas_nomes AS (
     GROUP BY si.so_id
 ),
 is_piso AS (
+    -- UNIÃO de dois sinais (medido em 14d): o "chamado no balcão" perde 29% dos
+    -- clientes presentes (180/613), e o client_present da fonte vira NÃO quando o
+    -- cliente sai com reserva — nenhum sozinho basta; juntos cobrem o piso real.
     SELECT c.so_id AS os_id
     FROM maestro_scheduler_r.checkin c FINAL
     WHERE c._peerdb_is_deleted = 0
@@ -208,6 +211,12 @@ is_piso AS (
       AND c.status NOT IN ('NO_SHOW', 'CANCELLED', 'DROPOUT')
       AND c.called_at IS NOT NULL
       AND toDate(c.created_at, 'America/Sao_Paulo') = toDate(now('America/Sao_Paulo'))
+    UNION DISTINCT
+    SELECT p.so_id AS os_id
+    FROM oms_r.public_so_operational_state p FINAL
+    WHERE p._peerdb_is_deleted = 0
+      AND p.client_present = true
+      AND toDate(p.created_at, 'America/Sao_Paulo') = toDate(now('America/Sao_Paulo'))
 )
 SELECT
     om.os_id AS os_id,
@@ -283,10 +292,33 @@ GROUP BY base
 
 // Tipo estendido do que o SQL retorna (inclui campos não presentes em AlgoritmoInput)
 export type OSRow = AlgoritmoInput & { mecanico_atual: string };
+
+// Termômetro de pressão do PISO por base: check-ins de manutenção ainda abertos agora.
+// Validado no histórico de 45d: os momentos de "oficina cheia" (reserva por workshop_busy)
+// concentram-se no quartil alto desta métrica — MAS piso lotado NÃO eleva a taxa de estouro
+// (19,3% × 19,4% na Mooca). Ou seja: é insumo de POLÍTICA (alívio de fila, régua da
+// operação), não de previsão — por isso é exposto, e não vira regra de reserva.
+const PRESSAO_QUERY = `
+SELECT so.location_id AS location_id, count() AS piso_aberto
+FROM maestro_scheduler_r.checkin c FINAL
+INNER JOIN oms_r.so so FINAL ON so.id = c.so_id
+WHERE c._peerdb_is_deleted = 0
+  AND c.checkin_type = 'MAINTENANCE'
+  AND c.so_id IS NOT NULL
+  AND c.status NOT IN ('NO_SHOW', 'CANCELLED', 'DROPOUT')
+  AND c.created_at >= now() - INTERVAL 45 DAY
+  AND c.completed_at IS NULL AND c.concluded_at IS NULL
+  AND c.no_show_at IS NULL AND c.dropout_at IS NULL
+  AND so._peerdb_is_deleted = 0
+GROUP BY so.location_id
+`;
 export type OSComRecomendacao = OSRow & {
   recomendacao: Recomendacao | null;
   // true = regra de alta precisão + cliente em piso → a operação pode acatar direto
   acao_automatica: boolean;
+  // termômetro: check-ins de manutenção ainda abertos na base agora (insumo de POLÍTICA
+  // de piso cheio — a régua de agir é da operação; não dispara reserva sozinho)
+  pressao_piso: number;
 };
 
 // Statuses onde reserva ainda faz sentido — cliente está esperando
@@ -305,6 +337,11 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
   const capRows = await query<{ location_id: number; capacidade: number }>(CAP_QUERY);
   const capByBase: Record<number, number> = {};
   for (const c of capRows) capByBase[c.location_id] = c.capacidade;
+
+  // ── Termômetro de pressão do piso por base (exposto; não decide) ─────────
+  const pressaoRows = await query<{ location_id: number; piso_aberto: number }>(PRESSAO_QUERY);
+  const pressaoByBase: Record<number, number> = {};
+  for (const p of pressaoRows) pressaoByBase[p.location_id] = p.piso_aberto;
 
   // Fila que REALMENTE bloqueia o cliente de piso: só o trabalho de OUTRAS OSs de PISO
   // aguardando mecânico. Medido na decomposição de 20/07: o piso fura a fila (espera
@@ -337,7 +374,7 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
       ? isAcaoAutomatica(recomendacao.rule_triggered, recomendacao.decision, row.is_piso === 1)
       : false;
 
-    return { ...row, recomendacao, acao_automatica };
+    return { ...row, recomendacao, acao_automatica, pressao_piso: pressaoByBase[row.location_id] ?? 0 };
   });
 
   // Grava as sugestões no Supabase (no-op se não configurado). Idempotente.
@@ -380,6 +417,7 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
               ? Math.max(0, (filaByBase[o.location_id] ?? 0) - (o.tempo_estimado_min || 0))
               : filaByBase[o.location_id] ?? 0,
           acao_automatica: o.acao_automatica,
+          pressao_piso: o.pressao_piso,
         },
       }));
     await logRiversSuggestions(logs);

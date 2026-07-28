@@ -42,6 +42,9 @@ export async function GET(req: Request) {
         // true = regra de alta precisão (~90%) + cliente em piso → pode acatar
         // direto, sem revisão. false = sugestão pra revisão humana.
         acao_automatica: o.acao_automatica,
+        // termômetro da base: check-ins de manutenção ainda abertos agora. Insumo de
+        // POLÍTICA de piso cheio (régua da operação); não dispara reserva sozinho.
+        pressao_piso: o.pressao_piso,
       }));
 
     return NextResponse.json({
