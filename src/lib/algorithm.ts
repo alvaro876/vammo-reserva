@@ -7,7 +7,14 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.7.0"; // 0.7.0 = confiança na sugestão: projeção a <30min da linha das
+export const ALGO_VERSION = "0.8.0"; // 0.8.0 = peça segurando a moto: (a) AWAITING_PARTS/AWAITING_SERVICE
+                                     // entram no radar (OSs travadas sumiam — furos 42908/43397/44130);
+                                     // (b) regra nova C2_TRAVADA_SEM_PECA (93,7% no histórico 45d:
+                                     // parada 30min+ & relógio 90-480min), pega até OS sem item
+                                     // registrado; (c) C2_SEM_ESTOQUE só dispara com a moto parada
+                                     // 30min+ fora de execução (leitura sozinha errou 9/9 na semana:
+                                     // estoque vive sob grupo irmão ou fora do registro).
+                                     // 0.7.0 = confiança na sugestão: projeção a <30min da linha das
                                      // 3h sai marcada "fronteira" (zona cara-ou-coroa — o encarregado
                                      // decide sabendo que é foto de chegada); demais saem "alta".
                                      // Exposta na API/Slack/log. Não muda O QUE dispara, muda como
@@ -126,14 +133,37 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     );
   }
 
-  // ── CAMADA 2: Estoque ──────────────────────────────────────────────────
+  // ── CAMADA 2: Peça segurando a moto ────────────────────────────────────
 
-  // Só peça BLOQUEANTE em falta segura a moto (cosmético/acessório em falta → a oficina
-  // libera a moto e fica pendência; validado no histórico: precisão do C2 antigo era 6%).
-  if (input.n_sem_estoque_bloq > 0) {
+  // Moto TRAVADA aguardando peça (status AWAITING_PARTS) no fluxo do dia: validado no
+  // histórico de 45d — parada 30min+ com relógio total 90min+ = 93,7% de estouro.
+  // Cobre inclusive OS sem nenhum item registrado (o mecânico sabe da falta, o sistema não).
+  if (
+    input.status_atual === "AWAITING_PARTS" &&
+    input.min_no_status >= 30 &&
+    input.min_desde_open >= 90 &&
+    input.min_desde_open <= 480
+  ) {
+    return reserva(
+      "C2_TRAVADA_SEM_PECA",
+      `parada aguardando peça há ${input.min_no_status}min (OS aberta há ${input.min_desde_open}min)`,
+      base,
+      "alta"
+    );
+  }
+
+  // Leitura de estoque: peça BLOQUEANTE em falta só vale se a moto está de fato PARADA
+  // (30min+ sem andar, fora de execução). Na semana 20-26 a leitura "estoque zero" sozinha
+  // errou 9/9 no piso — a oficina resolvia mesmo assim (peça sob outro grupo, ex.
+  // "Roda traseira Dual suspension" vs "_v1/_v2", ou estoque não registrado).
+  if (
+    input.n_sem_estoque_bloq > 0 &&
+    ["OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "PAUSED", "AWAITING_SERVICE"].includes(input.status_atual) &&
+    input.min_no_status >= 30
+  ) {
     return reserva(
       "C2_SEM_ESTOQUE",
-      `peça bloqueante sem estoque na base: ${input.pecas_sem_estoque_bloq}`,
+      `peça bloqueante sem estoque na base (${input.pecas_sem_estoque_bloq}) e moto parada há ${input.min_no_status}min`,
       base
     );
   }

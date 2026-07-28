@@ -103,7 +103,7 @@ os_meta AS (
       AND so.asset_model NOT IN ('S 60V45Ah', 'T 74V28Ah')
     GROUP BY so.id, so.so_type, so.location_id, so.asset_model,
              so.maintenance_metadata, so.so_description, so.created_at
-    HAVING status_atual IN ('OPEN', 'IN_PROGRESS', 'IN_DIAGNOSIS', 'AWAITING_MECHANIC', 'PAUSED', 'AWAITING_QA', 'IN_QA', 'QA_REJECTED', 'AWAITING_VMGMT')
+    HAVING status_atual IN ('OPEN', 'IN_PROGRESS', 'IN_DIAGNOSIS', 'AWAITING_MECHANIC', 'PAUSED', 'AWAITING_QA', 'IN_QA', 'QA_REJECTED', 'AWAITING_VMGMT', 'AWAITING_PARTS', 'AWAITING_SERVICE')
        AND toDate(so.created_at, 'America/Sao_Paulo') >= toDate(now('America/Sao_Paulo')) - 7
 ),
 mecanico_atual AS (
@@ -290,8 +290,11 @@ export type OSComRecomendacao = OSRow & {
 };
 
 // Statuses onde reserva ainda faz sentido — cliente está esperando
+// AWAITING_PARTS/AWAITING_SERVICE entraram em 27/07: OSs travadas nesses status sumiam
+// do radar (furos 42908/43397/44130 — motos presas dias sem nenhuma sugestão ativa).
 const STATUSES_AVALIAVEIS = new Set([
   "OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "IN_PROGRESS", "PAUSED", "AWAITING_VMGMT",
+  "AWAITING_PARTS", "AWAITING_SERVICE",
 ]);
 
 // Busca as OS, avalia cada uma e grava o log de sugestões (no-op se Supabase off).
