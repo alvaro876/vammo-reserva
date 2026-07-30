@@ -7,7 +7,16 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.13.0"; // 0.13.0 = dois achados da investigação do Guida: (a) o payload da
+export const ALGO_VERSION = "0.14.0"; // 0.14.0 = auditoria pré-go-live: (a) o motor era CEGO pra oferta
+                                     // já feita pela oficina — o check-in segue aberto ~4h depois da
+                                     // oferta, então o bot pedia reserva pra quem já tinha sido atendido;
+                                     // agora lê checkin_event (oferta_ativa, com recusa reabrindo o caso)
+                                     // e não notifica esses; (b) regra nova C2_PARADA_TERCEIRO —
+                                     // AWAITING_SERVICE/AWAITING_VMGMT parados 30min+ não tinham NENHUMA
+                                     // regra (94,7% de estouro, 0,3-0,9/dia); (c) dedup de notificação
+                                     // deixa de ser por versão do algoritmo (cada deploy re-notificava
+                                     // o backlog inteiro no Slack).
+                                     // 0.13.0 = dois achados da investigação do Guida: (a) o payload da
                                      // triagem mudou (checklist_tags → triage.incidents) e as flags de
                                      // imobilizada/acidente/guincho vinham SEMPRE 0 — corrigido o caminho,
                                      // mas medida a precisão real (17,9% / 31,8% / 53,8% no piso) elas
@@ -131,6 +140,7 @@ export interface AlgoritmoInput {
   min_no_status: number;
   min_desde_open: number;
   exec_acum_min?: number;        // execução acumulada (todos os episódios IN_PROGRESS), em min
+  oferta_ativa?: number;         // 1 = a oficina já ofereceu reserva (e o cliente não recusou)
   capacidade_esperada?: number;  // nº esperado de mecânicos na base/hora atual (curva do histórico)
   fila_min?: number;             // soma do tempo estimado das OS esperando mecânico na base
 }
@@ -218,6 +228,23 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       `parada aguardando peça há ${input.min_no_status}min (OS aberta há ${input.min_desde_open}min)`,
       base,
       "alta"
+    );
+  }
+
+  // Moto parada em serviço externo ou aguardando gestão de frota: nenhuma regra
+  // cobria esses dois statuses (AWAITING_VMGMT não aparecia em condição nenhuma).
+  // Medido em 45d no piso: parada 30min+ = 94,7% de estouro, 0,3-0,9/dia. Espelha
+  // o gatilho da regra de peça acima, que já está validada.
+  if (
+    (input.status_atual === "AWAITING_SERVICE" || input.status_atual === "AWAITING_VMGMT") &&
+    input.min_no_status >= 30 &&
+    input.min_desde_open >= 90 &&
+    input.min_desde_open <= 480
+  ) {
+    return reserva(
+      "C2_PARADA_TERCEIRO",
+      `parada em ${input.status_atual === "AWAITING_SERVICE" ? "serviço externo" : "gestão de frota"} há ${input.min_no_status}min (OS aberta há ${input.min_desde_open}min)`,
+      base
     );
   }
 

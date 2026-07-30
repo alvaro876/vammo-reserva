@@ -52,16 +52,18 @@ export async function logRiversSuggestions(rows: SuggestionLog[]): Promise<void>
   if (error) console.error("[rivers] erro ao gravar sugestao:", error.message);
 }
 
-// Quais OS já têm uma RESERVA logada nas últimas 48h (mesma versão do algoritmo).
-// Serve pro cron NÃO notificar a mesma reserva a cada rodada. Vazio se Supabase off.
-export async function getLoggedReservaOsIds(algoVersion: string): Promise<Set<number>> {
+// Quais OS já têm uma RESERVA logada nas últimas 48h — de QUALQUER versão do
+// algoritmo. Serve pro cron NÃO notificar a mesma reserva a cada rodada.
+// (Até 30/07 o filtro era por versão: cada deploy que mudava a ALGO_VERSION
+// re-notificava o backlog inteiro de uma vez no Slack. O parâmetro fica na
+// assinatura por compatibilidade, mas não é mais usado como filtro.)
+export async function getLoggedReservaOsIds(_algoVersion: string): Promise<Set<number>> {
   const c = client();
   if (!c) return new Set();
   const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const { data, error } = await c
     .from("rivers_suggestion")
     .select("os_id")
-    .eq("algo_version", algoVersion)
     .eq("decision", "RESERVA")
     .gte("created_at", desde)
     .limit(5000);

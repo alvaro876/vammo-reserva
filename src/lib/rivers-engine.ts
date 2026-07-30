@@ -206,6 +206,21 @@ pecas_criticas_nomes AS (
       AND si.quantity > 0
     GROUP BY si.so_id
 ),
+oferta_oficina AS (
+    -- A oficina já ofereceu reserva pra esta OS? O motor era CEGO pra isso: seguia
+    -- anunciando "reserva sugerida" no Slack pra cliente que a oficina já tinha
+    -- atendido (o check-in fica aberto ~4h depois da oferta). Fonte viva pós
+    -- Check-in 2.0 = checkin_event; recusa posterior (RESERVE_CANCELLED) reabre o caso.
+    SELECT e.so_id AS os_id,
+        maxIf(toUnixTimestamp(e.created_at), e.event_type = 'RESERVE_OFFERED') AS ofertada_ts,
+        maxIf(toUnixTimestamp(e.created_at), e.event_type = 'RESERVE_CANCELLED') AS cancelada_ts
+    FROM maestro_scheduler_r.checkin_event e FINAL
+    WHERE e._peerdb_is_deleted = 0
+      AND e.so_id IS NOT NULL
+      AND e.event_type IN ('RESERVE_OFFERED', 'RESERVE_CANCELLED')
+      AND e.created_at >= now() - INTERVAL 10 DAY
+    GROUP BY e.so_id
+),
 is_piso AS (
     -- UNIÃO de dois sinais (medido em 14d): o "chamado no balcão" perde 29% dos
     -- clientes presentes (180/613), e o client_present da fonte vira NÃO quando o
@@ -269,13 +284,16 @@ SELECT
     coalesce(se.n_sem_estoque_bloq, 0) AS n_sem_estoque_bloq,
     coalesce(se.pecas_sem_estoque_bloq, '') AS pecas_sem_estoque_bloq,
     coalesce(pcn.pecas_criticas, '') AS pecas_criticas,
-    if(ip.os_id IS NOT NULL, 1, 0) AS is_piso
+    if(ip.os_id IS NOT NULL, 1, 0) AS is_piso,
+    -- 1 = a oficina já ofereceu e o cliente não recusou depois
+    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.ofertada_ts, 0) > coalesce(oo.cancelada_ts, 0), 1, 0) AS oferta_ativa
 FROM os_meta om
 LEFT JOIN mecanico_atual ma ON ma.os_id = om.os_id
 LEFT JOIN pecas_diag p ON p.os_id = om.os_id
 LEFT JOIN sem_estoque se ON se.os_id = om.os_id
 LEFT JOIN pecas_criticas_nomes pcn ON pcn.os_id = om.os_id
 LEFT JOIN is_piso ip ON ip.os_id = om.os_id
+LEFT JOIN oferta_oficina oo ON oo.os_id = om.os_id
 ORDER BY om.min_desde_open DESC
 `;
 

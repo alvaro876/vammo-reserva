@@ -60,9 +60,11 @@ export async function GET(req: NextRequest) {
     const reservasPiso = result.filter(
       (o) => o.recomendacao?.decision === "RESERVA" && o.is_piso === 1
     );
-    // Piloto: notifica só as bases do teste (Mooca; env RIVERS_BASES_TESTE expande sem deploy)
+    // Piloto: notifica só as bases do teste (Mooca; env RIVERS_BASES_TESTE expande sem deploy).
+    // E nunca anuncia cliente que a oficina JÁ atendeu — o check-in segue aberto ~4h depois
+    // da oferta, então sem esse filtro o bot ficava pedindo reserva pra quem já tinha.
     const novas = reservasPiso.filter(
-      (o) => !jaLogadas.has(o.os_id) && basesTeste().has(o.location_id)
+      (o) => !jaLogadas.has(o.os_id) && basesTeste().has(o.location_id) && o.oferta_ativa !== 1
     );
 
     // 6) Notifica só as novas
