@@ -7,7 +7,12 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.10.0"; // 0.10.0 = moto em QA entra no radar (AWAITING_QA/IN_QA/
+export const ALGO_VERSION = "0.11.0"; // 0.11.0 = regra nova C1_FILA_DIAG_LONGA (pedido da operação):
+                                     // cliente em piso há +1h30 e a moto nem entrou em diagnóstico
+                                     // (segue em OPEN) → recomendação. Medido em 45d: 5,4/dia, 79%
+                                     // estouram; fica fora do automático (piso de 90%) e o mesmo
+                                     // cliente escala pra automática às 2h30 pelo C1_ESPERA_SEM_DIAG.
+                                     // 0.10.0 = moto em QA entra no radar (AWAITING_QA/IN_QA/
                                      // QA_REJECTED): antes saía sem decisão e desaparecia das telas
                                      // justo na hora do estouro. Medido em 21d: 199 clientes de piso
                                      // (9,5/dia) cruzaram as 3h em QA e 92% estouraram. Em QA o
@@ -67,6 +72,10 @@ const THRESHOLDS = {
   tempo_total_max: 180,      // C3.5 / C4: espera + execução > 180 min
   qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
   espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
+  fila_diag_min: 90,         // C1: piso há +1h30 e a moto NEM entrou em diagnóstico (status OPEN).
+                             // Medido em 45d: 5,4 casos/dia, 79% estouram — bom pra avisar cedo,
+                             // não pra entregar sozinho (por isso fica como recomendação; aos
+                             // 2h30 o mesmo cliente escala pra automática pela regra acima).
   fronteira_margem_min: 30,  // projeção a menos de 30min da linha das 3h = "fronteira"
                              // (zona cara-ou-coroa: variação natural do serviço decide o lado)
 };
@@ -149,6 +158,21 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       `em piso há ${input.min_desde_open}min e ainda sem diagnóstico — esperando demais`,
       base,
       "alta"
+    );
+  }
+
+  // Cliente em piso e a moto ainda NÃO ENTROU em diagnóstico (segue em OPEN, ou
+  // seja, parada na fila de diagnóstico). Aviso adiantado: dispara 1h antes da regra
+  // acima, com 79% de acerto no histórico — logo, recomendação e não entrega direta.
+  if (
+    input.is_piso === 1 &&
+    input.status_atual === "OPEN" &&
+    input.min_desde_open > THRESHOLDS.fila_diag_min
+  ) {
+    return reserva(
+      "C1_FILA_DIAG_LONGA",
+      `cliente em piso há ${input.min_desde_open}min e a moto ainda não entrou em diagnóstico`,
+      base
     );
   }
 
