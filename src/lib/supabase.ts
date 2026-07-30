@@ -100,6 +100,59 @@ export async function getRecentSuggestions(days: number): Promise<SuggestionRow[
   return data as unknown as SuggestionRow[];
 }
 
+// ── Avisos do CX Piso ("o cliente já sabe") ───────────────────────────────────
+
+export interface AvisoCx {
+  os_id: number;
+  actor: string | null;
+  created_at: string;
+}
+
+// Quem o CX já avisou nas últimas 48h, por OS.
+export async function getAvisosCx(): Promise<Map<number, AvisoCx>> {
+  const c = client();
+  if (!c) return new Map();
+  const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await c
+    .from("rivers_cx_aviso")
+    .select("os_id,actor,created_at")
+    .gte("created_at", desde)
+    .limit(2000);
+  if (error || !data) {
+    if (error) console.error("[cx] erro ao ler avisos:", error.message);
+    return new Map();
+  }
+  return new Map((data as unknown as AvisoCx[]).map((a) => [a.os_id, a]));
+}
+
+export interface AvisoCxInput {
+  os_id: number;
+  actor?: string | null;
+  canal?: string | null;
+  observacao?: string | null;
+}
+
+// Registra (ou atualiza) o aviso ao cliente. Índice único por os_id → reavisar
+// sobrescreve, sem duplicar a linha.
+export async function registrarAvisoCx(
+  aviso: AvisoCxInput
+): Promise<{ ok: boolean; error?: string }> {
+  const c = client();
+  if (!c) return { ok: false, error: "Supabase nao configurado (.env.local)" };
+  const { error } = await c.from("rivers_cx_aviso").upsert(
+    {
+      os_id: aviso.os_id,
+      actor: aviso.actor ?? null,
+      canal: aviso.canal ?? null,
+      observacao: aviso.observacao ?? null,
+      created_at: new Date().toISOString(),
+    },
+    { onConflict: "os_id" }
+  );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export interface FeedbackLogInput {
   os_id: number;
   aceitou: boolean;
