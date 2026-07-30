@@ -90,6 +90,12 @@ export async function GET() {
           // quem está com a moto agora (último mecânico que pôs em execução)
           mecanico: o.mecanico_atual || null,
           asset_model: o.asset_model,
+          so_type: o.so_type,
+          // contexto do incidente (não decide reserva — ver algorithm.ts; serve pra
+          // conversa do CX com o cliente)
+          guincho: o.guincho === 1,
+          acidente: o.acidente === 1,
+          imobilizada: o.imobilizada === 1,
           status_atual: o.status_atual,
           minutos_na_base: o.min_desde_open,
           // negativo = já estourou o SLA

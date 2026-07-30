@@ -69,9 +69,16 @@ os_meta AS (
         so.asset_model AS asset_model,
         JSONExtractString(so.maintenance_metadata, 'license_plate') AS placa,
         coalesce(so.so_description, '') AS descricao_cx,
-        JSONExtractBool(so.maintenance_metadata, 'checklist_tags', 'immobilizing') AS imobilizada,
-        JSONExtractBool(so.maintenance_metadata, 'checklist_tags', 'accident') AS acidente,
-        JSONExtractBool(so.maintenance_metadata, 'checklist_tags', 'towing') AS guincho,
+        -- O payload da triagem MUDOU: 'checklist_tags' não existe mais (0 OSs em 45d)
+        -- e os incidentes vivem em triage.incidents (14.100 OSs). Lia-se o caminho velho,
+        -- então imobilizada/acidente/guincho vinham sempre 0 desde sempre. Mantém o
+        -- caminho antigo como reserva pra OS histórica.
+        greatest(JSONExtractBool(so.maintenance_metadata, 'triage', 'incidents', 'immobilizing'),
+                 JSONExtractBool(so.maintenance_metadata, 'checklist_tags', 'immobilizing')) AS imobilizada,
+        greatest(JSONExtractBool(so.maintenance_metadata, 'triage', 'incidents', 'accident'),
+                 JSONExtractBool(so.maintenance_metadata, 'checklist_tags', 'accident')) AS acidente,
+        greatest(JSONExtractBool(so.maintenance_metadata, 'triage', 'incidents', 'towing'),
+                 JSONExtractBool(so.maintenance_metadata, 'checklist_tags', 'towing')) AS guincho,
         argMax(ss.status, ss.created_at) AS status_atual,
         maxIf(ss.created_at, ss.status = 'AWAITING_MECHANIC') AS ts_awaiting_mec,
         dateDiff('minute', so.created_at, now('America/Sao_Paulo')) AS min_desde_open,

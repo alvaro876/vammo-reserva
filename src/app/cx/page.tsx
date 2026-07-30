@@ -14,6 +14,10 @@ interface ClienteCx {
   cliente: string | null;
   mecanico: string | null;
   asset_model: string;
+  so_type: string;
+  guincho: boolean;
+  acidente: boolean;
+  imobilizada: boolean;
   status_atual: string;
   minutos_na_base: number;
   minutos_pro_sla: number;
@@ -249,6 +253,11 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
             {!c.ofertada_em && <Selo tom="ok">sem oferta no Maestro ainda</Selo>}
             {c.recusada && <Selo tom="alerta">cliente recusou</Selo>}
             {c.chamada_retirada && <Selo tom="oficina">chamado pra retirar</Selo>}
+            {/* contexto do incidente — informação pra conversa, não motivo da reserva */}
+            {c.so_type === "RETURN_INSPECTION" && <Selo tom="ok">inspeção de retorno</Selo>}
+            {c.guincho && <Selo tom="ok">veio de guincho</Selo>}
+            {c.acidente && <Selo tom="ok">acidente</Selo>}
+            {c.imobilizada && <Selo tom="ok">moto imobilizada</Selo>}
           </div>
           <p className="mt-3 text-sm text-slate-600">{c.motivo}</p>
         </div>

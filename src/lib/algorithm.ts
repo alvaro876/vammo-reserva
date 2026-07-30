@@ -7,7 +7,15 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.12.0"; // 0.12.0 = piso = atendimento AINDA ABERTO. O Maestro fecha o
+export const ALGO_VERSION = "0.13.0"; // 0.13.0 = dois achados da investigação do Guida: (a) o payload da
+                                     // triagem mudou (checklist_tags → triage.incidents) e as flags de
+                                     // imobilizada/acidente/guincho vinham SEMPRE 0 — corrigido o caminho,
+                                     // mas medida a precisão real (17,9% / 31,8% / 53,8% no piso) elas
+                                     // saem da DECISÃO e viram contexto: descrevem o incidente, não a
+                                     // duração do reparo; (b) regra nova C1_RETORNO — inspeção de retorno
+                                     // com cliente em piso: 3/dia, 82,7% estouram, mediana de 20h, e é
+                                     // conhecido na abertura da OS (cobre a janela pré-diagnóstico).
+                                     // 0.12.0 = piso = atendimento AINDA ABERTO. O Maestro fecha o
                                      // atendimento quando o cliente resolve (moto devolvida, reserva
                                      // entregue ou moto TROCADA) — fechado = ele foi embora. Sem isso
                                      // o RIVERS sugeria reserva pra quem já tinha saído com outra moto
@@ -143,10 +151,22 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 1: Regras duras ─────────────────────────────────────────────
 
-  if (input.imobilizada === 1) return reserva("C1_HARD", "moto imobilizada", base, "alta");
-  if (input.acidente === 1)    return reserva("C1_HARD", "acidente", base, "alta");
-  if (input.guincho === 1)     return reserva("C1_HARD", "veio de guincho", base, "alta");
   if (input.so_type === "INSURANCE_QUOTE") return reserva("C1_HARD", "vistoria de seguro", base, "alta");
+
+  // Incidente (imobilizada / acidente / guincho) NÃO decide sozinho: as flags descrevem
+  // o que aconteceu com a moto, não quanto tempo o reparo leva. Medido em 45d (clientes
+  // de piso): imobilizada 17,9% · acidente 31,8% · guincho 53,8% de estouro, contra 10,7%
+  // da linha de base — sinal fraco. Elas seguem no payload e aparecem como CONTEXTO nas
+  // telas; "cliente chegou sem moto rodando" é decisão de política da operação, como a
+  // de oficina cheia. (Até 30/07 a regra lia um caminho de JSON inexistente e nunca
+  // disparava — o efeito prático é o mesmo, agora com o motivo medido.)
+
+  // Inspeção de retorno com cliente em piso: a moto voltou e vai ficar. Medido em 45d:
+  // 3/dia, 82,7% estouram, mediana de 20 HORAS. Vale por si só e — diferente de tudo o
+  // resto — já é conhecido na ABERTURA da OS, antes de qualquer diagnóstico.
+  if (input.is_piso === 1 && input.so_type === "RETURN_INSPECTION") {
+    return reserva("C1_RETORNO", "inspeção de retorno com cliente em piso", base);
+  }
   if (input.min_open_to_awaiting > THRESHOLDS.anomalia_min) {
     return reserva("C1_ANOMALIA", `moto não entrou na oficina há ${input.min_open_to_awaiting}min`, base, "alta");
   }
