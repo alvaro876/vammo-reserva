@@ -7,7 +7,12 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.14.0"; // 0.14.0 = auditoria pré-go-live: (a) o motor era CEGO pra oferta
+export const ALGO_VERSION = "0.15.0"; // 0.15.0 = regra de estoque DESLIGADA no piloto: 0 acerto em 7
+                                     // disparos de piso (10d) e 0 em 9 (semana anterior) — a peça existe
+                                     // sob grupo irmão ou sem registro. Religa com RIVERS_REGRA_ESTOQUE=on
+                                     // quando a investigação fechar. O caso real de moto parada por peça
+                                     // segue coberto pelo C2_TRAVADA_SEM_PECA (93,7%).
+                                     // 0.14.0 = auditoria pré-go-live: (a) o motor era CEGO pra oferta
                                      // já feita pela oficina — o check-in segue aberto ~4h depois da
                                      // oferta, então o bot pedia reserva pra quem já tinha sido atendido;
                                      // agora lê checkin_event (oferta_ativa, com recusa reabrindo o caso)
@@ -248,11 +253,15 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     );
   }
 
-  // Leitura de estoque: peça BLOQUEANTE em falta só vale se a moto está de fato PARADA
-  // (30min+ sem andar, fora de execução). Na semana 20-26 a leitura "estoque zero" sozinha
-  // errou 9/9 no piso — a oficina resolvia mesmo assim (peça sob outro grupo, ex.
-  // "Roda traseira Dual suspension" vs "_v1/_v2", ou estoque não registrado).
+  // Leitura de estoque: DESLIGADA no piloto (30/07). Medida duas vezes em clientes de
+  // piso, deu 0 acerto em 7 disparos (10 dias) e 0 em 9 (semana anterior) — a oficina
+  // resolve mesmo com a leitura dizendo zero, porque a peça está cadastrada em grupo
+  // irmão (ex.: "Roda traseira Dual suspension" com estoque zero vs "_v1/_v2" com 298
+  // unidades) ou fisicamente na base sem registro. Enquanto a investigação não fecha, a
+  // regra só liga com RIVERS_REGRA_ESTOQUE=on (sem deploy). O caso REAL de moto parada
+  // por peça continua coberto pelo C2_TRAVADA_SEM_PECA, que mediu 93,7%.
   if (
+    process.env.RIVERS_REGRA_ESTOQUE === "on" &&
     input.n_sem_estoque_bloq > 0 &&
     ["OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "PAUSED", "AWAITING_SERVICE"].includes(input.status_atual) &&
     input.min_no_status >= 30
