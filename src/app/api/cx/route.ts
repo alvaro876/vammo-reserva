@@ -87,6 +87,8 @@ export async function GET() {
           os_id: o.os_id,
           placa: o.placa,
           cliente: c?.cliente || null,
+          // quem está com a moto agora (último mecânico que pôs em execução)
+          mecanico: o.mecanico_atual || null,
           asset_model: o.asset_model,
           status_atual: o.status_atual,
           minutos_na_base: o.min_desde_open,

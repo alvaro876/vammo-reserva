@@ -12,6 +12,7 @@ interface ClienteCx {
   os_id: number;
   placa: string;
   cliente: string | null;
+  mecanico: string | null;
   asset_model: string;
   status_atual: string;
   minutos_na_base: number;
@@ -207,11 +208,24 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
         <div className="min-w-[280px] flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <Placa numero={c.placa} tam="g" />
-            <span className="text-xl font-bold text-slate-800">{c.cliente || "cliente sem nome no check-in"}</span>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cliente</div>
+              <div className="text-xl font-bold leading-tight text-slate-800">
+                {c.cliente || "sem nome no check-in"}
+              </div>
+            </div>
           </div>
-          <div className="mt-2 text-sm text-slate-500">
-            {c.asset_model} · {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()} · na base há{" "}
-            {relogio(c.minutos_na_base)}
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+            <span>
+              {c.asset_model} · {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()} · na base há{" "}
+              {relogio(c.minutos_na_base)}
+            </span>
+            {c.mecanico && (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">mecânico </span>
+                <span className="font-semibold">{c.mecanico}</span>
+              </span>
+            )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {c.acao_automatica && <Selo tom="auto">AUTOMÁTICA — pode entregar</Selo>}
@@ -376,9 +390,13 @@ export default function CxPiso() {
                   className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-b-0"
                 >
                   <Placa numero={c.placa} tam="p" />
-                  <span className="font-semibold text-slate-700">{c.cliente || "—"}</span>
+                  <span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">cliente </span>
+                    <span className="font-semibold text-slate-700">{c.cliente || "—"}</span>
+                  </span>
                   <span className="text-sm text-slate-500">
                     {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
+                    {c.mecanico ? ` · mecânico ${c.mecanico.split(" ")[0]}` : ""}
                   </span>
                   <span className="ml-auto flex items-center gap-2 text-sm">
                     {c.entregue && <Selo tom="auto">reserva entregue</Selo>}
@@ -412,7 +430,10 @@ export default function CxPiso() {
                 >
                   <div className="flex items-center gap-2">
                     <Placa numero={c.placa} tam="m" />
-                    <span className="truncate text-sm font-semibold text-slate-700">{c.cliente || "—"}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">cliente </span>
+                      <span className="text-sm font-semibold text-slate-700">{c.cliente || "—"}</span>
+                    </span>
                     {/* o que o piso observa: quanto tempo o cliente está aqui */}
                     <span
                       className="ml-auto whitespace-nowrap text-sm font-bold tabular-nums"
@@ -426,6 +447,7 @@ export default function CxPiso() {
                   </div>
                   <div className="mt-1.5 truncate text-xs text-slate-500">
                     {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
+                    {c.mecanico ? ` · mecânico ${c.mecanico.split(" ")[0]}` : ""}
                     {c.tempo_previsto_min ? ` · previsão ${relogio(c.tempo_previsto_min)}` : ""} · faltam{" "}
                     {relogio(c.minutos_pro_sla)}
                   </div>
