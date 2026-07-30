@@ -110,6 +110,30 @@ function mensagemPronta(c: ClienteCx) {
   );
 }
 
+// Placa no padrão Mercosul — é assim que o piso identifica a moto de longe,
+// e é o mesmo visual da Mesa, pra tela não parecer de outro mundo.
+function Placa({ numero, tam = "m" }: { numero: string; tam?: "g" | "m" | "p" }) {
+  const t = {
+    g: { faixa: "text-[10px] py-0.5", corpo: "text-[34px] leading-[1.05] px-3 py-1", larg: "min-w-[186px]" },
+    m: { faixa: "text-[8px] py-px", corpo: "text-xl leading-tight px-2 py-0.5", larg: "min-w-[116px]" },
+    p: { faixa: "text-[7px] py-px", corpo: "text-base leading-tight px-1.5 py-0.5", larg: "min-w-[96px]" },
+  }[tam];
+  return (
+    <span
+      className={`inline-block overflow-hidden rounded-md border-2 border-slate-900 bg-white text-center align-middle shadow-sm ${t.larg}`}
+    >
+      <span
+        className={`block w-full bg-[#0B3B8C] font-bold uppercase tracking-[0.3em] text-white ${t.faixa}`}
+      >
+        Brasil
+      </span>
+      <span className={`block font-mono font-black tracking-[0.08em] text-slate-900 ${t.corpo}`}>
+        {numero || "—"}
+      </span>
+    </span>
+  );
+}
+
 function Selo({ tom, children }: { tom: "auto" | "fronteira" | "oficina" | "alerta" | "ok"; children: React.ReactNode }) {
   const cores = {
     auto: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -181,13 +205,11 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
 
         {/* quem é o cliente e por quê */}
         <div className="min-w-[280px] flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-slate-900 px-2 py-1 font-mono text-base font-bold tracking-wider text-white">
-              {c.placa}
-            </span>
-            <span className="text-lg font-bold text-slate-800">{c.cliente || "cliente sem nome no check-in"}</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <Placa numero={c.placa} tam="g" />
+            <span className="text-xl font-bold text-slate-800">{c.cliente || "cliente sem nome no check-in"}</span>
           </div>
-          <div className="mt-1 text-sm text-slate-500">
+          <div className="mt-2 text-sm text-slate-500">
             {c.asset_model} · {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()} · na base há{" "}
             {relogio(c.minutos_na_base)}
           </div>
@@ -353,9 +375,7 @@ export default function CxPiso() {
                   key={c.os_id}
                   className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-3 last:border-b-0"
                 >
-                  <span className="rounded bg-slate-900 px-2 py-0.5 font-mono text-sm font-bold text-white">
-                    {c.placa}
-                  </span>
+                  <Placa numero={c.placa} tam="p" />
                   <span className="font-semibold text-slate-700">{c.cliente || "—"}</span>
                   <span className="text-sm text-slate-500">
                     {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
@@ -391,9 +411,7 @@ export default function CxPiso() {
                   style={{ borderLeft: `4px solid ${zona(c.minutos_pro_sla).cor}` }}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-bold text-slate-700">
-                      {c.placa}
-                    </span>
+                    <Placa numero={c.placa} tam="m" />
                     <span className="truncate text-sm font-semibold text-slate-700">{c.cliente || "—"}</span>
                     {/* o que o piso observa: quanto tempo o cliente está aqui */}
                     <span
