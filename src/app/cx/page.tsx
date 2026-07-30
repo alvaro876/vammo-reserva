@@ -69,6 +69,40 @@ function hora(iso: string | number) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Zona de urgência — UM sistema de cor só (o relógio do SLA), pra cor significar
+// sempre a mesma coisa na tela. Trio validado (contraste >= 3:1 na superfície clara
+// e separação suficiente pra daltonismo): azul → âmbar → vermelho.
+const ZONAS = {
+  tranquilo: { cor: "#1E6FB8", fundo: "#EAF2FA", rotulo: "no prazo" },
+  atencao: { cor: "#d97706", fundo: "#FDF3E3", rotulo: "apertado" },
+  estourou: { cor: "#be123c", fundo: "#FCEAEE", rotulo: "passou das 3h" },
+} as const;
+
+function zona(minutosProSla: number) {
+  if (minutosProSla <= 0) return ZONAS.estourou;
+  if (minutosProSla <= 60) return ZONAS.atencao;
+  return ZONAS.tranquilo;
+}
+
+// Medidor de consumo do SLA: quanto das 3h já foi gasto. Barra fina, ponta
+// arredondada, ancorada na esquerda — dá o estado num relance de TV.
+function Medidor({ minutosNaBase, cor, altura = 6 }: { minutosNaBase: number; cor: string; altura?: number }) {
+  const pct = Math.max(2, Math.min(100, (minutosNaBase / 180) * 100));
+  return (
+    <div
+      className="w-full overflow-hidden rounded-full bg-slate-200/70"
+      style={{ height: altura }}
+      role="img"
+      aria-label={`${Math.round(pct)}% das 3 horas`}
+    >
+      <div
+        className="h-full rounded-full transition-all duration-700 ease-out"
+        style={{ width: `${pct}%`, backgroundColor: cor }}
+      />
+    </div>
+  );
+}
+
 function mensagemPronta(c: ClienteCx) {
   return (
     `Oi ${primeiroNome(c.cliente)}! Sua moto (${c.placa}) está na oficina e o reparo vai passar das 3h. ` +
@@ -95,7 +129,6 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
   const [copiado, setCopiado] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const estourou = c.minutos_pro_sla <= 0;
-  const apertado = !estourou && c.minutos_pro_sla <= 45;
 
   async function avisar() {
     setSalvando(true);
@@ -121,32 +154,28 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
     }
   }
 
+  const z = zona(c.minutos_pro_sla);
+
   return (
     <div
-      className={`rounded-2xl border bg-white p-5 shadow-sm ${
-        estourou ? "border-rose-300 ring-1 ring-rose-200" : apertado ? "border-amber-300" : "border-slate-200"
-      }`}
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      style={{ borderLeft: `6px solid ${z.cor}` }}
     >
-      <div className="flex flex-wrap items-start gap-5">
+      <div className="flex flex-wrap items-start gap-5 p-5">
         {/* relógio do SLA — sempre com a palavra do lado: número pelado se lê
             como "está esperando há tanto", que é o contrário do que ele diz */}
         <div className="min-w-[150px]">
-          <div
-            className={`text-xs font-bold uppercase tracking-wide ${
-              estourou ? "text-rose-600" : apertado ? "text-amber-600" : "text-slate-500"
-            }`}
-          >
+          <div className="text-xs font-bold uppercase tracking-wide" style={{ color: z.cor }}>
             {estourou ? "já passou das 3h" : "faltam"}
           </div>
-          <div
-            className={`text-4xl font-black leading-none tabular-nums ${
-              estourou ? "text-rose-600" : apertado ? "text-amber-600" : "text-slate-800"
-            }`}
-          >
+          <div className="text-4xl font-black leading-none tabular-nums" style={{ color: z.cor }}>
             {relogio(c.minutos_pro_sla)}
           </div>
           <div className="mt-1 text-xs font-semibold text-slate-500">
             {estourou ? "de atraso" : "pro limite de 3h"}
+          </div>
+          <div className="mt-2">
+            <Medidor minutosNaBase={c.minutos_na_base} cor={z.cor} altura={8} />
           </div>
         </div>
 
@@ -253,18 +282,30 @@ export default function CxPiso() {
                 : "carregando a fila..."}
             </p>
           </div>
-          <div className="flex items-end gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-black tabular-nums text-rose-600">{precisaAvisar.length}</div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">avisar</div>
+          <div className="flex items-end gap-3">
+            <div
+              className="min-w-[92px] rounded-xl px-4 py-2 text-center"
+              style={{
+                backgroundColor: precisaAvisar.length > 0 ? ZONAS.estourou.fundo : "#F1F5F9",
+                color: precisaAvisar.length > 0 ? ZONAS.estourou.cor : "#64748B",
+              }}
+            >
+              <div className="text-3xl font-black leading-tight tabular-nums">{precisaAvisar.length}</div>
+              <div className="text-xs font-bold uppercase tracking-wide">avisar</div>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-black tabular-nums text-emerald-600">{emAndamento.length}</div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">em andamento</div>
+            <div
+              className="min-w-[92px] rounded-xl px-4 py-2 text-center"
+              style={{ backgroundColor: "#E9F6EE", color: "#15803d" }}
+            >
+              <div className="text-3xl font-black leading-tight tabular-nums">{emAndamento.length}</div>
+              <div className="text-xs font-bold uppercase tracking-wide">avisados</div>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-black tabular-nums text-slate-400">{noPrazo.length}</div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">no prazo</div>
+            <div
+              className="min-w-[92px] rounded-xl px-4 py-2 text-center"
+              style={{ backgroundColor: ZONAS.tranquilo.fundo, color: ZONAS.tranquilo.cor }}
+            >
+              <div className="text-3xl font-black leading-tight tabular-nums">{noPrazo.length}</div>
+              <div className="text-xs font-bold uppercase tracking-wide">no prazo</div>
             </div>
             <input
               value={quem}
@@ -344,18 +385,28 @@ export default function CxPiso() {
             </h2>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {noPrazo.map((c) => (
-                <div key={c.os_id} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                <div
+                  key={c.os_id}
+                  className="overflow-hidden rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-slate-300 hover:shadow-sm"
+                  style={{ borderLeft: `4px solid ${zona(c.minutos_pro_sla).cor}` }}
+                >
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-bold text-slate-700">
                       {c.placa}
                     </span>
                     <span className="truncate text-sm font-semibold text-slate-700">{c.cliente || "—"}</span>
                     {/* o que o piso observa: quanto tempo o cliente está aqui */}
-                    <span className="ml-auto whitespace-nowrap text-sm font-bold tabular-nums text-slate-600">
+                    <span
+                      className="ml-auto whitespace-nowrap text-sm font-bold tabular-nums"
+                      style={{ color: zona(c.minutos_pro_sla).cor }}
+                    >
                       há {relogio(c.minutos_na_base)}
                     </span>
                   </div>
-                  <div className="mt-1 truncate text-xs text-slate-500">
+                  <div className="mt-1.5">
+                    <Medidor minutosNaBase={c.minutos_na_base} cor={zona(c.minutos_pro_sla).cor} altura={4} />
+                  </div>
+                  <div className="mt-1.5 truncate text-xs text-slate-500">
                     {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
                     {c.tempo_previsto_min ? ` · previsão ${relogio(c.tempo_previsto_min)}` : ""} · faltam{" "}
                     {relogio(c.minutos_pro_sla)}
@@ -369,6 +420,10 @@ export default function CxPiso() {
         <p className="mt-10 text-xs leading-relaxed text-slate-400">
           Dois relógios, pra não confundir: <b>&ldquo;há X&rdquo;</b> é o tempo que o cliente está na base;
           <b> &ldquo;faltam X&rdquo;</b> é o que sobra até o limite de 3h (a régua conta da abertura da OS).
+          A barra mostra quanto das 3h já foi gasto, e a cor é sempre a mesma coisa:{" "}
+          <span className="font-bold" style={{ color: ZONAS.tranquilo.cor }}>azul no prazo</span> ·{" "}
+          <span className="font-bold" style={{ color: ZONAS.atencao.cor }}>âmbar na última hora</span> ·{" "}
+          <span className="font-bold" style={{ color: ZONAS.estourou.cor }}>vermelho passou das 3h</span>.
           &ldquo;Automática&rdquo; são as regras que nunca erraram no histórico — pode entregar direto.
           &ldquo;Fronteira&rdquo; é previsão perto do limite: vale confirmar com a oficina.
           O estado da oferta vem do Maestro em tempo real.
