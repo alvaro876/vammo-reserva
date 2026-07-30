@@ -210,6 +210,15 @@ is_piso AS (
       AND c.so_id IS NOT NULL
       AND c.status NOT IN ('NO_SHOW', 'CANCELLED', 'DROPOUT')
       AND c.called_at IS NOT NULL
+      -- ATENDIMENTO AINDA ABERTO. O Maestro fecha o atendimento quando o cliente
+      -- resolve (moto devolvida 34,7/dia · reserva entregue 3,1/dia · moto TROCADA
+      -- 0,9/dia) — fechado significa que ele foi embora. Sem este filtro o RIVERS
+      -- sugeria reserva pra quem já tinha saído com outra moto (casos reais SUC2B36
+      -- e SUI2F42 em 30/07, ambos BIKE_REPLACED) e a tela do CX divergia do Maestro.
+      AND c.completed_at IS NULL
+      AND c.concluded_at IS NULL
+      AND c.no_show_at IS NULL
+      AND c.dropout_at IS NULL
       AND toDate(c.created_at, 'America/Sao_Paulo') = toDate(now('America/Sao_Paulo'))
     UNION DISTINCT
     SELECT p.so_id AS os_id
@@ -217,6 +226,14 @@ is_piso AS (
     WHERE p._peerdb_is_deleted = 0
       AND p.client_present = true
       AND toDate(p.created_at, 'America/Sao_Paulo') = toDate(now('America/Sao_Paulo'))
+      -- mesmo corte do outro sinal: se o atendimento já foi encerrado, o cliente saiu
+      AND p.so_id NOT IN (
+        SELECT c2.so_id FROM maestro_scheduler_r.checkin c2 FINAL
+        WHERE c2._peerdb_is_deleted = 0 AND c2.so_id IS NOT NULL
+          AND (c2.completed_at IS NOT NULL OR c2.concluded_at IS NOT NULL
+               OR c2.no_show_at IS NOT NULL OR c2.dropout_at IS NOT NULL)
+          AND c2.created_at >= now() - INTERVAL 2 DAY
+      )
 )
 SELECT
     om.os_id AS os_id,

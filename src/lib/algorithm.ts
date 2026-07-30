@@ -7,7 +7,13 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.11.0"; // 0.11.0 = regra nova C1_FILA_DIAG_LONGA (pedido da operação):
+export const ALGO_VERSION = "0.12.0"; // 0.12.0 = piso = atendimento AINDA ABERTO. O Maestro fecha o
+                                     // atendimento quando o cliente resolve (moto devolvida, reserva
+                                     // entregue ou moto TROCADA) — fechado = ele foi embora. Sem isso
+                                     // o RIVERS sugeria reserva pra quem já tinha saído com outra moto
+                                     // (SUC2B36 e SUI2F42 em 30/07, ambos BIKE_REPLACED) e a tela do CX
+                                     // divergia do Maestro. Alinha a definição de "aguardando" das duas.
+                                     // 0.11.0 = regra nova C1_FILA_DIAG_LONGA (pedido da operação):
                                      // cliente em piso há +1h30 e a moto nem entrou em diagnóstico
                                      // (segue em OPEN) → recomendação. Medido em 45d: 5,4/dia, 79%
                                      // estouram; fica fora do automático (piso de 90%) e o mesmo
