@@ -321,12 +321,16 @@ export type OSComRecomendacao = OSRow & {
   pressao_piso: number;
 };
 
-// Statuses onde reserva ainda faz sentido — cliente está esperando
+// Statuses onde reserva ainda faz sentido — cliente está esperando.
 // AWAITING_PARTS/AWAITING_SERVICE entraram em 27/07: OSs travadas nesses status sumiam
 // do radar (furos 42908/43397/44130 — motos presas dias sem nenhuma sugestão ativa).
+// QA entrou em 30/07: moto em qualidade não é moto entregue — o cliente continua no
+// balcão. Medido em 21d: 199 clientes de piso (9,5/dia) cruzaram as 3h ESTANDO em QA e
+// 92% estouraram de verdade; sem esses statuses eles saíam sem decisão e desapareciam
+// das telas justo na hora do estouro.
 const STATUSES_AVALIAVEIS = new Set([
   "OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "IN_PROGRESS", "PAUSED", "AWAITING_VMGMT",
-  "AWAITING_PARTS", "AWAITING_SERVICE",
+  "AWAITING_PARTS", "AWAITING_SERVICE", "AWAITING_QA", "IN_QA", "QA_REJECTED",
 ]);
 
 // Busca as OS, avalia cada uma e grava o log de sugestões (no-op se Supabase off).

@@ -7,7 +7,13 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.9.1"; // 0.9.1 = escopo do piloto: autonomia (⚡) e notificações só nas
+export const ALGO_VERSION = "0.10.0"; // 0.10.0 = moto em QA entra no radar (AWAITING_QA/IN_QA/
+                                     // QA_REJECTED): antes saía sem decisão e desaparecia das telas
+                                     // justo na hora do estouro. Medido em 21d: 199 clientes de piso
+                                     // (9,5/dia) cruzaram as 3h em QA e 92% estouraram. Em QA o
+                                     // restante do serviço é 0 (a rampa acabou) e o C3_TEMPO_ALTO não
+                                     // dispara — quem decide é o relógio + os 8min de QA.
+                                     // 0.9.1 = escopo do piloto: autonomia (⚡) e notificações só nas
                                      // bases do teste (RIVERS_BASES_TESTE, default Mooca=1); demais
                                      // bases seguem avaliadas/logadas normalmente (tela/API/log).
                                      // 0.9.0 = piso completo + termômetro: (a) is_piso = união do
@@ -64,6 +70,9 @@ const THRESHOLDS = {
   fronteira_margem_min: 30,  // projeção a menos de 30min da linha das 3h = "fronteira"
                              // (zona cara-ou-coroa: variação natural do serviço decide o lado)
 };
+
+// Moto em conferência final: o trabalho de rampa já acabou.
+const QA_STATUSES = new Set(["AWAITING_QA", "IN_QA", "QA_REJECTED"]);
 
 // Peças que sozinhas justificam reserva imediata
 const PECAS_CRITICAS = new Set([
@@ -185,7 +194,10 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // trabalho já feito. Fallback pro comportamento antigo se o campo não vier.
   const execFeita = input.exec_acum_min ??
     (input.status_atual === "IN_PROGRESS" ? input.min_no_status : 0);
-  const tempoRestanteC3 = Math.max(0, input.tempo_estimado_min - execFeita);
+  // Em QA o serviço já acabou: o que falta é só a conferência (o qa_min abaixo).
+  // Sem isso a projeção somaria de novo um trabalho que já foi feito.
+  const emQa = QA_STATUSES.has(input.status_atual);
+  const tempoRestanteC3 = emQa ? 0 : Math.max(0, input.tempo_estimado_min - execFeita);
   const totalSemMec = input.min_desde_open + tempoRestanteC3 + THRESHOLDS.qa_min;
   // Projeção a menos de 30min da linha = fronteira: a sugestão sai marcada pro
   // encarregado saber que é decisão de foto de chegada, não de convicção.
@@ -195,7 +207,9 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // Peça crítica e nº de peças foram REMOVIDOS como critério (decisão da operação):
   // ter um Motor ou muitas peças não significa, por si só, passar de 3h — quem decide
   // é o tempo. Quando a estimativa de tempo for recalibrada, ela já captura essas peças.
-  if (input.tempo_estimado_min > THRESHOLDS.tempo_estimado_max) {
+  // Serviço grande só importa se ainda há serviço pra fazer: em QA a rampa já
+  // terminou, então o que decide é o relógio (C3.5 abaixo), não o tamanho do serviço.
+  if (!emQa && input.tempo_estimado_min > THRESHOLDS.tempo_estimado_max) {
     // faixa 141+ mediu 100% na semana 20-26 → confiança alta por construção
     return reserva("C3_TEMPO_ALTO", `trabalho estimado em ${input.tempo_estimado_min}min`, base, "alta");
   }
