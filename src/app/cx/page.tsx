@@ -128,17 +128,25 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
       }`}
     >
       <div className="flex flex-wrap items-start gap-5">
-        {/* relógio do SLA */}
-        <div className="min-w-[124px]">
+        {/* relógio do SLA — sempre com a palavra do lado: número pelado se lê
+            como "está esperando há tanto", que é o contrário do que ele diz */}
+        <div className="min-w-[150px]">
+          <div
+            className={`text-xs font-bold uppercase tracking-wide ${
+              estourou ? "text-rose-600" : apertado ? "text-amber-600" : "text-slate-500"
+            }`}
+          >
+            {estourou ? "já passou das 3h" : "faltam"}
+          </div>
           <div
             className={`text-4xl font-black leading-none tabular-nums ${
               estourou ? "text-rose-600" : apertado ? "text-amber-600" : "text-slate-800"
             }`}
           >
-            {estourou ? `+${relogio(c.minutos_pro_sla)}` : relogio(c.minutos_pro_sla)}
+            {relogio(c.minutos_pro_sla)}
           </div>
-          <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {estourou ? "passou das 3h" : "pro limite de 3h"}
+          <div className="mt-1 text-xs font-semibold text-slate-500">
+            {estourou ? "de atraso" : "pro limite de 3h"}
           </div>
         </div>
 
@@ -342,13 +350,15 @@ export default function CxPiso() {
                       {c.placa}
                     </span>
                     <span className="truncate text-sm font-semibold text-slate-700">{c.cliente || "—"}</span>
-                    <span className="ml-auto text-sm font-bold tabular-nums text-slate-400">
-                      {relogio(c.minutos_pro_sla)}
+                    {/* o que o piso observa: quanto tempo o cliente está aqui */}
+                    <span className="ml-auto whitespace-nowrap text-sm font-bold tabular-nums text-slate-600">
+                      há {relogio(c.minutos_na_base)}
                     </span>
                   </div>
                   <div className="mt-1 truncate text-xs text-slate-500">
                     {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
-                    {c.tempo_previsto_min ? ` · previsão ${relogio(c.tempo_previsto_min)}` : ""}
+                    {c.tempo_previsto_min ? ` · previsão ${relogio(c.tempo_previsto_min)}` : ""} · faltam{" "}
+                    {relogio(c.minutos_pro_sla)}
                   </div>
                 </div>
               ))}
@@ -357,7 +367,8 @@ export default function CxPiso() {
         )}
 
         <p className="mt-10 text-xs leading-relaxed text-slate-400">
-          A régua é o SLA de 3h desde a abertura da OS. O relógio é o tempo que falta (ou passou).
+          Dois relógios, pra não confundir: <b>&ldquo;há X&rdquo;</b> é o tempo que o cliente está na base;
+          <b> &ldquo;faltam X&rdquo;</b> é o que sobra até o limite de 3h (a régua conta da abertura da OS).
           &ldquo;Automática&rdquo; são as regras que nunca erraram no histórico — pode entregar direto.
           &ldquo;Fronteira&rdquo; é previsão perto do limite: vale confirmar com a oficina.
           O estado da oferta vem do Maestro em tempo real.
