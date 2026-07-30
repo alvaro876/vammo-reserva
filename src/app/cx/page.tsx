@@ -59,6 +59,16 @@ function primeiroNome(nome: string | null) {
   return nome.trim().split(/\s+/)[0].replace(/^./, (c) => c.toUpperCase());
 }
 
+// Nome que caiba sem reticências: "Gabriel Melo De Araujo" → "Gabriel M."
+// Corte com intenção lê melhor que texto picado no meio.
+function nomeCurto(nome: string | null, limite = 18) {
+  if (!nome) return "—";
+  const limpo = nome.trim().replace(/\s+/g, " ");
+  if (limpo.length <= limite) return limpo;
+  const partes = limpo.split(" ");
+  return `${partes[0]} ${partes[1]?.[0] ?? ""}.`.trim();
+}
+
 function relogio(min: number) {
   const abs = Math.abs(min);
   const h = Math.floor(abs / 60);
@@ -317,6 +327,9 @@ export default function CxPiso() {
                 ? `atualizado às ${hora(dados.atualizado_em)} · atualiza sozinho a cada 45s · ${dados.pressao_piso} clientes na base`
                 : "carregando a fila..."}
             </p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              piloto na Mooca — Osasco e SBC seguem sendo monitorados pelo RIVERS, mas fora desta tela
+            </p>
           </div>
           <div className="flex items-end gap-3">
             <div
@@ -392,7 +405,7 @@ export default function CxPiso() {
                   <Placa numero={c.placa} tam="p" />
                   <span>
                     <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">cliente </span>
-                    <span className="font-semibold text-slate-700">{c.cliente || "—"}</span>
+                    <span className="font-semibold text-slate-700">{nomeCurto(c.cliente, 26)}</span>
                   </span>
                   <span className="text-sm text-slate-500">
                     {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
@@ -428,28 +441,37 @@ export default function CxPiso() {
                   className="overflow-hidden rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-slate-300 hover:shadow-sm"
                   style={{ borderLeft: `4px solid ${zona(c.minutos_pro_sla).cor}` }}
                 >
+                  {/* linha 1: placa + o que o piso observa (tempo na base) */}
                   <div className="flex items-center gap-2">
                     <Placa numero={c.placa} tam="m" />
-                    <span className="min-w-0 flex-1 truncate">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">cliente </span>
-                      <span className="text-sm font-semibold text-slate-700">{c.cliente || "—"}</span>
-                    </span>
-                    {/* o que o piso observa: quanto tempo o cliente está aqui */}
                     <span
-                      className="ml-auto whitespace-nowrap text-sm font-bold tabular-nums"
+                      className="ml-auto whitespace-nowrap text-base font-bold tabular-nums"
                       style={{ color: zona(c.minutos_pro_sla).cor }}
                     >
                       há {relogio(c.minutos_na_base)}
                     </span>
                   </div>
+                  {/* linha 2: o cliente, com espaço próprio pro nome respirar */}
+                  <div className="mt-2 truncate">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">cliente </span>
+                    <span className="text-sm font-semibold text-slate-700">{nomeCurto(c.cliente, 22)}</span>
+                  </div>
                   <div className="mt-1.5">
                     <Medidor minutosNaBase={c.minutos_na_base} cor={zona(c.minutos_pro_sla).cor} altura={4} />
                   </div>
-                  <div className="mt-1.5 truncate text-xs text-slate-500">
-                    {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
-                    {c.mecanico ? ` · mecânico ${c.mecanico.split(" ")[0]}` : ""}
-                    {c.tempo_previsto_min ? ` · previsão ${relogio(c.tempo_previsto_min)}` : ""} · faltam{" "}
-                    {relogio(c.minutos_pro_sla)}
+                  {/* linha 4: contexto que pode encurtar × "faltam" que nunca corta */}
+                  <div className="mt-1.5 flex items-baseline gap-2 text-xs">
+                    <span className="min-w-0 flex-1 truncate text-slate-500">
+                      {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
+                      {c.mecanico ? ` · mec. ${c.mecanico.split(" ")[0]}` : ""}
+                      {c.tempo_previsto_min ? ` · previsão ${relogio(c.tempo_previsto_min)}` : ""}
+                    </span>
+                    <span
+                      className="shrink-0 font-semibold tabular-nums"
+                      style={{ color: zona(c.minutos_pro_sla).cor }}
+                    >
+                      faltam {relogio(c.minutos_pro_sla)}
+                    </span>
                   </div>
                 </div>
               ))}
