@@ -119,6 +119,14 @@ function Medidor({ minutosNaBase, cor, altura = 6 }: { minutosNaBase: number; co
 }
 
 function mensagemPronta(c: ClienteCx) {
+  // Sem sugestão de reserva (entrou na fila pelo relógio): a mensagem certa é
+  // desculpa + previsão, não oferta de reserva que o RIVERS não recomendou.
+  if (!c.reservar) {
+    return (
+      `Oi ${primeiroNome(c.cliente)}! Sua moto (${c.placa}) está na reta final do reparo — ` +
+      `passou um pouco do nosso prazo de 3h e pedimos desculpa pela espera. Já estamos finalizando e te chamamos assim que estiver pronta.`
+    );
+  }
   return (
     `Oi ${primeiroNome(c.cliente)}! Sua moto (${c.placa}) está na oficina e o reparo vai passar das 3h. ` +
     `Você tem direito a uma moto reserva e a gente já está preparando — passa no balcão do atendimento que te entregamos.`
@@ -259,7 +267,12 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
             {c.acidente && <Selo tom="ok">acidente</Selo>}
             {c.imobilizada && <Selo tom="ok">moto imobilizada</Selo>}
           </div>
-          <p className="mt-3 text-sm text-slate-600">{c.motivo}</p>
+          <p className="mt-3 text-sm text-slate-600">
+            {c.motivo ||
+              // sem regra disparada = entrou aqui pelo relógio; se nenhuma regra pegou,
+              // a projeção ficou abaixo do gatilho — ou seja, o que resta é curto
+              "já passou das 3h — avisar o cliente (sem sugestão de reserva: a previsão indica conserto perto do fim)"}
+          </p>
         </div>
 
         {/* ação */}
@@ -316,9 +329,15 @@ export default function CxPiso() {
 
   const clientes = dados?.clientes ?? [];
   const jaAvisado = (c: ClienteCx) => Boolean(c.avisado_em) || avisadosLocal.has(c.os_id);
-  const precisaAvisar = clientes.filter((c) => c.reservar && !jaAvisado(c) && !c.entregue);
-  const emAndamento = clientes.filter((c) => c.reservar && (jaAvisado(c) || c.entregue));
-  const noPrazo = clientes.filter((c) => !c.reservar);
+  // Cliente que JÁ CRUZOU as 3h entra na fila de aviso MESMO sem regra de reserva —
+  // caso real UFJ8I67 (31/07): 3h01 na base, em execução, projeção 195min (< gatilho
+  // de 240, restante era curto) → nenhuma regra disparou e o card ficou em "dentro do
+  // prazo" com relógio vermelho. Estourar o SLA é FATO, não previsão: o aviso ao
+  // cliente é devido sempre; a reserva continua sendo decisão das regras.
+  const precisaAtencao = (c: ClienteCx) => c.reservar || c.minutos_pro_sla <= 0;
+  const precisaAvisar = clientes.filter((c) => precisaAtencao(c) && !jaAvisado(c) && !c.entregue);
+  const emAndamento = clientes.filter((c) => precisaAtencao(c) && (jaAvisado(c) || c.entregue));
+  const noPrazo = clientes.filter((c) => !precisaAtencao(c));
 
   return (
     <div className="min-h-screen bg-slate-50">
