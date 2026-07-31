@@ -333,7 +333,10 @@ export default function CxPiso() {
             </h1>
             <p className="mt-0.5 text-sm text-slate-500">
               {dados
-                ? `atualizado às ${hora(dados.atualizado_em)} · atualiza sozinho a cada 45s · ${dados.pressao_piso} clientes na base`
+                // total (nº de cards), não pressao_piso: o termômetro conta TODO atendimento
+                // aberto — inclui moto pronta esperando retirada e cliente ainda não chamado —
+                // então "14 na base" com 10 cards não fechava a conta na cara do CX (31/07).
+                ? `atualizado às ${hora(dados.atualizado_em)} · atualiza sozinho a cada 45s · ${dados.total} clientes em acompanhamento`
                 : "carregando a fila..."}
             </p>
             <p className="mt-0.5 text-xs text-slate-400">
