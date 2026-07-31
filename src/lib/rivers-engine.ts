@@ -341,17 +341,24 @@ export type OSRow = AlgoritmoInput & { mecanico_atual: string };
 // (19,3% × 19,4% na Mooca). Ou seja: é insumo de POLÍTICA (alívio de fila, régua da
 // operação), não de previsão — por isso é exposto, e não vira regra de reserva.
 const PRESSAO_QUERY = `
-SELECT so.location_id AS location_id, count() AS piso_aberto
+-- Clientes na base AGORA. A janela é HOJE, não 45 dias: o Maestro nem sempre fecha o
+-- atendimento quando o cliente vai embora, então check-in "aberto" sem corte de data
+-- acumula gente que saiu faz semanas. Medido em 30/07: a Mooca contava 13 com 45 dias,
+-- sendo 5 de hoje e 8 de dias anteriores (o mais velho com 28 dias). O cabeçalho da tela
+-- do CX mostrava "14 clientes na base" com 4 na fila — e o primeiro número que o time lê
+-- não pode estar errado.
+-- countDistinct + subquery com alias: JOIN ... FINAL direto não deduplica.
+SELECT so.location_id AS location_id, countDistinct(c.so_id) AS piso_aberto
 FROM maestro_scheduler_r.checkin c FINAL
-INNER JOIN oms_r.so so FINAL ON so.id = c.so_id
+INNER JOIN (SELECT id, location_id FROM oms_r.so FINAL WHERE _peerdb_is_deleted = 0) so
+  ON so.id = c.so_id
 WHERE c._peerdb_is_deleted = 0
   AND c.checkin_type = 'MAINTENANCE'
   AND c.so_id IS NOT NULL
   AND c.status NOT IN ('NO_SHOW', 'CANCELLED', 'DROPOUT')
-  AND c.created_at >= now() - INTERVAL 45 DAY
+  AND toDate(c.created_at, 'America/Sao_Paulo') = toDate(now('America/Sao_Paulo'))
   AND c.completed_at IS NULL AND c.concluded_at IS NULL
   AND c.no_show_at IS NULL AND c.dropout_at IS NULL
-  AND so._peerdb_is_deleted = 0
 GROUP BY so.location_id
 `;
 export type OSComRecomendacao = OSRow & {
