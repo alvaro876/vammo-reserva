@@ -7,7 +7,15 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.16.0"; // 0.16.0 = regra nova C1_PLACA (automática): troca de placa é
+export const ALGO_VERSION = "0.17.0"; // 0.17.0 = C3_TEMPO_ALTO sobe 140→180. Medido na MOOCA (60d,
+                                     // piso): em 140 acertava 57,6% porque a estimativa mente na
+                                     // faixa 141-180 (diz 155min, a bancada faz 100). Em 180 = 79,5%.
+                                     // A recalibração completa dos tempos (mapa histórico + fator +
+                                     // gatilho juntos) fica pro sábado com validação por replay: a
+                                     // simulação de 31/07 mostrou que trocar SÓ o mapa piora o
+                                     // C3_COMBINADO de 77→71% — os erros do cadastro e o fator antigo
+                                     // se cancelam em parte, não dá pra mexer num sem mexer no outro.
+                                     // 0.16.0 = regra nova C1_PLACA (automática): troca de placa é
                                      // reserva SEMPRE — moto sem placa não circula, é lei e não tempo
                                      // de bancada (envolve Detran, não resolve no dia). Pedido da
                                      // operação. Mooca 60d/piso: 15 casos (1 a cada 4 dias), 67%
@@ -100,9 +108,12 @@ export const ALGO_VERSION = "0.16.0"; // 0.16.0 = regra nova C1_PLACA (automáti
 const THRESHOLDS = {
   anomalia_min: 240,         // C1: OS aberta há mais de 4h antes do diag fechar
   diversas_avarias: 9,       // C3: 9+ tipos de peça diferentes no diag
-  tempo_estimado_max: 140,   // C3: tempo estimado total > 140 min (120→140 em 27/07: na semana
-                             // 20-26 a faixa 121-140 acertou 36% no piso e 141+ acertou 100%;
-                             // 121-140 continua coberta pelo C3.5 quando o relógio confirma)
+  tempo_estimado_max: 180,   // C3: tempo estimado total > 180 min. 140→180 em 31/07: medido na
+                             // MOOCA (60d, piso, n=328), o gatilho em 140 acertava só 57,6% —
+                             // a estimativa MENTE na faixa 141-180 (diz ~155min, a bancada faz
+                             // ~100, a moto sai em 2h42). Em 180 a precisão vai a 79,5% (n=132).
+                             // A faixa 141-180 continua coberta pelo C3.5 conforme o relógio
+                             // anda — foi assim na mudança 120→140 e as capturas se mantiveram.
   tempo_total_max: 180,      // C3.5 / C4: espera + execução > 180 min
   qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
   espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
@@ -313,7 +324,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // Serviço grande só importa se ainda há serviço pra fazer: em QA a rampa já
   // terminou, então o que decide é o relógio (C3.5 abaixo), não o tamanho do serviço.
   if (!emQa && input.tempo_estimado_min > THRESHOLDS.tempo_estimado_max) {
-    // faixa 141+ mediu 100% na semana 20-26 → confiança alta por construção
+    // acima de 180 mediu 79,5% na Mooca (60d) — e 220+ mediu 85,2%
     return reserva("C3_TEMPO_ALTO", `trabalho estimado em ${input.tempo_estimado_min}min`, base, "alta");
   }
 
