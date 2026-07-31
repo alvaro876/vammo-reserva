@@ -196,3 +196,17 @@ for (const id of ids) {
 }
 console.log(`\nnovo × antigo-real: excessos eliminados ${mortas.length} | capturas de estouro perdidas ${perdidas.length} ${perdidas.length ? "(" + perdidas.join(",") + ")" : ""}`);
 console.log(`avisos de estouro que atrasam >15min: ${atrasadas.length}`, atrasadas.map((a) => `${a.id}+${a.min}m`).join(" "));
+
+// precisão por regra na variante NOVA (piso, casos com desfecho)
+console.log(`\n== NOVO por regra (piso, com desfecho) ==`);
+const porRegraNovo = {};
+for (const id of ids) {
+  const n = fireNovo.get(id);
+  if (!n) continue;
+  const e = estourou(id);
+  if (e === null) continue;
+  const r = (porRegraNovo[n.regra] ||= { n: 0, ok: 0 });
+  r.n++; if (e) r.ok++;
+}
+for (const [regra, v] of Object.entries(porRegraNovo).sort((a, b) => b[1].n - a[1].n))
+  console.log(`${regra.padEnd(22)} n=${String(v.n).padStart(3)}  acerto=${Math.round((100 * v.ok) / v.n)}%`);

@@ -30,7 +30,13 @@ for (const m of tpSrc.slice(tpSrc.indexOf("MINUTOS_POR_PECA")).matchAll(/(\d+):\
 const FATOR = [null, 0.2, 0.42, 0.65, 0.91, 0.96, 1.0, 0.99, 1.0];
 
 // ── dados ─────────────────────────────────────────────────────────────────────
-const ids = JSON.parse(readFileSync(ROOT + "\\calib\\replay-ids.json", "utf8")).map(Number);
+let ids = JSON.parse(readFileSync(ROOT + "\\calib\\replay-ids.json", "utf8")).map(Number);
+// filtro opcional por base: BASE=1 node scripts/replay-atual.mjs (loc do checkin da semana)
+if (process.env.BASE) {
+  const locMap = new Map(JSON.parse(readFileSync((process.env.METABASE_DIR || "C:\\Users\\Usuário\\Downloads\\Metabase") + "\\rivers-semana-checkins.json", "utf8")).map((c) => [Number(c.os_id), Number(c.loc)]));
+  ids = ids.filter((id) => locMap.get(id) === Number(process.env.BASE));
+  console.log(`(filtro BASE=${process.env.BASE}: ${ids.length} OSs)`);
+}
 const outcomes = new Map(JSON.parse(readFileSync(DL + "\\rivers-semana-outcomes.json", "utf8")).map((o) => [Number(o.so_id), o]));
 const pecasAll = JSON.parse(readFileSync(DL + "\\rivers-replay-pecas.json", "utf8"));
 const statusAll = JSON.parse(readFileSync(DL + "\\rivers-replay-status.json", "utf8"));
@@ -137,6 +143,11 @@ function simulaOS(id) {
 
 const simFire = new Map();
 for (const id of ids) { const f = simulaOS(id); if (f) simFire.set(id, f); }
+if (process.env.DUMP) {
+  const { writeFileSync } = await import("fs");
+  writeFileSync(ROOT + "\\calib\\sim-fire.json", JSON.stringify([...simFire].map(([k, v]) => ({ os_id: k, ...v }))));
+  console.log("(dump: calib/sim-fire.json)");
+}
 
 // ── métricas no universo fechado (checkins não-especiais com desfecho) ────────
 function estourou(id) {
