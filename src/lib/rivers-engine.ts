@@ -23,7 +23,12 @@ const TEMPO_MINS = Object.values(MINUTOS_POR_PECA).join(",");
 // Obs: o "1,68x multi-peça" dos excessos era viés de seleção (só os FPs); a população
 // inteira mostra o oposto. Benefício extra: deflaciona a FILA (soma de estimativas
 // das OS aguardando), reduzindo o excesso do C4_CAPACIDADE.
-const FATOR_N_PECAS = "transform(least(uniqExact(si.item_group_id), 8), [1,2,3,4,5,6,7,8], [0.2,0.42,0.65,0.91,0.96,1.0,0.99,1.0], 1.0)";
+// Recalibrado em 31/07 JUNTO com o mapa de tempos (tempo-pecas.ts) — os dois andam
+// juntos: a curva antiga [0.2..1.0] compensava tempos subestimados do ajuste velho.
+// Agora os tempos são honestos (mediana real de bancada) e o fator é ~1: OS de 1 peça
+// leva 39% a mais que o tempo da peça (deslocamento pesa), e OS grande ganha leve
+// desconto de paralelismo.
+const FATOR_N_PECAS = "transform(least(uniqExact(si.item_group_id), 8), [1,2,3,4,5,6,7,8], [1.39,1.11,1.04,1.04,1.0,1.03,0.95,0.94], 1.0)";
 
 // Peças BLOQUEANTES: a falta delas impede liberar a moto (tração/freio/rodante/direção).
 // Peça cosmética/acessório em falta NÃO segura a moto — a oficina libera e fica pendência.

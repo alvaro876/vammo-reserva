@@ -7,7 +7,17 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.17.0"; // 0.17.0 = C3_TEMPO_ALTO sobe 140→180. Medido na MOOCA (60d,
+export const ALGO_VERSION = "0.18.0"; // 0.18.0 = RECALIBRAÇÃO COMPLETA dos tempos (antecipada de
+                                     // sábado a pedido do Alvaro): mapa de minutos/peça vira a
+                                     // mediana REAL de bancada (141 peças, treino 150-60d atrás,
+                                     // teste separado 60d piso Mooca), fator por nº de peças refeito
+                                     // ([1.39..0.94] — o antigo [0.2..1.0] compensava tempos irreais)
+                                     // e gatilhos na escala nova: C3_TEMPO_ALTO >240 (87,5%, n=72),
+                                     // C3_COMBINADO/C4 por projecao_reserva_min=240 (90,2%, n=194,
+                                     // 3,2/dia — a regra de hoje media 71-77%). tempo_total_max=180
+                                     // segue sendo a LINHA das 3h pra exibição; o gatilho de reserva
+                                     // é a projeção 240 (projetar 190 não condena: 71% em >180).
+                                     // 0.17.0 = C3_TEMPO_ALTO sobe 140→180. Medido na MOOCA (60d,
                                      // piso): em 140 acertava 57,6% porque a estimativa mente na
                                      // faixa 141-180 (diz 155min, a bancada faz 100). Em 180 = 79,5%.
                                      // A recalibração completa dos tempos (mapa histórico + fator +
@@ -108,13 +118,18 @@ export const ALGO_VERSION = "0.17.0"; // 0.17.0 = C3_TEMPO_ALTO sobe 140→180. 
 const THRESHOLDS = {
   anomalia_min: 240,         // C1: OS aberta há mais de 4h antes do diag fechar
   diversas_avarias: 9,       // C3: 9+ tipos de peça diferentes no diag
-  tempo_estimado_max: 180,   // C3: tempo estimado total > 180 min. 140→180 em 31/07: medido na
-                             // MOOCA (60d, piso, n=328), o gatilho em 140 acertava só 57,6% —
-                             // a estimativa MENTE na faixa 141-180 (diz ~155min, a bancada faz
-                             // ~100, a moto sai em 2h42). Em 180 a precisão vai a 79,5% (n=132).
-                             // A faixa 141-180 continua coberta pelo C3.5 conforme o relógio
-                             // anda — foi assim na mudança 120→140 e as capturas se mantiveram.
-  tempo_total_max: 180,      // C3.5 / C4: espera + execução > 180 min
+  tempo_estimado_max: 240,   // C3: trabalho estimado > 240 min. RECALIBRADO em 31/07 junto com
+                             // o mapa de tempos (agora mediana REAL de bancada) e o fator novo:
+                             // na escala honesta, 240 estimados = serviço que não cabe em 3h.
+                             // Teste (60d piso Mooca, fora do treino): >240 = 87,5% (n=72).
+                             // (Na escala antiga o gatilho foi 140→180 mais cedo em 31/07,
+                             // quando medimos que a faixa 141-180 acertava 36-57%.)
+  tempo_total_max: 180,      // a LINHA das 3h (SLA) — usada pra exibição e pro relógio
+  projecao_reserva_min: 240, // C3.5 / C4: projeção (espera + restante + QA) que dispara reserva.
+                             // Não é a linha das 3h: com os tempos honestos, projetar 190min não
+                             // condena a moto (71% em >180). Projeção >240 = 90,2% (n=194,
+                             // 3,2/dia no teste piso Mooca). A moto que projeta 181-240 continua
+                             // vigiada — o relógio anda e ela cruza o gatilho se for o caso.
   qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
   espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
   fila_diag_min: 90,         // C1: piso há +1h30 e a moto NEM entrou em diagnóstico (status OPEN).
@@ -316,7 +331,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // Projeção a menos de 30min da linha = fronteira: a sugestão sai marcada pro
   // encarregado saber que é decisão de foto de chegada, não de convicção.
   const confiancaTempo = (proj: number): "alta" | "fronteira" =>
-    proj >= THRESHOLDS.tempo_total_max + THRESHOLDS.fronteira_margem_min ? "alta" : "fronteira";
+    proj >= THRESHOLDS.projecao_reserva_min + THRESHOLDS.fronteira_margem_min ? "alta" : "fronteira";
 
   // Peça crítica e nº de peças foram REMOVIDOS como critério (decisão da operação):
   // ter um Motor ou muitas peças não significa, por si só, passar de 3h — quem decide
@@ -330,7 +345,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 3.5: Tempo total combinado (sem capacidade) ─────────────────
   // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
-  if (input.tempo_estimado_min > 0 && input.min_desde_open < 480 && totalSemMec > THRESHOLDS.tempo_total_max) {
+  if (input.tempo_estimado_min > 0 && input.min_desde_open < 480 && totalSemMec > THRESHOLDS.projecao_reserva_min) {
     return reserva(
       "C3_TEMPO_COMBINADO",
       `já esperou ${input.min_desde_open}min + restante ~${tempoRestanteC3}min + ${THRESHOLDS.qa_min}min QA = ${totalSemMec}min total`,
@@ -352,7 +367,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     const tempoTotal = input.min_desde_open + tempoEspera + tempoRestanteC3 + THRESHOLDS.qa_min;
     base.tempo_previsto_min = tempoTotal;
 
-    if (input.tempo_estimado_min > 0 && tempoTotal > THRESHOLDS.tempo_total_max) {
+    if (input.tempo_estimado_min > 0 && tempoTotal > THRESHOLDS.projecao_reserva_min) {
       return reserva(
         "C4_CAPACIDADE",
         `oficina saturada: fila ~${tempoEspera}min (${filaMin}min de serviço ÷ ${cap} mec esperados) + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA, já esperou ${input.min_desde_open}min → ${tempoTotal}min`,
