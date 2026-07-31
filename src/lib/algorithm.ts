@@ -7,7 +7,13 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.15.0"; // 0.15.0 = regra de estoque DESLIGADA no piloto: 0 acerto em 7
+export const ALGO_VERSION = "0.16.0"; // 0.16.0 = regra nova C1_PLACA (automática): troca de placa é
+                                     // reserva SEMPRE — moto sem placa não circula, é lei e não tempo
+                                     // de bancada (envolve Detran, não resolve no dia). Pedido da
+                                     // operação. Mooca 60d/piso: 15 casos (1 a cada 4 dias), 67%
+                                     // passam de 3h, mediana de 12 HORAS, e o serviço é registrado
+                                     // 26min depois de abrir a OS. n pequeno demais pra estatística
+                                     // decidir — e não precisa: a régua aqui é legal, não temporal. // 0.15.0 = regra de estoque DESLIGADA no piloto: 0 acerto em 7
                                      // disparos de piso (10d) e 0 em 9 (semana anterior) — a peça existe
                                      // sob grupo irmão ou sem registro. Religa com RIVERS_REGRA_ESTOQUE=on
                                      // quando a investigação fechar. O caso real de moto parada por peça
@@ -142,6 +148,7 @@ export interface AlgoritmoInput {
   pecas_sem_estoque_bloq: string;  // nomes das bloqueantes em falta
   pecas_criticas: string;
   is_piso: number;
+  troca_placa?: number;          // 1 = OS tem serviço de troca de placa (Detran, não bancada)
   min_no_status: number;
   min_desde_open: number;
   exec_acum_min?: number;        // execução acumulada (todos os episódios IN_PROGRESS), em min
@@ -167,6 +174,16 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // ── CAMADA 1: Regras duras ─────────────────────────────────────────────
 
   if (input.so_type === "INSURANCE_QUOTE") return reserva("C1_HARD", "vistoria de seguro", base, "alta");
+
+  // TROCA DE PLACA: moto sem placa válida não circula — é lei, não é tempo de bancada.
+  // A troca envolve Detran e não se resolve no dia. Regra de OPERAÇÃO (pedida pelo Alvaro
+  // em 31/07): placa quebrada é reserva SEMPRE, independente da estimativa. Medido na
+  // Mooca (60d, piso): 15 casos (1 a cada 4 dias), 67% passam de 3h, mediana de 12 HORAS,
+  // e o serviço aparece 26min depois de abrir a OS. O n é pequeno demais pra estatística
+  // decidir — e não precisa decidir: a régua aqui é legal.
+  if (input.troca_placa === 1) {
+    return reserva("C1_PLACA", "troca de placa — a moto não pode circular", base, "alta");
+  }
 
   // Incidente (imobilizada / acidente / guincho) NÃO decide sozinho: as flags descrevem
   // o que aconteceu com a moto, não quanto tempo o reparo leva. Medido em 45d (clientes

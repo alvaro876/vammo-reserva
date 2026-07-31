@@ -113,6 +113,17 @@ os_meta AS (
     HAVING status_atual IN ('OPEN', 'IN_PROGRESS', 'IN_DIAGNOSIS', 'AWAITING_MECHANIC', 'PAUSED', 'AWAITING_QA', 'IN_QA', 'QA_REJECTED', 'AWAITING_VMGMT', 'AWAITING_PARTS', 'AWAITING_SERVICE')
        AND toDate(so.created_at, 'America/Sao_Paulo') >= toDate(now('America/Sao_Paulo')) - 7
 ),
+servico_placa AS (
+    -- TROCA DE PLACA: moto sem placa válida não sai rodando, ponto — envolve Detran,
+    -- não é serviço de bancada. Regra de OPERAÇÃO, não de estatística: a régua aqui é
+    -- legal, não de tempo. Medido na Mooca (60d, piso): 15 casos (1 a cada 4 dias),
+    -- 67% passam de 3h, mediana de 12 HORAS, e o serviço é registrado 26min depois de
+    -- abrir a OS — dá tempo de sobra pra avisar.
+    SELECT DISTINCT sv.so_id AS os_id
+    FROM oms_r.so_service sv FINAL
+    WHERE sv._peerdb_is_deleted = 0
+      AND lower(sv.description) LIKE '%troca de placa%'
+),
 mecanico_atual AS (
     SELECT
         ss.so_id AS os_id,
@@ -285,6 +296,11 @@ SELECT
     coalesce(se.pecas_sem_estoque_bloq, '') AS pecas_sem_estoque_bloq,
     coalesce(pcn.pecas_criticas, '') AS pecas_criticas,
     if(ip.os_id IS NOT NULL, 1, 0) AS is_piso,
+    -- coalesce(...) > 0, NÃO "IS NOT NULL": so_service.so_id é Int32 não-nulável, e o
+    -- LEFT JOIN sem match preenche com 0, não com NULL. Com "IS NOT NULL" a flag ficava
+    -- 1 pra TODA OS e o motor marcou as 3 motos da tela como troca de placa automática.
+    -- (O is_piso acima escapa disso porque checkin.so_id é Nullable.)
+    if(coalesce(sp.os_id, 0) > 0, 1, 0) AS troca_placa,
     -- 1 = a oficina já ofereceu e o cliente não recusou depois
     if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.ofertada_ts, 0) > coalesce(oo.cancelada_ts, 0), 1, 0) AS oferta_ativa
 FROM os_meta om
@@ -293,6 +309,7 @@ LEFT JOIN pecas_diag p ON p.os_id = om.os_id
 LEFT JOIN sem_estoque se ON se.os_id = om.os_id
 LEFT JOIN pecas_criticas_nomes pcn ON pcn.os_id = om.os_id
 LEFT JOIN is_piso ip ON ip.os_id = om.os_id
+LEFT JOIN servico_placa sp ON sp.os_id = om.os_id
 LEFT JOIN oferta_oficina oo ON oo.os_id = om.os_id
 ORDER BY om.min_desde_open DESC
 `;
