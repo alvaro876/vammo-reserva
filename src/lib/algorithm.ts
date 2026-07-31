@@ -7,7 +7,15 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.18.0"; // 0.18.0 = RECALIBRAÇÃO COMPLETA dos tempos (antecipada de
+export const ALGO_VERSION = "0.19.0"; // 0.19.0 = REMOVIDA a C1_RETORNO (inspeção de retorno com
+                                     // cliente em piso → reserva). Decisão do Alvaro no go-live:
+                                     // regra de TIPO não mede nada da moto — os 84,4% (Mooca/60d)
+                                     // vêm em boa parte de priorização da oficina (mediana 13h =
+                                     // "sem pressa", não reparo longo), e dar reserva pode se
+                                     // auto-alimentar (moto vira ainda menos urgente). O tipo
+                                     // segue no payload como CONTEXTO (selo na tela do CX); essas
+                                     // OSs voltam ao fluxo normal (C5_AGUARDA_DIAG → C3/C4).
+                                     // 0.18.0 = RECALIBRAÇÃO COMPLETA dos tempos (antecipada de
                                      // sábado a pedido do Alvaro): mapa de minutos/peça vira a
                                      // mediana REAL de bancada (141 peças, treino 150-60d atrás,
                                      // teste separado 60d piso Mooca), fator por nº de peças refeito
@@ -219,12 +227,10 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // de oficina cheia. (Até 30/07 a regra lia um caminho de JSON inexistente e nunca
   // disparava — o efeito prático é o mesmo, agora com o motivo medido.)
 
-  // Inspeção de retorno com cliente em piso: a moto voltou e vai ficar. Medido em 45d:
-  // 3/dia, 82,7% estouram, mediana de 20 HORAS. Vale por si só e — diferente de tudo o
-  // resto — já é conhecido na ABERTURA da OS, antes de qualquer diagnóstico.
-  if (input.is_piso === 1 && input.so_type === "RETURN_INSPECTION") {
-    return reserva("C1_RETORNO", "inspeção de retorno com cliente em piso", base);
-  }
+  // C1_RETORNO removida em 0.19.0 (decisão do Alvaro, dia do go-live). Disparava por
+  // TIPO de OS (inspeção de retorno + piso, 84,4% Mooca/60d) sem medir a moto; a
+  // mediana de 13h aponta priorização da oficina, não duração de reparo — e reserva
+  // automática nesse caso pode se auto-alimentar. so_type segue como contexto na UI.
   if (input.min_open_to_awaiting > THRESHOLDS.anomalia_min) {
     return reserva("C1_ANOMALIA", `moto não entrou na oficina há ${input.min_open_to_awaiting}min`, base, "alta");
   }
