@@ -7,7 +7,14 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.19.0"; // 0.19.0 = REMOVIDA a C1_RETORNO (inspeção de retorno com
+export const ALGO_VERSION = "0.20.0"; // 0.20.0 = gatilho da projeção volta pra LINHA DAS 3H (180) por
+                                     // decisão do Alvaro no dia 1: "se der estimado mais de 3h, tem
+                                     // que disparar reserva" (caso TMB8G64: 2h48 em fila de QA, 12min
+                                     // da linha, zero aviso). Troca consciente: 71% de acerto em >180
+                                     // (~6,8/dia) vs 90,2% em >240 (3,2/dia); a faixa 180-240 sai
+                                     // marcada FRONTEIRA. C3_TEMPO_ALTO segue em 240 (dispara antes,
+                                     // com confiança alta, pros serviços grandes).
+                                     // 0.19.0 = REMOVIDA a C1_RETORNO (inspeção de retorno com
                                      // cliente em piso → reserva). Decisão do Alvaro no go-live:
                                      // regra de TIPO não mede nada da moto — os 84,4% (Mooca/60d)
                                      // vêm em boa parte de priorização da oficina (mediana 13h =
@@ -133,11 +140,16 @@ const THRESHOLDS = {
                              // (Na escala antiga o gatilho foi 140→180 mais cedo em 31/07,
                              // quando medimos que a faixa 141-180 acertava 36-57%.)
   tempo_total_max: 180,      // a LINHA das 3h (SLA) — usada pra exibição e pro relógio
-  projecao_reserva_min: 240, // C3.5 / C4: projeção (espera + restante + QA) que dispara reserva.
-                             // Não é a linha das 3h: com os tempos honestos, projetar 190min não
-                             // condena a moto (71% em >180). Projeção >240 = 90,2% (n=194,
-                             // 3,2/dia no teste piso Mooca). A moto que projeta 181-240 continua
-                             // vigiada — o relógio anda e ela cruza o gatilho se for o caso.
+  projecao_reserva_min: 180, // C3.5 / C4: projeção (espera + restante + QA) que dispara reserva.
+                             // DECISÃO DO ALVARO no dia 1 (31/07, caso TMB8G64 a 12min da linha
+                             // sem nenhum aviso): "se der estimado mais de 3h, tem que disparar" —
+                             // a régua da sugestão É a linha das 3h, não a de convicção. Trade-off
+                             // medido e aceito: projeção >180 = 71% de acerto (n=407, ~6,8/dia)
+                             // contra 90,2% em >240 (n=194, 3,2/dia) — ou seja, ~3 em 10 sugestões
+                             // da faixa 180-240 são de moto que se salva; elas saem marcadas
+                             // FRONTEIRA (até gatilho+30) pro CX confirmar no piso antes de
+                             // prometer. Estourar de fato continua coberto pela fila de aviso da
+                             // tela (relógio >= 3h entra sem depender de regra).
   qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
   espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
   fila_diag_min: 90,         // C1: piso há +1h30 e a moto NEM entrou em diagnóstico (status OPEN).
