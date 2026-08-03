@@ -7,7 +7,16 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.20.0"; // 0.20.0 = gatilho da projeção volta pra LINHA DAS 3H (180) por
+export const ALGO_VERSION = "0.21.0"; // 0.21.0 = dois consertos pela meta de 80%/dia (Alvaro, 03/08):
+                                     // (a) RESERVA só se o restante+QA >= 30min — moto quase pronta
+                                     // que cruza a linha de raspão ganha AVISO pelo relógio na tela,
+                                     // não reserva (a entrega da reserva leva ~30min, não chega antes
+                                     // da moto; 3 dos 10 erros do dia 31 eram essa classe);
+                                     // (b) teto de 15min na espera de fila do C4 pra cliente de piso
+                                     // (piso fura a fila, mediana real 4-5min; a fila de papel do fim
+                                     // de tarde gerou os 2 piores erros do dia 31). Fator até 16
+                                     // peças foi testado e NÃO melhorou (80,5→80,1%) — não subiu.
+                                     // 0.20.0 = gatilho da projeção volta pra LINHA DAS 3H (180) por
                                      // decisão do Alvaro no dia 1: "se der estimado mais de 3h, tem
                                      // que disparar reserva" (caso TMB8G64: 2h48 em fila de QA, 12min
                                      // da linha, zero aviso). Troca consciente: 71% de acerto em >180
@@ -131,6 +140,18 @@ export const ALGO_VERSION = "0.20.0"; // 0.20.0 = gatilho da projeção volta pr
                                      // 0.3.0 = estimativa de tempo calibrada (tempo-pecas.ts)
 
 const THRESHOLDS = {
+  restante_min_reserva: 30,  // C3.5/C4: só sugere RESERVA se o que falta (restante + QA) for
+                             // maior que o tempo de ENTREGAR uma reserva (handover medido ~30min).
+                             // Moto quase pronta que cruza a linha de raspão ganha AVISO pelo
+                             // relógio na tela (>=3h, sempre), não reserva — a reserva não chega
+                             // antes de a moto ficar pronta. Motivado no dia 03/08: 3 dos 10 erros
+                             // do dia 31 foram disparos com restante de 8-20min (UEA5B42 projetou
+                             // 181 e aprontou em 177). Meta do Alvaro: 80%+ de acerto/dia.
+  fila_piso_max_min: 15,     // C4: teto da espera de fila cobrada de cliente de PISO — o piso fura
+                             // a fila (espera real mediana 4-5min, medida 20/07; p90 ~15). Sem o
+                             // teto, o fim de tarde (escala caindo, fila de papel acumulando)
+                             // cobrava 30-34min fictícios e gerou os 2 piores erros do dia 31
+                             // (SUO6I07 pronta em 67min com sugestão de reserva).
   anomalia_min: 240,         // C1: OS aberta há mais de 4h antes do diag fechar
   diversas_avarias: 9,       // C3: 9+ tipos de peça diferentes no diag
   tempo_estimado_max: 240,   // C3: trabalho estimado > 240 min. RECALIBRADO em 31/07 junto com
@@ -363,7 +384,12 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 3.5: Tempo total combinado (sem capacidade) ─────────────────
   // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
-  if (input.tempo_estimado_min > 0 && input.min_desde_open < 480 && totalSemMec > THRESHOLDS.projecao_reserva_min) {
+  if (
+    input.tempo_estimado_min > 0 &&
+    input.min_desde_open < 480 &&
+    totalSemMec > THRESHOLDS.projecao_reserva_min &&
+    tempoRestanteC3 + THRESHOLDS.qa_min >= THRESHOLDS.restante_min_reserva
+  ) {
     return reserva(
       "C3_TEMPO_COMBINADO",
       `já esperou ${input.min_desde_open}min + restante ~${tempoRestanteC3}min + ${THRESHOLDS.qa_min}min QA = ${totalSemMec}min total`,
@@ -380,12 +406,19 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   const cap = input.capacidade_esperada ?? 0;
   if (cap > 0 && input.tempo_estimado_min > 0) {
     const filaMin = input.fila_min ?? 0;
-    const tempoEspera = Math.round(filaMin / cap);   // fila de serviço ÷ mecânicos em paralelo
+    // Cliente de PISO fura a fila: espera real mediana 4-5min (medida 20/07). O teto de
+    // 15min evita a fila "de papel" do fim de tarde cobrar espera que o piso não paga.
+    const esperaBruta = Math.round(filaMin / cap);   // fila de serviço ÷ mecânicos em paralelo
+    const tempoEspera = input.is_piso === 1 ? Math.min(esperaBruta, THRESHOLDS.fila_piso_max_min) : esperaBruta;
     base.tempo_para_inicio_min = tempoEspera;
     const tempoTotal = input.min_desde_open + tempoEspera + tempoRestanteC3 + THRESHOLDS.qa_min;
     base.tempo_previsto_min = tempoTotal;
 
-    if (input.tempo_estimado_min > 0 && tempoTotal > THRESHOLDS.projecao_reserva_min) {
+    if (
+      input.tempo_estimado_min > 0 &&
+      tempoTotal > THRESHOLDS.projecao_reserva_min &&
+      tempoRestanteC3 + THRESHOLDS.qa_min >= THRESHOLDS.restante_min_reserva
+    ) {
       return reserva(
         "C4_CAPACIDADE",
         `oficina saturada: fila ~${tempoEspera}min (${filaMin}min de serviço ÷ ${cap} mec esperados) + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA, já esperou ${input.min_desde_open}min → ${tempoTotal}min`,
