@@ -7,7 +7,14 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.21.0"; // 0.21.0 = dois consertos pela meta de 80%/dia (Alvaro, 03/08):
+export const ALGO_VERSION = "0.22.0"; // 0.22.0 = C4_CAPACIDADE desligado como gatilho de reserva
+                                     // (segue como medidor; religa com RIVERS_REGRA_C4=on). Placar de
+                                     // 03/08: pós-v0.21 TODOS os erros do dia foram C4 (projeções
+                                     // coladas em 181 — o teto de fila tirou a resolução da regra);
+                                     // 1 acerto em 5 no dia; e desde julho sabemos que lotação não
+                                     // prevê estouro. Sem ele, a noite de 03/08 fechava 3/3. O tempo
+                                     // fica 100% com o C3 (combinado + serviço grande).
+                                     // 0.21.0 = dois consertos pela meta de 80%/dia (Alvaro, 03/08):
                                      // (a) RESERVA só se o restante+QA >= 30min — moto quase pronta
                                      // que cruza a linha de raspão ganha AVISO pelo relógio na tela,
                                      // não reserva (a entrega da reserva leva ~30min, não chega antes
@@ -414,7 +421,15 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     const tempoTotal = input.min_desde_open + tempoEspera + tempoRestanteC3 + THRESHOLDS.qa_min;
     base.tempo_previsto_min = tempoTotal;
 
+    // C4 DESLIGADO como gatilho de reserva (03/08 23h, meta 80%/dia do Alvaro).
+    // Ficha corrida: em julho medimos que lotação NÃO prevê estouro (19,3%×19,4%);
+    // no dia 1 deu os 2 piores erros (fila fictícia de 30-34min que o piso não paga);
+    // com o teto de 15min perdeu a resolução (5 disparos projetando 181/181/181/182/181
+    // — virou C3 com viés de +15). No dia 03/08: 1 acerto em 5. Pós-v0.21, TODOS os
+    // erros do dia foram C4 — sem ele a noite fechava 3/3. Ele segue como MEDIDOR
+    // (tempo_previsto/fila na tela). Religa com RIVERS_REGRA_C4=on, sem deploy.
     if (
+      process.env.RIVERS_REGRA_C4 === "on" &&
       input.tempo_estimado_min > 0 &&
       tempoTotal > THRESHOLDS.projecao_reserva_min &&
       tempoRestanteC3 + THRESHOLDS.qa_min >= THRESHOLDS.restante_min_reserva
