@@ -39,6 +39,21 @@ Motor determinístico que roda **a cada 10 minutos** e responde, para cada moto 
 - **`rivers_cx_aviso`** — clique "avisei o cliente" da tela do CX (os_id, quem, quando).
 - **`rivers_feedback`** — aceite/recusa humana com motivo.
 
+## Performance
+
+**Backtest (Mooca, 60 dias, clientes de piso, treino/teste separados no tempo):**
+
+| regra | precisão | n |
+|---|---|---|
+| 1h30 na fila sem diagnóstico (automática) | 98,1% | 159 |
+| 2h30 sem diagnóstico (automática) | 94,4% | 177 |
+| serviço grande (>240min estimados) | 87,5% | 72 |
+| projeção cruzando as 3h | ~80% | 344 |
+
+*Precisão = % dos avisos em que a moto realmente passou de 3h. Linha de base: ~21% dos clientes de piso estouram.*
+
+**Piloto (Mooca, desde 31/07):** cobertura é o ponto forte — **zero clientes estouraram sem marca prévia do RIVERS desde os ajustes do dia 1** (3 dias seguidos de recall 100%), com sugestões saindo em mediana >1h antes da linha. A precisão diária está em calibração: com o gatilho exatamente na linha das 3h (decisão de produto — nenhum cliente cruza sem aviso), parte dos disparos é "foto de chegada" de moto que termina a minutos da linha — essas saem rotuladas NA TRAVE pra confirmação no piso, e há indício de efeito causal (sugestão → oficina prioriza → moto salva na trave: mediana real dos disparos = 175min, linha = 180). As duas maiores fontes de erro identificadas na primeira semana já foram corrigidas com medição (v0.21/v0.22). Números fechados do piloto: na retro.
+
 ## Achados de dados no caminho (os que valem pro DW)
 
 1. **`ims_r.request.created_at` é endógeno** — o mecânico só pede a peça depois que ela está na prateleira ("pedido→entrega p50 7min" mede o balcão, não a espera). Âncora honesta: `so_item.created_at` do diagnóstico.
