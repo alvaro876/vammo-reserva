@@ -224,7 +224,7 @@ function CardAcao({ c }: { c: ClienteCx }) {
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {c.acao_automatica && <Selo tom="auto">AUTOMÁTICA — pode entregar</Selo>}
-            {c.confianca === "fronteira" && <Selo tom="fronteira">NA TRAVE — pergunta pro mecânico se sai a tempo</Selo>}
+            {c.confianca === "fronteira" && <Selo tom="fronteira">MARGEM APERTADA — confirme com o mecânico se sai a tempo</Selo>}
             {c.ofertada_em && (
               <Selo tom="oficina">
                 oficina ofertou {hora(c.ofertada_em)}
