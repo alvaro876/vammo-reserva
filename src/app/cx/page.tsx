@@ -172,35 +172,8 @@ function Selo({ tom, children }: { tom: "auto" | "fronteira" | "oficina" | "aler
   );
 }
 
-function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisado: (os: number) => void }) {
-  const [copiado, setCopiado] = useState(false);
-  const [salvando, setSalvando] = useState(false);
+function CardAcao({ c }: { c: ClienteCx }) {
   const estourou = c.minutos_pro_sla <= 0;
-
-  async function avisar() {
-    setSalvando(true);
-    try {
-      const res = await fetch("/api/cx", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ os_id: c.os_id, actor: quem || null }),
-      });
-      if (res.ok) onAvisado(c.os_id);
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(mensagemPronta(c));
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2500);
-    } catch {
-      /* clipboard bloqueado — o texto continua visível na tela */
-    }
-  }
-
   const z = zona(c.minutos_pro_sla);
 
   return (
@@ -275,22 +248,9 @@ function CardAcao({ c, quem, onAvisado }: { c: ClienteCx; quem: string; onAvisad
           </p>
         </div>
 
-        {/* ação */}
-        <div className="flex w-full flex-col gap-2 sm:w-56">
-          <button
-            onClick={avisar}
-            disabled={salvando}
-            className="rounded-xl bg-emerald-600 px-4 py-3 text-base font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {salvando ? "registrando..." : "Avisei o cliente"}
-          </button>
-          <button
-            onClick={copiar}
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            {copiado ? "mensagem copiada!" : "copiar mensagem pronta"}
-          </button>
-        </div>
+        {/* Botões removidos em 05/08 (pedido do Alvaro): a tela vive numa TV, ninguém
+            clica. O registro de aviso (POST /api/cx e rivers_cx_aviso) continua de pé
+            pra quando houver uma superfície clicável (celular/desktop do CX). */}
       </div>
     </div>
   );
@@ -387,15 +347,7 @@ export default function CxPiso() {
               <div className="text-3xl font-black leading-tight tabular-nums">{noPrazo.length}</div>
               <div className="text-xs font-bold uppercase tracking-wide">no prazo</div>
             </div>
-            <input
-              value={quem}
-              onChange={(e) => {
-                setQuem(e.target.value);
-                localStorage.setItem("rivers_cx_quem", e.target.value);
-              }}
-              placeholder="seu nome"
-              className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500"
-            />
+            {/* input "seu nome" removido: tela de TV, ninguém digita (05/08) */}
           </div>
         </div>
       </header>
@@ -416,7 +368,7 @@ export default function CxPiso() {
           ) : (
             <div className="flex flex-col gap-3">
               {precisaAvisar.map((c) => (
-                <CardAcao key={c.os_id} c={c} quem={quem} onAvisado={marcarAvisado} />
+                <CardAcao key={c.os_id} c={c} />
               ))}
             </div>
           )}
