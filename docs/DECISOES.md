@@ -69,3 +69,42 @@ treinado se o baseline não bastar (o log de acurácia decide).
 média no Mooca é ~18 mecânicos, mas teve dia com 4) → usar a contagem do minuto faria o algoritmo
 "dar reserva pra tudo" na transição. A curva esperada atravessa a transição.
 **Pendente:** confirmação do Alvaro.
+
+### D9 — A régua é a linha das 3h, e a sugestão dispara nela (2026-07-31) ✅
+**Decisão:** o gatilho da projeção fica na própria linha do SLA (180min), não numa linha de
+convicção mais alta; a faixa incerta sai marcada **NA TRAVE** pra confirmação no piso.
+**Por quê:** ordem do Alvaro ("se der estimado mais de 3h, tem que disparar") após o caso
+TMB8G64 (12min da linha sem aviso). Trade-off medido e aceito: mais alarme na trave em troca
+de nenhum cliente cruzar as 3h em silêncio. Complemento estrutural: *aviso* é decisão de
+relógio (sempre, às 3h, pela tela); *reserva* é decisão de regra.
+**Quem:** Alvaro.
+
+### D10 — Capacidade/fila (C4) e estoque (C2) fora da decisão (2026-08-03) ✅
+**Decisão:** `C4_CAPACIDADE` e `C2_SEM_ESTOQUE` não disparam reserva (seguem como medidores;
+religáveis por env).
+**Por quê:** as premissas não sobreviveram ao dado. Estoque: saldo zero local se resolve por
+transferência intraday (0 acerto em 7+9 disparos). Fila: a espera real do cliente de piso não
+cresce com a profundidade da fila (mediana 4-9min com 0 a 6+ motos na frente, n=1.864) — a
+oficina paraleliza; a contribuição única do C4 media 6 acertos × 11 erros.
+**Quem:** Alvaro (meta de 80% de precisão/dia).
+
+### D11 — O relógio condicionado vira gatilho principal; estimador vira coadjuvante (2026-08-05) ✅
+**Decisão:** as regras de maior peso passam a ser fatos do relógio, não projeções: piso +
+150min **fora de QA** (87,3%, n=887, recall 95%) e rejeição de QA com 165min+ (98,9%, n=91);
+retrabalho pós-rejeição entra como 45min na projeção. A projeção cedo só vira reserva com
+estimativa ≥180 (80,8%); vistoria de seguro ganha gate; fator de 9+ peças corrigido
+(0,85/0,80). Validação: backtest tick-a-tick de 92d (73,2% → 88,7%; últimos 5 dias todos
+≥80%) — `scripts/backtest-v23.mjs`.
+**Por quê:** diagnóstico duplo (indústria + 92d de dado próprio): reparo tem cauda lognormal
+— quem já demorou vai demorar mais, exceto em QA; e o MAE do estimador (~30min) já é estado
+da arte, então o ganho estava no *decisor*, não na estimativa.
+**Quem:** Alvaro ("roda as três fases, quero backtests, calibra até acertar").
+
+### D12 — Classificador em sombra antes de decidir (2026-08-05) 🟡
+**Decisão:** o classificador logístico de P(estourar) (desenho Lyft; 16 sinais; split
+temporal; Platt) roda **em sombra**: logado a cada tique (`features.p_estouro`), sem decidir.
+Promoção a decisor só com 3+ dias de validação ao vivo ≥85% — o placar diário compara sombra
+× regras automaticamente.
+**Por quê:** teste honesto deu 89,3%/96,2% (n=28) — forte, mas pequeno e treinado de
+madrugada; a diferença entre "parece melhor" e "é melhor" é produção. Custo de esperar: zero.
+**Pendente:** decisão do Alvaro quando a sombra acumular os 3 dias.

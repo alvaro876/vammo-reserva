@@ -23,15 +23,19 @@ Motor determinístico que roda **a cada 10 minutos** e responde, para cada moto 
 
 **Estimativa de tempo**: mapa próprio de minutos/peça (recalibrado contra o tempo real de bancada — mediana dos episódios IN_PROGRESS; treino/teste separados no tempo) × fator por nº de peças + 25min fixos. Vive em `src/lib/tempo-pecas.ts`, regenerável por script.
 
-## As regras (ordem de avaliação; a primeira que casa vence)
+## As regras (ordem de avaliação; a primeira que casa vence — v0.23, 05/08)
 
-**Agem sozinhas** (entrega direta): vistoria de seguro · **troca de placa** (moto sem placa não circula — régua legal) · moto 4h sem chegar ao mecânico · cliente em piso 1h30 na fila sem diagnóstico · cliente 2h30 sem diagnóstico nenhum.
+**Agem sozinhas** (entrega direta): vistoria de seguro (com gate: só enquanto não há diagnóstico ou a projeção não cabe nas 3h) · **troca de placa** (moto sem placa não circula — régua legal) · moto 4h sem chegar ao mecânico · cliente em piso 1h30 na fila sem diagnóstico · cliente 2h30 sem diagnóstico nenhum.
 
-**Vão pra tela do CX decidir**: moto travada aguardando peça (30min+) · parada em serviço de terceiro/gestão de frota · serviço grande (estimado >240min) · projeção relógio+restante+QA cruzando as 3h (com trava: só sugere reserva se faltar 30min+ de trabalho — senão vira **aviso**, porque entregar reserva leva ~30min e não chega antes da moto).
+**Vão pra tela do CX**: moto travada aguardando peça (30min+) · parada em serviço de terceiro/gestão de frota · **relógio 150min com cliente em piso e a moto FORA de qualidade** (o sinal mais forte do sistema: reparo tem cauda lognormal — quem já demorou vai demorar mais, *exceto* se está em QA, que é sinal de fim; 87,3% medido, n=887) · **reprovada na qualidade com 165min+ de relógio** (retrabalho não cabe no prazo; 98,9%, n=91) · serviço grande (estimado >240min) · projeção cruzando as 3h, firme só quando a estimativa é ≥180min.
+
+**Re-estimativa dinâmica**: peça registrada na rampa recalcula em 10min; reprovação de QA soma 45min de retrabalho à projeção (mediana medida).
 
 **Conceito central**: *reserva* é decisão de regra; *aviso ao cliente* é decisão de relógio — todo cliente que cruza 3h reais entra na fila de aviso da tela, independente de regra.
 
-**Desligadas com histórico** (religáveis por env, sem deploy): leitura de saldo de estoque (`C2_SEM_ESTOQUE`) e capacidade/fila (`C4_CAPACIDADE`) — ver achados abaixo.
+**Desligadas com histórico** (religáveis por env, sem deploy): leitura de saldo de estoque (`C2_SEM_ESTOQUE`) e capacidade/fila (`C4_CAPACIDADE`) — nos dois casos a premissa não sobreviveu ao dado (ver achados abaixo).
+
+**Em sombra**: classificador logístico de P(estourar) — 16 sinais, treinado offline com split temporal e calibração Platt (desenho Lyft/literatura de process monitoring), logado a cada tique em `features.p_estouro`, sem decidir. Promoção prevista após validação ao vivo. Pesos em `calib/classificador-v1.json`, código em `src/lib/classificador.ts`.
 
 ## O que gravamos (Supabase — pode interessar ingerir no DW)
 
@@ -52,7 +56,9 @@ Motor determinístico que roda **a cada 10 minutos** e responde, para cada moto 
 
 *Precisão = % dos avisos em que a moto realmente passou de 3h. Linha de base: ~21% dos clientes de piso estouram.*
 
-**Piloto (Mooca, desde 31/07):** cobertura é o ponto forte — **zero clientes estouraram sem marca prévia do RIVERS desde os ajustes do dia 1** (3 dias seguidos de recall 100%), com sugestões saindo em mediana >1h antes da linha. A precisão diária está em calibração: com o gatilho exatamente na linha das 3h (decisão de produto — nenhum cliente cruza sem aviso), parte dos disparos é "foto de chegada" de moto que termina a minutos da linha — essas saem rotuladas NA TRAVE pra confirmação no piso, e há indício de efeito causal (sugestão → oficina prioriza → moto salva na trave: mediana real dos disparos = 175min, linha = 180). As duas maiores fontes de erro identificadas na primeira semana já foram corrigidas com medição (v0.21/v0.22). Números fechados do piloto: na retro.
+**Piloto (Mooca, desde 31/07):** cobertura é o ponto forte — **zero clientes estouraram sem marca prévia do RIVERS desde os ajustes do dia 1**, com o aviso pelo relógio às 3h como rede de fato. A primeira semana expôs as fontes de erro de precisão (disparo na trave, fila fictícia, viés em OS grande), todas corrigidas com medição.
+
+**Backtest da configuração vigente (v0.23, replay tick-a-tick de 92 dias, `scripts/backtest-v23.mjs`):** precisão **88,7%** com recall-antes-da-linha de 84% e aviso mediano 50min antes; nos últimos 5 dias do replay, todos os dias ≥80% (80,0 / 81,8 / 100 / 100 / 100 / 83,3). A configuração anterior media 73,2% no mesmo replay. Validação em produção em andamento (placar diário automático às 20h40).
 
 ## Achados de dados no caminho (os que valem pro DW)
 
