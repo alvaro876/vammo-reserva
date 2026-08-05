@@ -7,7 +7,22 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.22.0"; // 0.22.0 = C4_CAPACIDADE desligado como gatilho de reserva
+export const ALGO_VERSION = "0.23.0"; // 0.23.0 = MADRUGADA DE 05/08 (ordem do Alvaro: 3 fases + backtest
+                                     // até >=80%/dia). Diagnóstico: pesquisa de indústria (Lyft/Uber/
+                                     // DoorDash + literatura de process monitoring) + análise de 92d.
+                                     // Novo: (a) C3_RELOGIO_150 — piso, 150min, FORA de QA, não-quase-
+                                     // pronta = 87,3% (n=887; hazard lognormal, split QA vale 65pp);
+                                     // (b) C1_QA_TARDIA — rejeição c/ 165min+ = 98,9% (n=91);
+                                     // (c) retrabalho pós-rejeição = 45min (era 0);
+                                     // (d) COMB firme só com estimativa >=180 (faixa 150-180 = 63,8%
+                                     // vira relógio/aviso); (e) vistoria com gate de projeção;
+                                     // (f) fator 9+ peças 0,85 / 13+ 0,80 (viés +39/+47 corrigido);
+                                     // (g) classificador logístico EM SOMBRA (calib/classificador-v1,
+                                     // teste 5d: 89,3%/96,2%) — promove só com validação ao vivo.
+                                     // BACKTEST (scripts/backtest-v23.mjs, config f2b, 92d):
+                                     // 88,7% de precisão, 84% recall<180; últimos 5 dias TODOS >=80%
+                                     // (80,0/81,8/100/100/100/83,3). Antes: 73,2% e dias de 38-50%.
+                                     // 0.22.0 = C4_CAPACIDADE desligado como gatilho de reserva
                                      // (segue como medidor; religa com RIVERS_REGRA_C4=on). Placar de
                                      // 03/08: pós-v0.21 TODOS os erros do dia foram C4 (projeções
                                      // coladas em 181 — o teto de fila tirou a resolução da regra);
@@ -147,6 +162,16 @@ export const ALGO_VERSION = "0.22.0"; // 0.22.0 = C4_CAPACIDADE desligado como g
                                      // 0.3.0 = estimativa de tempo calibrada (tempo-pecas.ts)
 
 const THRESHOLDS = {
+  relogio_reserva_min: 150,  // C3_RELOGIO: piso + 150min de relógio + FORA de QA = 87,3% de
+                             // estouro (n=887, hazard 90d) — o melhor sinal isolado que temos.
+                             // Em QA no mesmo minuto só 22,6% estouram → o split vale 65pp.
+  qa_rejeicao_tarde_min: 165,// C1_QA_TARDIA: rejeição de QA com 165min+ de relógio = 98,9%
+                             // de estouro (n=91). Retrabalho não cabe no prazo.
+  qa_retrabalho_min: 45,     // retrabalho pós-rejeição: mediana medida 45min (p75 86) —
+                             // substitui o 0 que o motor assumia em QA_REJECTED desde v0.10.
+  est_firme_min: 180,        // C3.5: projeção cedo só vira RESERVA com estimativa >=180
+                             // (80,8% n=120); a faixa 150-180 mede 63,8% (n=141) e fica
+                             // por conta do relógio/aviso. Backtest 92d: scripts/backtest-v23.mjs.
   restante_min_reserva: 30,  // C3.5/C4: só sugere RESERVA se o que falta (restante + QA) for
                              // maior que o tempo de ENTREGAR uma reserva (handover medido ~30min).
                              // Moto quase pronta que cruza a linha de raspão ganha AVISO pelo
@@ -223,6 +248,8 @@ export interface AlgoritmoInput {
   pecas_criticas: string;
   is_piso: number;
   troca_placa?: number;          // 1 = OS tem serviço de troca de placa (Detran, não bancada)
+  min_ate_rejeicao?: number;     // minutos do relógio na 1ª rejeição de QA (-1 = nunca)
+  tem_direcao?: number;          // 1 = diagnóstico tem peça do cluster direção/rodante/discos
   min_no_status: number;
   min_desde_open: number;
   exec_acum_min?: number;        // execução acumulada (todos os episódios IN_PROGRESS), em min
@@ -247,7 +274,16 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
 
   // ── CAMADA 1: Regras duras ─────────────────────────────────────────────
 
-  if (input.so_type === "INSURANCE_QUOTE") return reserva("C1_HARD", "vistoria de seguro", base, "alta");
+  if (input.so_type === "INSURANCE_QUOTE") {
+    // Gate (05/08, backtest): vistoria com diagnóstico pequeno JÁ FEITO sai rápido
+    // (61-117min nos casos recentes) — só mantém a reserva-por-política enquanto não
+    // há diagnóstico ou quando a projeção não cabe nas 3h. 66,7%→80% no backtest.
+    const execHard = input.exec_acum_min ?? 0;
+    const restHard = QA_STATUSES.has(input.status_atual) ? 0 : Math.max(0, input.tempo_estimado_min - execHard);
+    if (input.tempo_estimado_min === 0 || input.min_desde_open + restHard + 8 > 180) {
+      return reserva("C1_HARD", "vistoria de seguro", base, "alta");
+    }
+  }
 
   // TROCA DE PLACA: moto sem placa válida não circula — é lei, não é tempo de bancada.
   // A troca envolve Detran e não se resolve no dia. Regra de OPERAÇÃO (pedida pelo Alvaro
@@ -369,10 +405,42 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // trabalho já feito. Fallback pro comportamento antigo se o campo não vier.
   const execFeita = input.exec_acum_min ??
     (input.status_atual === "IN_PROGRESS" ? input.min_no_status : 0);
-  // Em QA o serviço já acabou: o que falta é só a conferência (o qa_min abaixo).
-  // Sem isso a projeção somaria de novo um trabalho que já foi feito.
+  // Em QA o serviço já acabou: o que falta é a conferência (qa_min) — EXCETO se foi
+  // REPROVADA: aí tem retrabalho, mediana medida de 45min (o 0 antigo fazia o motor
+  // tratar moto reprovada como pronta; buraco apontado pelo Alvaro em 30/07).
   const emQa = QA_STATUSES.has(input.status_atual);
-  const tempoRestanteC3 = emQa ? 0 : Math.max(0, input.tempo_estimado_min - execFeita);
+  const tempoRestanteC3 = emQa
+    ? (input.status_atual === "QA_REJECTED" ? THRESHOLDS.qa_retrabalho_min : 0)
+    : Math.max(0, input.tempo_estimado_min - execFeita);
+
+  // ── AS DUAS REGRAS DO RELÓGIO (diagnóstico de 05/08 — hazard lognormal) ──
+  // Reparo tem cauda lognormal: quem já demorou vai demorar mais — EXCETO em QA,
+  // que é sinal de conserto no fim. Números do hazard (90d, piso Mooca):
+  // 150min fora de QA = 87,3% de estouro (n=887, 95% de recall); em QA = 22,6%.
+  if (
+    input.is_piso === 1 &&
+    !emQa &&
+    input.min_desde_open >= THRESHOLDS.relogio_reserva_min &&
+    // moto em execução com restante curto está TERMINANDO — reserva não chega antes
+    !(input.status_atual === "IN_PROGRESS" && input.tempo_estimado_min > 0 &&
+      tempoRestanteC3 + THRESHOLDS.qa_min < THRESHOLDS.restante_min_reserva)
+  ) {
+    return reserva(
+      "C3_RELOGIO_150",
+      `cliente em piso há ${input.min_desde_open}min e o conserto segue em andamento — 87% dos casos assim passam das 3h`,
+      base,
+      "alta"
+    );
+  }
+  // Rejeição de QA tarde = retrabalho que não cabe no prazo: 98,9% (n=91).
+  if ((input.min_ate_rejeicao ?? -1) >= THRESHOLDS.qa_rejeicao_tarde_min) {
+    return reserva(
+      "C1_QA_TARDIA",
+      `reprovada na qualidade aos ${input.min_ate_rejeicao}min — o retrabalho (mediana 45min) não cabe nas 3h`,
+      base,
+      "alta"
+    );
+  }
   const totalSemMec = input.min_desde_open + tempoRestanteC3 + THRESHOLDS.qa_min;
   // Projeção a menos de 30min da linha = fronteira: a sugestão sai marcada pro
   // encarregado saber que é decisão de foto de chegada, não de convicção.
@@ -392,7 +460,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // ── CAMADA 3.5: Tempo total combinado (sem capacidade) ─────────────────
   // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
   if (
-    input.tempo_estimado_min > 0 &&
+    input.tempo_estimado_min >= THRESHOLDS.est_firme_min &&
     input.min_desde_open < 480 &&
     totalSemMec > THRESHOLDS.projecao_reserva_min &&
     tempoRestanteC3 + THRESHOLDS.qa_min >= THRESHOLDS.restante_min_reserva

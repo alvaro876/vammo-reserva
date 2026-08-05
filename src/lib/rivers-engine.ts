@@ -9,6 +9,7 @@ import { query } from "@/lib/clickhouse";
 import { avaliarOS, AlgoritmoInput, ALGO_VERSION } from "@/lib/algorithm";
 import { isAcaoAutomatica } from "@/lib/autonomia";
 import { logRiversSuggestions, SuggestionLog } from "@/lib/supabase";
+import { pEstouro } from "@/lib/classificador";
 import { MINUTOS_POR_PECA, TEMPO_BASE_MIN, TEMPO_FALLBACK_MIN } from "@/lib/tempo-pecas";
 import { Recomendacao } from "@/types";
 
@@ -28,7 +29,10 @@ const TEMPO_MINS = Object.values(MINUTOS_POR_PECA).join(",");
 // Agora os tempos são honestos (mediana real de bancada) e o fator é ~1: OS de 1 peça
 // leva 39% a mais que o tempo da peça (deslocamento pesa), e OS grande ganha leve
 // desconto de paralelismo.
-const FATOR_N_PECAS = "transform(least(uniqExact(si.item_group_id), 8), [1,2,3,4,5,6,7,8], [1.39,1.11,1.04,1.04,1.0,1.03,0.95,0.94], 1.0)";
+// 05/08 (madrugada, backtest 92d): 9+ peças estendido — o viés crescia +39min (9-12
+// peças) e +47min (13+) porque a soma trava no fator de 8; com 0,85/0,80 o backtest
+// foi de 84,3%→88,7% de precisão mantendo recall (config f2b, scripts/backtest-v23.mjs).
+const FATOR_N_PECAS = "transform(least(uniqExact(si.item_group_id), 13), [1,2,3,4,5,6,7,8,9,10,11,12,13], [1.39,1.11,1.04,1.04,1.0,1.03,0.95,0.94,0.85,0.85,0.85,0.85,0.8], 0.8)";
 
 // Peças BLOQUEANTES: a falta delas impede liberar a moto (tração/freio/rodante/direção).
 // Peça cosmética/acessório em falta NÃO segura a moto — a oficina libera e fica pendência.
@@ -97,6 +101,11 @@ os_meta AS (
               dateDiff('minute', so.created_at, now('America/Sao_Paulo')),
               0)) AS min_open_to_awaiting,
         dateDiff('minute', max(ss.created_at), now('America/Sao_Paulo')) AS min_no_status,
+        -- minutos do relógio na PRIMEIRA rejeição de QA (-1 = nunca rejeitada). Medido em
+        -- 90d piso Mooca: rejeição com relógio >=165min estoura 98,9% (n=91) → regra
+        -- C1_QA_TARDIA; retrabalho pós-rejeição mediana 45min → re-estimativa no C3.
+        if(toUnixTimestamp(minIf(ss.created_at, ss.status = 'QA_REJECTED')) = 0, -1,
+           dateDiff('minute', so.created_at, minIf(ss.created_at, ss.status = 'QA_REJECTED'))) AS min_ate_rejeicao,
         arraySort(x -> x.1, groupArray((toUnixTimestamp(ss.created_at), ss.status))) AS _evs,
         -- execução ACUMULADA (soma de TODOS os episódios IN_PROGRESS até agora).
         -- O desconto antigo (min_no_status, só do episódio atual) re-somava trabalho
@@ -149,6 +158,9 @@ pecas_diag AS (
         max(coalesce(isk.skill, 1)) AS complexidade_max,
         sumIf(1, si.item_group_id IN (257,258,259,260,184,357,250,308,340,359,296,240)) AS n_pecas_criticas,
         argMaxIf(ig.name, coalesce(isk.skill, 1), si.item_group_id > 0) AS peca_principal,
+        -- cluster direção/rodante/discos (229,240,340,359,228): estoura 48-56% tendo o
+        -- MENOR viés de estimativa (sub-diagnóstico conhecido) — feature do classificador
+        max(if(si.item_group_id IN (229, 240, 340, 359, 228), 1, 0)) AS tem_direcao,
         arrayStringConcat(groupUniqArray(ig.name), ', ') AS todas_pecas_diag
     FROM oms_r.so_item si FINAL
     LEFT JOIN ims_r.item_group ig FINAL ON ig.id = si.item_group_id
@@ -288,6 +300,8 @@ SELECT
     om.acidente AS acidente,
     om.guincho AS guincho,
     om.min_open_to_awaiting AS min_open_to_awaiting,
+    om.min_ate_rejeicao AS min_ate_rejeicao,
+    coalesce(p.tem_direcao, 0) AS tem_direcao,
     coalesce(ma.mecanico_nome, '') AS mecanico_atual,
     coalesce(p.n_pecas, 0) AS n_pecas,
     coalesce(p.tempo_estimado_min, 0) AS tempo_estimado_min,
@@ -387,6 +401,8 @@ export type OSComRecomendacao = OSRow & {
   recomendacao: Recomendacao | null;
   // true = regra de alta precisão + cliente em piso → a operação pode acatar direto
   acao_automatica: boolean;
+  // P(estourar 3h) do classificador em SOMBRA (fase 3) — logado, não decide
+  p_estouro: number | null;
   // termômetro: check-ins de manutenção ainda abertos na base agora (insumo de POLÍTICA
   // de piso cheio — a régua de agir é da operação; não dispara reserva sozinho)
   pressao_piso: number;
@@ -449,7 +465,29 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
       ? isAcaoAutomatica(recomendacao.rule_triggered, recomendacao.decision, row.is_piso === 1, row.location_id)
       : false;
 
-    return { ...row, recomendacao, acao_automatica, pressao_piso: pressaoByBase[row.location_id] ?? 0 };
+    // Classificador EM SOMBRA (fase 3): calcula P(estourar) a cada tique e loga.
+    // NÃO decide nada — promoção exige validação ao vivo contra o log.
+    let p_estouro: number | null = null;
+    if (STATUSES_AVALIAVEIS.has(row.status_atual)) {
+      const emQaCls = ["AWAITING_QA", "IN_QA", "QA_REJECTED"].includes(row.status_atual);
+      const restCls = emQaCls
+        ? (row.status_atual === "QA_REJECTED" ? 45 : 0)
+        : Math.max(0, (row.tempo_estimado_min || 0) - (row.exec_acum_min || 0));
+      try {
+        p_estouro = pEstouro({
+          min_desde_open: row.min_desde_open,
+          tempo_estimado_min: row.tempo_estimado_min || 0,
+          restante_min: restCls,
+          n_pecas: row.n_pecas || 0,
+          status_atual: row.status_atual,
+          asset_model: row.asset_model || "",
+          tem_direcao: (row as unknown as { tem_direcao?: number }).tem_direcao ?? 0,
+          so_type: row.so_type,
+        });
+      } catch { /* sombra nunca derruba o motor */ }
+    }
+
+    return { ...row, recomendacao, acao_automatica, p_estouro, pressao_piso: pressaoByBase[row.location_id] ?? 0 };
   });
 
   // Grava as sugestões no Supabase (no-op se não configurado). Idempotente.
@@ -483,6 +521,9 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
           tempo_estimado_min: o.tempo_estimado_min,
           tempo_previsto_min: o.recomendacao!.tempo_previsto_min,
           confianca: o.recomendacao!.confianca ?? null,
+          p_estouro: o.p_estouro,
+          min_ate_rejeicao: (o as unknown as { min_ate_rejeicao?: number }).min_ate_rejeicao ?? -1,
+          tem_direcao: (o as unknown as { tem_direcao?: number }).tem_direcao ?? 0,
           mecanico_sugerido: o.recomendacao!.mecanico_sugerido,
           tempo_para_inicio_min: o.recomendacao!.tempo_para_inicio_min,
           capacidade_esperada: capByBase[o.location_id] ?? 0,
