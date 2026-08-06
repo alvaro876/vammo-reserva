@@ -7,7 +7,18 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.23.0"; // 0.23.0 = MADRUGADA DE 05/08 (ordem do Alvaro: 3 fases + backtest
+export const ALGO_VERSION = "0.24.0"; // 0.24.0 = C3_RELOGIO_150: gate de "quase pronta" de 30→60min
+                                     // (investigação do dia 05/08 à noite). Precisão real do dia:
+                                     // 50% (4/8) — em TODOS os 4 erros a estimativa achava 40-71min
+                                     // restantes e o real era 9-24. O gate de 30 nunca pegava porque
+                                     // mede a mesma estimativa que infla. Backtest 92d: 60 leva a
+                                     // regra de 86,6%→90,9% (n=317). TRADE-OFF medido e assumido: não
+                                     // é rampa, é penhasco — já em 45min o recall do dia 04/08 cai de
+                                     // 71%→43% e não piora mais depois; 60 é o ponto de equilíbrio,
+                                     // não o ótimo de precisão pura (esse seria ~90, custando mais
+                                     // recall). Ratio de ritmo do mecânico testado e descartado (não
+                                     // separou os casos tão bem quanto o limiar simples).
+                                     // 0.23.0 = MADRUGADA DE 05/08 (ordem do Alvaro: 3 fases + backtest
                                      // até >=80%/dia). Diagnóstico: pesquisa de indústria (Lyft/Uber/
                                      // DoorDash + literatura de process monitoring) + análise de 92d.
                                      // Novo: (a) C3_RELOGIO_150 — piso, 150min, FORA de QA, não-quase-
@@ -172,6 +183,14 @@ const THRESHOLDS = {
   est_firme_min: 180,        // C3.5: projeção cedo só vira RESERVA com estimativa >=180
                              // (80,8% n=120); a faixa 150-180 mede 63,8% (n=141) e fica
                              // por conta do relógio/aviso. Backtest 92d: scripts/backtest-v23.mjs.
+  relogio_gate_min: 60,      // C3_RELOGIO: "quase pronta" pro relógio-150 = restante+QA < 60.
+                             // Era 30 até 05/08: investigado o dia 1 (4 erros, 50% de precisão
+                             // vs 86,6% no backtest) — em TODOS, a estimativa achava 40-71min
+                             // restantes e o real era 9-24. O limiar de 30 não pegava porque
+                             // mede a MESMA estimativa que infla. Testado no backtest de 92d:
+                             // 30→60 leva a regra de 86,6%→90,9% (n=317); acima de 60 o ganho
+                             // marginal cai rápido e o custo de recall não (penhasco, não
+                             // rampa) — 60 é o ponto de equilíbrio, não o ótimo de precisão pura.
   restante_min_reserva: 30,  // C3.5/C4: só sugere RESERVA se o que falta (restante + QA) for
                              // maior que o tempo de ENTREGAR uma reserva (handover medido ~30min).
                              // Moto quase pronta que cruza a linha de raspão ganha AVISO pelo
@@ -421,9 +440,12 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     input.is_piso === 1 &&
     !emQa &&
     input.min_desde_open >= THRESHOLDS.relogio_reserva_min &&
-    // moto em execução com restante curto está TERMINANDO — reserva não chega antes
+    // moto em execução com restante curto está TERMINANDO — reserva não chega antes.
+    // Limiar próprio (relogio_gate_min), não o restante_min_reserva do COMB/C4: aqui a
+    // pergunta é "a estimativa restante já é pequena o bastante pra suspeitar que está
+    // quase pronta", e a estimativa infla — por isso o limiar é mais alto que o handover.
     !(input.status_atual === "IN_PROGRESS" && input.tempo_estimado_min > 0 &&
-      tempoRestanteC3 + THRESHOLDS.qa_min < THRESHOLDS.restante_min_reserva)
+      tempoRestanteC3 + THRESHOLDS.qa_min < THRESHOLDS.relogio_gate_min)
   ) {
     return reserva(
       "C3_RELOGIO_150",

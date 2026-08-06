@@ -85,8 +85,18 @@ function regrasBase(o, t, e, cfg, mem) {
 
   // fase 1 novas
   if (cfg.relogio150 && !emQa && min >= (cfg.relogioMin ?? 150)) {
-    // gate: moto em execução com restante curto está terminando — não é caso de reserva
-    if (!cfg.relogioGate || !(e.st === "IN_PROGRESS" && e.est > 0 && restanteBruto + 8 < 30)) return "RELOGIO_150";
+    // gate: moto em execução com restante curto está terminando — não é caso de reserva.
+    // v2 (05/08): o gate original usava só o restante ESTIMADO (est-exec), que é
+    // exatamente o número que infla — 4 erros do dia 05/08 tinham restante estimado
+    // de 40-71min com restante REAL de 9-24min. Duas defesas extras, testáveis:
+    //  (a) subir o limiar do gate (relogioGateMin, default 30)
+    //  (b) exigir ritmo de execução: exec_feita/min_desde_open >= relogioGateRatio
+    //      (mecânico com a moto na mão a maior parte do tempo tende a estar perto do fim)
+    const limiarGate = cfg.relogioGateMin ?? 30;
+    const ritmo = min > 0 ? e.exec / min : 0;
+    const quaseProntaPorEstimativa = e.st === "IN_PROGRESS" && e.est > 0 && restanteBruto + 8 < limiarGate;
+    const quaseProntaPorRitmo = cfg.relogioGateRatio != null && e.st === "IN_PROGRESS" && ritmo >= cfg.relogioGateRatio;
+    if (!cfg.relogioGate || !(quaseProntaPorEstimativa || quaseProntaPorRitmo)) return "RELOGIO_150";
   }
   if (cfg.qaRej && o.rej && t >= o.rej && (o.rej - o.open) / 60 >= 165) return "QA_REJ_165";
 
@@ -151,6 +161,15 @@ const CONFIGS = {
   f2c: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.75, fator13: 0.7 },
   f2p: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.8, fator13: 0.75, persist: true },
   f2r160: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.8, fator13: 0.75 },
+  g45: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 45 },
+  g60: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60 },
+  g90: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 90 },
+  gr70: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateRatio: 0.70 },
+  gr75: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateRatio: 0.75 },
+  gr80: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateRatio: 0.80 },
+  g60r75: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, relogioGateRatio: 0.75 },
+  g75: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 75 },
+  g85: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 85 },
 };
 const nome = process.argv[2] || "f1";
 const dias = +(process.argv[3] || 92);
