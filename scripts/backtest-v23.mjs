@@ -94,7 +94,13 @@ function regrasBase(o, t, e, cfg, mem) {
     //      (mecânico com a moto na mão a maior parte do tempo tende a estar perto do fim)
     const limiarGate = cfg.relogioGateMin ?? 30;
     const ritmo = min > 0 ? e.exec / min : 0;
-    const quaseProntaPorEstimativa = e.st === "IN_PROGRESS" && e.est > 0 && restanteBruto + 8 < limiarGate;
+    // restanteBruto já vem clampado em 0 (Math.max) — quando exec>=est isso lê como
+    // "quase pronta" e é exatamente o contrário: a estimativa já provou estar errada.
+    // cfg.gateCru usa o valor SEM CLAMP: só é "quase pronta" se ainda sobrar estimativa
+    // POSITIVA e pequena — execução que já passou da estimativa nunca conta como pronta.
+    const restanteParaGate = cfg.gateCru ? e.est - e.exec : restanteBruto;
+    const quaseProntaPorEstimativa = e.st === "IN_PROGRESS" && e.est > 0 &&
+      (cfg.gateCru ? restanteParaGate >= 0 : true) && restanteParaGate + 8 < limiarGate;
     const quaseProntaPorRitmo = cfg.relogioGateRatio != null && e.st === "IN_PROGRESS" && ritmo >= cfg.relogioGateRatio;
     if (!cfg.relogioGate || !(quaseProntaPorEstimativa || quaseProntaPorRitmo)) return "RELOGIO_150";
   }
@@ -170,6 +176,7 @@ const CONFIGS = {
   g60r75: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, relogioGateRatio: 0.75 },
   g75: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 75 },
   g85: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 85 },
+  g60cru: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true },
 };
 const nome = process.argv[2] || "f1";
 const dias = +(process.argv[3] || 92);

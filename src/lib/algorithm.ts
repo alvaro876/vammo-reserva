@@ -7,7 +7,19 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.24.0"; // 0.24.0 = C3_RELOGIO_150: gate de "quase pronta" de 30→60min
+export const ALGO_VERSION = "0.25.0"; // 0.25.0 = fix no gate do C3_RELOGIO_150: usa o restante SEM
+                                     // CLAMP (permite negativo) — antes, execução que já passava
+                                     // da estimativa lia restante=0 e o gate calava a regra bem no
+                                     // caso mais perigoso (estimativa provada errada). Achado no
+                                     // caçador de erros de 06/08 (OS 50408: 159min de execução com
+                                     // estimativa de 71, ficou 176min em silêncio total até entrar
+                                     // em QA e sair do radar — nem contava como erro, só desaparecia).
+                                     // Backtest 92d: recall 71,9%→82,5% (+160 disparos), precisão da
+                                     // regra 91,0%→88,7%. Custo real, não escondido: alguns dias
+                                     // mostram precisão diária pior, porque escapes antes invisíveis
+                                     // passam a aparecer como tentativa (certa ou errada) em vez de
+                                     // silêncio — preferível pro cliente, mais ruidoso pro placar.
+                                     // 0.24.0 = C3_RELOGIO_150: gate de "quase pronta" de 30→60min
                                      // (investigação do dia 05/08 à noite). Precisão real do dia:
                                      // 50% (4/8) — em TODOS os 4 erros a estimativa achava 40-71min
                                      // restantes e o real era 9-24. O gate de 30 nunca pegava porque
@@ -444,8 +456,19 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     // Limiar próprio (relogio_gate_min), não o restante_min_reserva do COMB/C4: aqui a
     // pergunta é "a estimativa restante já é pequena o bastante pra suspeitar que está
     // quase pronta", e a estimativa infla — por isso o limiar é mais alto que o handover.
+    // BUG achado em 06/08 (caso 50408): tempoRestanteC3 vem CLAMPADO em 0 (Math.max) —
+    // quando a execução já passa da estimativa (moto rodou 159min, estimativa dizia 71),
+    // o gate lê restante=0 como "quase pronta" quando é o CONTRÁRIO: a estimativa já
+    // provou estar errada, a moto está descontrolada. Esse caso ficou 176min em silêncio
+    // até entrar em QA e sair do radar de vez — nem apareceu como erro, só desapareceu.
+    // Fix: usa o valor SEM CLAMP pro gate — só é "quase pronta" se ainda sobra estimativa
+    // POSITIVA e pequena; execução que já passou da estimativa nunca conta como pronta.
+    // Backtest 92d: recall geral 71,9%→82,5% (+160 disparos capturados), precisão da
+    // regra 91,0%→88,7% — queda pequena por ganho grande, e o "custo" aparente em alguns
+    // dias é escape que antes era invisível (nem contava como erro) virando tentativa.
     !(input.status_atual === "IN_PROGRESS" && input.tempo_estimado_min > 0 &&
-      tempoRestanteC3 + THRESHOLDS.qa_min < THRESHOLDS.relogio_gate_min)
+      (input.tempo_estimado_min - execFeita) >= 0 &&
+      (input.tempo_estimado_min - execFeita) + THRESHOLDS.qa_min < THRESHOLDS.relogio_gate_min)
   ) {
     return reserva(
       "C3_RELOGIO_150",
