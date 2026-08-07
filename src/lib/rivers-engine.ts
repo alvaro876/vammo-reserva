@@ -89,6 +89,7 @@ os_meta AS (
         greatest(JSONExtractBool(so.maintenance_metadata, 'triage', 'incidents', 'towing'),
                  JSONExtractBool(so.maintenance_metadata, 'checklist_tags', 'towing')) AS guincho,
         argMax(ss.status, ss.created_at) AS status_atual,
+        toUnixTimestamp(so.created_at) AS ts_criada,
         maxIf(ss.created_at, ss.status = 'AWAITING_MECHANIC') AS ts_awaiting_mec,
         dateDiff('minute', so.created_at, now('America/Sao_Paulo')) AS min_desde_open,
         -- maxIf sem match devolve epoch 1970 (não NULL) → dateDiff negativo e a anomalia
@@ -249,6 +250,23 @@ oferta_oficina AS (
       AND e.created_at >= now() - INTERVAL 10 DAY
     GROUP BY e.so_id
 ),
+chegada AS (
+    -- QUANDO O CLIENTE CHEGOU (check-in), não quando a OS foi aberta. Essa é a régua
+    -- do Maestro e a que o cliente sente: ele espera desde que pisou na base.
+    -- Descoberto em 06/08 pelo Alvaro (TJC3C62: Maestro mostrava 3h15, RIVERS 2h44 —
+    -- 31min de gap). Medido em 90d/Mooca: gap mediano 15min (p75 26, p90 42) e
+    -- 168 clientes (~2/dia) estouraram as 3h REAIS sendo invisíveis pro RIVERS.
+    -- Backtest com a régua nova: precisão 89,6%→95,5% e +57 clientes pegos a tempo.
+    SELECT c.so_id AS os_id, min(toUnixTimestamp(c.created_at)) AS ts_chegada
+    FROM maestro_scheduler_r.checkin c FINAL
+    WHERE c._peerdb_is_deleted = 0
+      AND c.checkin_type = 'MAINTENANCE'
+      AND c.so_id IS NOT NULL
+      AND c.status NOT IN ('NO_SHOW', 'CANCELLED', 'DROPOUT')
+      AND c.called_at IS NOT NULL
+      AND c.created_at >= now() - INTERVAL 10 DAY
+    GROUP BY c.so_id
+),
 is_piso AS (
     -- UNIÃO de dois sinais (medido em 14d): o "chamado no balcão" perde 29% dos
     -- clientes presentes (180/613), e o client_present da fonte vira NÃO quando o
@@ -301,6 +319,13 @@ SELECT
     om.guincho AS guincho,
     om.min_open_to_awaiting AS min_open_to_awaiting,
     om.min_ate_rejeicao AS min_ate_rejeicao,
+    -- relógio do CLIENTE: desde o check-in quando existe (e é anterior à OS, com gap
+    -- sensato de até 4h — guarda contra check-in bagunçado), senão desde a abertura.
+    if(coalesce(ch.ts_chegada, 0) > 0
+       AND ch.ts_chegada <= om.ts_criada
+       AND om.ts_criada - ch.ts_chegada <= 14400,
+       om.min_desde_open + intDiv(om.ts_criada - ch.ts_chegada, 60),
+       om.min_desde_open) AS min_desde_chegada,
     coalesce(p.tem_direcao, 0) AS tem_direcao,
     coalesce(ma.mecanico_nome, '') AS mecanico_atual,
     coalesce(p.n_pecas, 0) AS n_pecas,
@@ -328,6 +353,7 @@ LEFT JOIN pecas_diag p ON p.os_id = om.os_id
 LEFT JOIN sem_estoque se ON se.os_id = om.os_id
 LEFT JOIN pecas_criticas_nomes pcn ON pcn.os_id = om.os_id
 LEFT JOIN is_piso ip ON ip.os_id = om.os_id
+LEFT JOIN chegada ch ON ch.os_id = om.os_id
 LEFT JOIN servico_placa sp ON sp.os_id = om.os_id
 LEFT JOIN oferta_oficina oo ON oo.os_id = om.os_id
 ORDER BY om.min_desde_open DESC

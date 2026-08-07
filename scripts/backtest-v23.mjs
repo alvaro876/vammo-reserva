@@ -25,6 +25,12 @@ const DIRECAO = new Set([229, 240, 340, 359, 228]); // cluster direção/rodante
 const meta = JSON.parse(readFileSync(join(DL, "bt-meta.json"), "utf8"));
 const status = JSON.parse(readFileSync(join(DL, "bt-status.json"), "utf8"));
 const itens = JSON.parse(readFileSync(join(DL, "bt-itens.json"), "utf8"));
+// check-in do cliente: a régua do MAESTRO (e a que o cliente sente) conta daqui,
+// não da abertura da OS. Gap mediano de 15min (p90 42) — ver config "cli".
+let CHECKIN = new Map();
+try {
+  CHECKIN = new Map(JSON.parse(readFileSync(join(DL, "bt-checkin.json"), "utf8")).map((c) => [c.so_id, +c.t_checkin]));
+} catch { /* sem o export, roda na régua antiga */ }
 const OS = new Map();
 for (const m of meta) OS.set(m.so_id, { ...m, ev: [], it: [] });
 for (const s of status) OS.get(s.so_id)?.ev.push([+s.ts, s.status]);
@@ -38,6 +44,10 @@ for (const o of OS.values()) {
   o.cx = o.ev.find((e) => e[1] === "AWAITING_CX")?.[0] ?? 0;
   o.cancel = o.ev.some((e) => e[1] === "CANCELLED");
   o.rej = o.ev.find((e) => e[1] === "QA_REJECTED")?.[0] ?? 0;
+  // âncora do relógio do CLIENTE: check-in quando existe e é anterior à OS (guarda
+  // contra check-in posterior/estranho e contra gap absurdo > 4h).
+  const tc = CHECKIN.get(o.so_id);
+  o.checkin = tc && tc <= o.open && (o.open - tc) <= 4 * 3600 ? tc : o.open;
 }
 
 // estado da OS no instante t
@@ -68,7 +78,10 @@ function estado(o, t) {
 
 // ── regras (retornam nome da regra ou null) ───────────────────────────────────
 function regrasBase(o, t, e, cfg, mem) {
-  const min = (t - o.open) / 60;
+  // cfg.reguaCliente: o relógio das regras conta desde o CHECK-IN (régua do Maestro e
+  // do cliente), não desde a abertura da OS. Gap mediano 15min, p90 42min.
+  const ancora = cfg.reguaCliente ? o.checkin : o.open;
+  const min = (t - ancora) / 60;
   const minSt = (t - e.stIni) / 60;
   const emQa = QA.has(e.st);
   const restanteBruto = emQa ? (cfg.qaRej && e.st === "QA_REJECTED" ? 45 : 0) : Math.max(0, e.est - e.exec);
@@ -128,7 +141,11 @@ function roda(cfg, diasJanela) {
   let agg = { fired: 0, tp: 0, fp: 0, blows: 0, caught180: 0, leads: [], porRegra: {} };
   for (const o of OS.values()) {
     if (!o.open || o.cancel || o.open < corte) continue;
-    const dur = o.cx > 0 ? (o.cx - o.open) / 60 : (AGORA - o.open) / 60;
+    // A régua do DESFECHO acompanha a régua da decisão: se as regras contam desde o
+    // check-in, "estourou" também é medido desde o check-in (senão comparamos maçã
+    // com laranja). Pela régua do cliente, 27,2% estouram vs 22,3% pela régua da OS.
+    const ancora = cfg.reguaCliente ? o.checkin : o.open;
+    const dur = o.cx > 0 ? (o.cx - ancora) / 60 : (AGORA - ancora) / 60;
     if (o.cx === 0 && dur < 180) continue; // ainda em aberto e sem desfecho
     const blew = dur > 180;
     const fim = o.cx > 0 ? Math.min(o.cx, o.open + 8 * 3600) : Math.min(AGORA, o.open + 8 * 3600);
@@ -150,9 +167,9 @@ function roda(cfg, diasJanela) {
         if (process.env.DUMP && o.open >= AGORA - 6 * 86400)
           console.log(`  FP ${dia} os=${o.so_id} regra=${fire.r} disparo@${((fire.t - o.open) / 60).toFixed(0)}min real=${dur.toFixed(0)}min est_fim=${estado(o, fim).est} n=${estado(o, fim).n}`);
       }
-      if (blew && (fire.t - o.open) / 60 < 180) {
+      if (blew && (fire.t - ancora) / 60 < 180) {
         agg.caught180++; d.caught180++;
-        agg.leads.push(180 - (fire.t - o.open) / 60);
+        agg.leads.push(180 - (fire.t - ancora) / 60);
       }
     }
   }
@@ -177,6 +194,10 @@ const CONFIGS = {
   g75: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 75 },
   g85: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 85 },
   g60cru: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true },
+  // régua do CLIENTE (check-in) — o que o Maestro mostra. Mesmas regras, âncora nova.
+  cli: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
+  cli160: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
+  cli170: { relogio150: true, relogioMin: 170, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
 };
 const nome = process.argv[2] || "f1";
 const dias = +(process.argv[3] || 92);

@@ -7,7 +7,20 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.25.0"; // 0.25.0 = fix no gate do C3_RELOGIO_150: usa o restante SEM
+export const ALGO_VERSION = "0.26.0"; // 0.26.0 = RÉGUA DO CLIENTE. O relógio de TODAS as regras passa
+                                     // a contar desde o CHECK-IN, não desde a abertura da OS.
+                                     // Achado pelo Alvaro em 06/08 comparando as telas: Maestro
+                                     // mostrava 3h15 e o RIVERS 2h44 pra mesma moto (TJC3C62) —
+                                     // 31min de gap. Medido em 90d/Mooca: gap mediano 15min (p75
+                                     // 26, p90 42); 27,2% dos clientes estouram 3h pela régua
+                                     // real contra 22,3% pela régua da OS; 168 clientes (~2/dia)
+                                     // estouraram sendo INVISÍVEIS pro sistema. Backtest (config
+                                     // cli160): precisão 89,6%→95,5%, +57 clientes pegos a tempo,
+                                     // e todos os dias da amostra >=80% (30/07 67%→80%, 31/07
+                                     // 71%→93%). Gatilho do relógio 150→160 pra acompanhar a
+                                     // escala nova. A tela do CX passa a mostrar o MESMO número
+                                     // do Maestro — some a divergência que minava a confiança.
+                                     // 0.25.0 = fix no gate do C3_RELOGIO_150: usa o restante SEM
                                      // CLAMP (permite negativo) — antes, execução que já passava
                                      // da estimativa lia restante=0 e o gate calava a regra bem no
                                      // caso mais perigoso (estimativa provada errada). Achado no
@@ -185,9 +198,14 @@ export const ALGO_VERSION = "0.25.0"; // 0.25.0 = fix no gate do C3_RELOGIO_150:
                                      // 0.3.0 = estimativa de tempo calibrada (tempo-pecas.ts)
 
 const THRESHOLDS = {
-  relogio_reserva_min: 150,  // C3_RELOGIO: piso + 150min de relógio + FORA de QA = 87,3% de
-                             // estouro (n=887, hazard 90d) — o melhor sinal isolado que temos.
-                             // Em QA no mesmo minuto só 22,6% estouram → o split vale 65pp.
+  relogio_reserva_min: 160,  // C3_RELOGIO: piso + 160min de relógio DO CLIENTE + FORA de QA.
+                             // Era 150 na régua da OS; virou 160 em 06/08 junto com a troca
+                             // pra régua do check-in (gap mediano de 15min entre chegada e
+                             // abertura da OS — 160 desde a chegada ≈ 145 desde a OS, ou seja,
+                             // dispara um pouco MAIS cedo do que antes na prática).
+                             // Backtest 92d (config cli160): a regra vai a 97,6% e o conjunto
+                             // a 95,5% de precisão. Em QA no mesmo minuto só 22,6% estouram →
+                             // o split de QA vale 65pp e continua valendo.
   qa_rejeicao_tarde_min: 165,// C1_QA_TARDIA: rejeição de QA com 165min+ de relógio = 98,9%
                              // de estouro (n=91). Retrabalho não cabe no prazo.
   qa_retrabalho_min: 45,     // retrabalho pós-rejeição: mediana medida 45min (p75 86) —
@@ -283,6 +301,7 @@ export interface AlgoritmoInput {
   tem_direcao?: number;          // 1 = diagnóstico tem peça do cluster direção/rodante/discos
   min_no_status: number;
   min_desde_open: number;
+  min_desde_chegada?: number;    // relógio do CLIENTE (desde o check-in). Fallback: min_desde_open
   exec_acum_min?: number;        // execução acumulada (todos os episódios IN_PROGRESS), em min
   oferta_ativa?: number;         // 1 = a oficina já ofereceu reserva (e o cliente não recusou)
   capacidade_esperada?: number;  // nº esperado de mecânicos na base/hora atual (curva do histórico)
@@ -290,6 +309,14 @@ export interface AlgoritmoInput {
 }
 
 export function avaliarOS(input: AlgoritmoInput): Recomendacao {
+  // RELÓGIO DO CLIENTE (06/08): todas as regras de tempo contam desde o CHECK-IN, não
+  // desde a abertura da OS. O Maestro conta assim e o cliente sente assim — ele espera
+  // desde que pisou na base. Gap mediano de 15min (p90 42) entre chegada e abertura;
+  // medido em 90d/Mooca, 168 clientes (~2/dia) estouraram as 3h REAIS sendo invisíveis
+  // pro RIVERS. Backtest com a régua nova (config cli160): precisão 89,6%→95,5%,
+  // +57 clientes pegos a tempo, e TODOS os dias da amostra >=80%.
+  // Fallback pro relógio da OS quando não há check-in confiável (OS sem cliente em piso).
+  const relogio = input.min_desde_chegada ?? input.min_desde_open;
   const base = {
     os_id: input.os_id,
     tempo_previsto_min: input.tempo_estimado_min,
@@ -311,7 +338,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     // há diagnóstico ou quando a projeção não cabe nas 3h. 66,7%→80% no backtest.
     const execHard = input.exec_acum_min ?? 0;
     const restHard = QA_STATUSES.has(input.status_atual) ? 0 : Math.max(0, input.tempo_estimado_min - execHard);
-    if (input.tempo_estimado_min === 0 || input.min_desde_open + restHard + 8 > 180) {
+    if (input.tempo_estimado_min === 0 || relogio + restHard + 8 > 180) {
       return reserva("C1_HARD", "vistoria de seguro", base, "alta");
     }
   }
@@ -348,11 +375,11 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   if (
     input.is_piso === 1 &&
     input.tempo_estimado_min === 0 &&
-    input.min_desde_open > THRESHOLDS.espera_sem_diag_min
+    relogio > THRESHOLDS.espera_sem_diag_min
   ) {
     return reserva(
       "C1_ESPERA_SEM_DIAG",
-      `em piso há ${input.min_desde_open}min e ainda sem diagnóstico — esperando demais`,
+      `em piso há ${relogio}min e ainda sem diagnóstico — esperando demais`,
       base,
       "alta"
     );
@@ -364,11 +391,11 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   if (
     input.is_piso === 1 &&
     input.status_atual === "OPEN" &&
-    input.min_desde_open > THRESHOLDS.fila_diag_min
+    relogio > THRESHOLDS.fila_diag_min
   ) {
     return reserva(
       "C1_FILA_DIAG_LONGA",
-      `cliente em piso há ${input.min_desde_open}min e a moto ainda não entrou em diagnóstico`,
+      `cliente em piso há ${relogio}min e a moto ainda não entrou em diagnóstico`,
       base
     );
   }
@@ -381,12 +408,12 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   if (
     input.status_atual === "AWAITING_PARTS" &&
     input.min_no_status >= 30 &&
-    input.min_desde_open >= 90 &&
-    input.min_desde_open <= 480
+    relogio >= 90 &&
+    relogio <= 480
   ) {
     return reserva(
       "C2_TRAVADA_SEM_PECA",
-      `parada aguardando peça há ${input.min_no_status}min (OS aberta há ${input.min_desde_open}min)`,
+      `parada aguardando peça há ${input.min_no_status}min (cliente na base há ${relogio}min)`,
       base,
       "alta"
     );
@@ -399,12 +426,12 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   if (
     (input.status_atual === "AWAITING_SERVICE" || input.status_atual === "AWAITING_VMGMT") &&
     input.min_no_status >= 30 &&
-    input.min_desde_open >= 90 &&
-    input.min_desde_open <= 480
+    relogio >= 90 &&
+    relogio <= 480
   ) {
     return reserva(
       "C2_PARADA_TERCEIRO",
-      `parada em ${input.status_atual === "AWAITING_SERVICE" ? "serviço externo" : "gestão de frota"} há ${input.min_no_status}min (OS aberta há ${input.min_desde_open}min)`,
+      `parada em ${input.status_atual === "AWAITING_SERVICE" ? "serviço externo" : "gestão de frota"} há ${input.min_no_status}min (cliente na base há ${relogio}min)`,
       base
     );
   }
@@ -451,7 +478,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   if (
     input.is_piso === 1 &&
     !emQa &&
-    input.min_desde_open >= THRESHOLDS.relogio_reserva_min &&
+    relogio >= THRESHOLDS.relogio_reserva_min &&
     // moto em execução com restante curto está TERMINANDO — reserva não chega antes.
     // Limiar próprio (relogio_gate_min), não o restante_min_reserva do COMB/C4: aqui a
     // pergunta é "a estimativa restante já é pequena o bastante pra suspeitar que está
@@ -472,7 +499,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   ) {
     return reserva(
       "C3_RELOGIO_150",
-      `cliente em piso há ${input.min_desde_open}min e o conserto segue em andamento — 87% dos casos assim passam das 3h`,
+      `cliente em piso há ${relogio}min e o conserto segue em andamento — 87% dos casos assim passam das 3h`,
       base,
       "alta"
     );
@@ -486,7 +513,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       "alta"
     );
   }
-  const totalSemMec = input.min_desde_open + tempoRestanteC3 + THRESHOLDS.qa_min;
+  const totalSemMec = relogio + tempoRestanteC3 + THRESHOLDS.qa_min;
   // Projeção a menos de 30min da linha = fronteira: a sugestão sai marcada pro
   // encarregado saber que é decisão de foto de chegada, não de convicção.
   const confiancaTempo = (proj: number): "alta" | "fronteira" =>
@@ -506,13 +533,13 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // Se a soma do tempo já esperado + restante já passa de 3h, não adianta.
   if (
     input.tempo_estimado_min >= THRESHOLDS.est_firme_min &&
-    input.min_desde_open < 480 &&
+    relogio < 480 &&
     totalSemMec > THRESHOLDS.projecao_reserva_min &&
     tempoRestanteC3 + THRESHOLDS.qa_min >= THRESHOLDS.restante_min_reserva
   ) {
     return reserva(
       "C3_TEMPO_COMBINADO",
-      `já esperou ${input.min_desde_open}min + restante ~${tempoRestanteC3}min + ${THRESHOLDS.qa_min}min QA = ${totalSemMec}min total`,
+      `já esperou ${relogio}min + restante ~${tempoRestanteC3}min + ${THRESHOLDS.qa_min}min QA = ${totalSemMec}min total`,
       base,
       confiancaTempo(totalSemMec)
     );
@@ -531,7 +558,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     const esperaBruta = Math.round(filaMin / cap);   // fila de serviço ÷ mecânicos em paralelo
     const tempoEspera = input.is_piso === 1 ? Math.min(esperaBruta, THRESHOLDS.fila_piso_max_min) : esperaBruta;
     base.tempo_para_inicio_min = tempoEspera;
-    const tempoTotal = input.min_desde_open + tempoEspera + tempoRestanteC3 + THRESHOLDS.qa_min;
+    const tempoTotal = relogio + tempoEspera + tempoRestanteC3 + THRESHOLDS.qa_min;
     base.tempo_previsto_min = tempoTotal;
 
     // C4 DESLIGADO como gatilho de reserva (03/08 23h, meta 80%/dia do Alvaro).
@@ -549,7 +576,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     ) {
       return reserva(
         "C4_CAPACIDADE",
-        `oficina saturada: fila ~${tempoEspera}min (${filaMin}min de serviço ÷ ${cap} mec esperados) + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA, já esperou ${input.min_desde_open}min → ${tempoTotal}min`,
+        `oficina saturada: fila ~${tempoEspera}min (${filaMin}min de serviço ÷ ${cap} mec esperados) + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA, já esperou ${relogio}min → ${tempoTotal}min`,
         base,
         confiancaTempo(tempoTotal)
       );
@@ -570,8 +597,8 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     decision: "SEM_RESERVA" as ReservaDecision,
     rule_triggered: semDiag ? "C5_AGUARDA_DIAG" : "C5_DENTRO_PRAZO",
     motivo: semDiag
-      ? `aguardando diagnóstico (aberta há ${input.min_desde_open}min, sem estimativa de tempo ainda)`
-      : `dentro do prazo: aberta há ${input.min_desde_open}min, estimado ${input.tempo_estimado_min}min`,
+      ? `aguardando diagnóstico (na base há ${relogio}min, sem estimativa de tempo ainda)`
+      : `dentro do prazo: na base há ${relogio}min, estimado ${input.tempo_estimado_min}min`,
   };
 }
 

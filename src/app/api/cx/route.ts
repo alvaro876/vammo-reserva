@@ -97,9 +97,12 @@ export async function GET() {
           acidente: o.acidente === 1,
           imobilizada: o.imobilizada === 1,
           status_atual: o.status_atual,
-          minutos_na_base: o.min_desde_open,
+          // "na base há X" = desde o CHECK-IN do cliente, igual ao Maestro (06/08).
+          // Antes contava da abertura da OS e a tela divergia da tela da operação em
+          // ~15min na mediana (caso TJC3C62: Maestro 3h15 × RIVERS 2h44).
+          minutos_na_base: o.min_desde_chegada ?? o.min_desde_open,
           // negativo = já estourou o SLA
-          minutos_pro_sla: SLA_MIN - o.min_desde_open,
+          minutos_pro_sla: SLA_MIN - (o.min_desde_chegada ?? o.min_desde_open),
           reservar: rec.decision === "RESERVA",
           regra: rec.rule_triggered,
           motivo: rec.motivo,
