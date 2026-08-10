@@ -18,6 +18,8 @@ interface ClienteCx {
   guincho: boolean;
   acidente: boolean;
   imobilizada: boolean;
+  // sintoma relatado pelo cliente + histórico dele (CONTEXTO, não decide reserva)
+  sintoma: { nome: string; pct: number; n: number } | null;
   status_atual: string;
   minutos_na_base: number;
   minutos_pro_sla: number;
@@ -239,6 +241,13 @@ function CardAcao({ c }: { c: ClienteCx }) {
             {c.guincho && <Selo tom="ok">veio de guincho</Selo>}
             {c.acidente && <Selo tom="ok">acidente</Selo>}
             {c.imobilizada && <Selo tom="ok">moto imobilizada</Selo>}
+            {/* Sintoma do cliente: só destaca quando o histórico é ruim (>=50% passa de
+                3h, contra base de ~27%). Abaixo disso não vira selo pra não poluir a TV. */}
+            {c.sintoma && c.sintoma.pct >= 50 && (
+              <Selo tom="fronteira">
+                {c.sintoma.nome} — {c.sintoma.pct}% passa de 3h
+              </Selo>
+            )}
           </div>
           <p className="mt-3 text-sm text-slate-600">
             {c.motivo ||

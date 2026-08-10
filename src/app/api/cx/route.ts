@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runRivers } from "@/lib/rivers-engine";
 import { query } from "@/lib/clickhouse";
 import { basesTeste } from "@/lib/autonomia";
+import { piorSintoma } from "@/lib/sintomas";
 import { getAvisosCx, registrarAvisoCx } from "@/lib/supabase";
 
 const BASES: Record<number, string> = { 1: "Mooca", 34: "Osasco", 166: "SBC" };
@@ -108,6 +109,13 @@ export async function GET() {
           motivo: rec.motivo,
           confianca: rec.confianca ?? null,
           acao_automatica: o.acao_automatica,
+          // SINTOMA relatado pelo cliente (Maestro, 05/08) — CONTEXTO, não decide nada.
+          // Mostra o pior sintoma da OS com o histórico dele: existe desde a abertura,
+          // antes de qualquer peça, que é onde a estimativa fica em branco.
+          sintoma: (() => {
+            const s = piorSintoma(o.sintoma_ids ?? []);
+            return s ? { nome: s.nome, pct: s.pctEstouro, n: s.n } : null;
+          })(),
           tempo_previsto_min: rec.tempo_previsto_min,
           // estado no Maestro (o que a oficina já fez)
           ofertada_em: c && Number(c.ofertada_ts) > 0 ? Number(c.ofertada_ts) * 1000 : null,

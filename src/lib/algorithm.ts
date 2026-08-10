@@ -309,6 +309,8 @@ export interface AlgoritmoInput {
   troca_placa?: number;          // 1 = OS tem serviço de troca de placa (Detran, não bancada)
   min_ate_rejeicao?: number;     // minutos do relógio na 1ª rejeição de QA (-1 = nunca)
   tem_direcao?: number;          // 1 = diagnóstico tem peça do cluster direção/rodante/discos
+  sintoma_ids?: number[];        // sintomas relatados pelo cliente (Maestro, 05/08). CONTEXTO
+                                 // na tela, não decide reserva — ver src/lib/sintomas.ts
   min_no_status: number;
   min_desde_open: number;
   min_desde_chegada?: number;    // relógio do CLIENTE (desde o check-in). Fallback: min_desde_open

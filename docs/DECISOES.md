@@ -108,3 +108,26 @@ Promoção a decisor só com 3+ dias de validação ao vivo ≥85% — o placar 
 **Por quê:** teste honesto deu 89,3%/96,2% (n=28) — forte, mas pequeno e treinado de
 madrugada; a diferença entre "parece melhor" e "é melhor" é produção. Custo de esperar: zero.
 **Pendente:** decisão do Alvaro quando a sombra acumular os 3 dias.
+
+### D13 — Sintomas do cliente como contexto, não como decisor (2026-08-10) 🟡
+**Decisão:** os sintomas relatados pelo cliente (feature nova do Maestro, 05/08) entram no
+RIVERS como **contexto na tela do CX** — selo com o histórico do sintoma quando ele é ruim
+(≥50% de estouro). NÃO decidem reserva ainda.
+**Por quê:** o sinal é forte e chega no minuto zero da OS, que é exatamente onde o RIVERS é
+cego hoje (moto em execução sem peça lançada = estimativa em branco). Medido em 90d/Mooca
+por ponte indireta (sintoma → symptom_component → public_diagnosis_component → item_group
+por nome; 26 dos 33 sintomas casam, 110 grupos), a faixa vai de **15% a 70%** de estouro
+contra base de ~27%: carenagem quebrada 70% (n=476, mediana 4h52), farol 65%, moto sem
+força 58%, contra bolha/para-brisa 15% e USB 31%.
+**Por que não decide ainda:** só existem ~28 OSs com sintoma real; a medição DIRETA deu
+n=10/n=14 com sinal invertido — ruído puro. A ponte histórica mede a *peça trocada*, não o
+*sintoma relatado*, e isso pode divergir (cliente que diz "freio fraco" às vezes só precisa
+de regulagem). Promoção depende de ~3 semanas de volume real.
+**Achado que contraria o catálogo:** o campo `symptom.is_complex_service` NÃO prevê tempo.
+"Carenagem quebrada" é marcada como simples e é a pior (70%); "suspensão batendo seco" é
+marcada como complexa e dá 40%. Complexidade de diagnóstico ≠ tempo de reparo — não usar
+essa flag como atalho.
+**Onde vive:** calibração em `src/lib/sintomas.ts` (regenerável), coleta na CTE `sintomas`
+do rivers-engine, exposição em `/api/cx`, selo em `src/app/cx/page.tsx`.
+**Pendente:** medir em ~3 semanas se o sintoma relatado se comporta como a peça trocada; se
+sim, virar estimativa inicial (resolve a estimativa em branco pré-diagnóstico).

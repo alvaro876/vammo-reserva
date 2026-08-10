@@ -250,6 +250,23 @@ oferta_oficina AS (
       AND e.created_at >= now() - INTERVAL 10 DAY
     GROUP BY e.so_id
 ),
+sintomas AS (
+    -- SINTOMAS RELATADOS PELO CLIENTE (feature nova do Maestro, 05/08). É a primeira
+    -- informação que existe na OS — antes de qualquer peça ser lançada, que é onde o
+    -- RIVERS era cego. Aqui só coletamos os ids; a calibração (quanto cada sintoma
+    -- costuma demorar) vive em src/lib/sintomas.ts e hoje serve só como CONTEXTO na
+    -- tela, não decide reserva.
+    -- status: o mecânico tem que tratar cada sintoma (confirmar ou marcar como não
+    -- reproduzido) — por ora pegamos todos, o desfecho por sintoma fica pra medir depois.
+    SELECT ss.so_id AS os_id,
+        groupUniqArray(ss.symptom_id) AS sintoma_ids
+    FROM oms_r.so_symptom ss FINAL
+    WHERE ss._peerdb_is_deleted = 0
+      AND ss.deleted_at IS NULL
+      AND ss.so_id IS NOT NULL
+      AND ss.created_at >= now() - INTERVAL 10 DAY
+    GROUP BY ss.so_id
+),
 chegada AS (
     -- QUANDO O CLIENTE CHEGOU (check-in), não quando a OS foi aberta. Essa é a régua
     -- do Maestro e a que o cliente sente: ele espera desde que pisou na base.
@@ -327,6 +344,7 @@ SELECT
        om.min_desde_open + intDiv(om.ts_criada - ch.ts_chegada, 60),
        om.min_desde_open) AS min_desde_chegada,
     coalesce(p.tem_direcao, 0) AS tem_direcao,
+    coalesce(sn.sintoma_ids, []) AS sintoma_ids,
     coalesce(ma.mecanico_nome, '') AS mecanico_atual,
     coalesce(p.n_pecas, 0) AS n_pecas,
     coalesce(p.tempo_estimado_min, 0) AS tempo_estimado_min,
@@ -354,6 +372,7 @@ LEFT JOIN sem_estoque se ON se.os_id = om.os_id
 LEFT JOIN pecas_criticas_nomes pcn ON pcn.os_id = om.os_id
 LEFT JOIN is_piso ip ON ip.os_id = om.os_id
 LEFT JOIN chegada ch ON ch.os_id = om.os_id
+LEFT JOIN sintomas sn ON sn.os_id = om.os_id
 LEFT JOIN servico_placa sp ON sp.os_id = om.os_id
 LEFT JOIN oferta_oficina oo ON oo.os_id = om.os_id
 ORDER BY om.min_desde_open DESC
