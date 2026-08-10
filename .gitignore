@@ -55,3 +55,7 @@ yarn-error.log*
 # docs internos que nao vao pro repo publico
 docs/RIVERS-plano-adocao.docx
 docs/RIVERS-SUMMARY-EN.md
+
+# build do adaptador Cloudflare (OpenNext)
+/.open-next/
+.wrangler/

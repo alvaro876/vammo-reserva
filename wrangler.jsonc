@@ -1,0 +1,19 @@
+{
+  // RIVERS no Cloudflare Workers (migração de 10/08 — a conta Vercel foi bloqueada
+  // por limite/uso comercial no plano gratuito e derrubou site E motor por ~2h).
+  // Roda via @opennextjs/cloudflare (adaptador oficial de Next.js pra Workers).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vammo-reserva",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-10",
+  // nodejs_compat é obrigatório pro Next: o motor usa fetch/crypto/Buffer do Node.
+  // global_fetch_strictly_public evita que chamadas ao próprio domínio curto-circuitem.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

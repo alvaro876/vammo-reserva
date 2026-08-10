@@ -1,0 +1,56 @@
+# RIVERS — build e deploy no Cloudflare Workers
+#
+# Por que existe: em 10/08 a conta Vercel foi bloqueada (402 DEPLOYMENT_DISABLED,
+# limite/uso comercial no plano gratuito) e derrubou a tela E o motor por horas.
+# Migramos pro Cloudflare via @opennextjs/cloudflare.
+#
+# Por que no CI e não na máquina do Alvaro: o adaptador OpenNext avisa que "não é
+# totalmente compatível com Windows" e falha em duas etapas de cópia de arquivo
+# (EIO no cpSync, copyPackageTemplateFiles). No Linux do runner passa liso — e de
+# quebra o deploy fica automático a cada push, sem depender de ninguém estar na
+# frente do PC.
+#
+# SEGREDOS NECESSÁRIOS (Settings > Secrets and variables > Actions):
+#   CLOUDFLARE_API_TOKEN  — token com permissão "Edit Cloudflare Workers"
+#   CLOUDFLARE_ACCOUNT_ID — ID da conta (dashboard do Cloudflare, barra lateral)
+#
+# As variáveis de runtime (ClickHouse, Supabase, tokens) NÃO ficam aqui: são
+# secrets do próprio Worker, configuradas uma vez com `wrangler secret put NOME`
+# ou pelo dashboard (Workers > vammo-reserva > Settings > Variables).
+
+name: deploy-cloudflare
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - "calib/**"
+      - "**.md"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Checagem de tipos (portão antes de subir)
+        run: npx tsc --noEmit
+
+      - name: Build do worker (Next + OpenNext)
+        run: npm run cf:build
+
+      - name: Deploy no Cloudflare
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
