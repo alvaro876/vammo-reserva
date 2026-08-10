@@ -7,7 +7,17 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.26.0"; // 0.26.0 = RÉGUA DO CLIENTE. O relógio de TODAS as regras passa
+export const ALGO_VERSION = "0.27.0"; // 0.27.0 = moto de GUINCHO sai do escopo (pedido dos
+                                     // stakeholders, 08/08). Nova camada 0: guincho devolve
+                                     // C0_GUINCHO_FORA_ESCOPO sem avaliar regra nenhuma.
+                                     // Decisão de escopo, não de dado — igual ao serviço
+                                     // especial (03/07): quem tem fluxo próprio não recebe
+                                     // sugestão duplicada. CUSTO MEDIDO E CONSCIENTE: 22 casos
+                                     // em 90d no piso da Mooca (1 a cada 4 dias), e são os
+                                     // piores — 59,1% estouram (vs 26,9% dos normais), mediana
+                                     // de 5h11 (vs 2h). Segue LOGADO pra medir o que foi
+                                     // suprimido; religa com RIVERS_GUINCHO=on sem deploy.
+                                     // 0.26.0 = RÉGUA DO CLIENTE. O relógio de TODAS as regras passa
                                      // a contar desde o CHECK-IN, não desde a abertura da OS.
                                      // Achado pelo Alvaro em 06/08 comparando as telas: Maestro
                                      // mostrava 3h15 e o RIVERS 2h44 pra mesma moto (TJC3C62) —
@@ -329,6 +339,28 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       estoque_ok: input.n_sem_estoque === 0,
     },
   };
+
+  // ── CAMADA 0: Fora de escopo ───────────────────────────────────────────
+
+  // MOTO QUE CHEGOU DE GUINCHO está FORA do escopo do RIVERS (08/08, pedido dos
+  // stakeholders via Alvaro). Não é decisão estatística — é de escopo, como o
+  // "serviço especial" que saiu em 03/07: quem tem fluxo próprio não deve receber
+  // sugestão duplicada.
+  // O CUSTO está medido e é consciente: 22 casos em 90d no piso da Mooca (1 a cada
+  // 4 dias), mas são os PIORES — 59,1% estouram (contra 26,9% dos normais) e a
+  // mediana é 5h11 (contra 2h). Ou seja, sai do radar ~1 cliente a cada 4 dias que
+  // provavelmente vai esperar 5h+.
+  // A decisão segue LOGADA (fired_layer C0_GUINCHO_FORA_ESCOPO) pra medir quantos
+  // casos e desfechos foram suprimidos — se os stakeholders quiserem revisar, o
+  // número existe. Religa com RIVERS_GUINCHO=on, sem deploy.
+  if (input.guincho === 1 && process.env.RIVERS_GUINCHO !== "on") {
+    return {
+      ...base,
+      decision: "SEM_RESERVA" as ReservaDecision,
+      rule_triggered: "C0_GUINCHO_FORA_ESCOPO",
+      motivo: "moto chegou de guincho — fora do escopo do RIVERS (fluxo próprio)",
+    };
+  }
 
   // ── CAMADA 1: Regras duras ─────────────────────────────────────────────
 
