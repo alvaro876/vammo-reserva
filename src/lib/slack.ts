@@ -53,7 +53,7 @@ export async function notifyReserva(itens: ReservaNotificavel[]): Promise<number
     `🛵 *RIVERS — ${itens.length} reserva(s) sugerida(s)*\n` +
     linhas +
     (temAuto ? `\n_⚡ = regra de alta precisão — pode acatar direto_` : "") +
-    `\n<https://vammo-reserva.vercel.app|abrir o painel>`;
+    `\n<https://vammo-reserva.alvaro-d42.workers.dev|abrir o painel>`;
 
   try {
     const r = await fetch(webhook, {

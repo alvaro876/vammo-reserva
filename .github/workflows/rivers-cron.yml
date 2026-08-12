@@ -33,7 +33,7 @@ jobs:
           resp=$(curl -sS --max-time 120 --retry 2 --retry-delay 5 \
             -H "Authorization: Bearer ${{ secrets.RIVERS_CRON_SECRET }}" \
             -w "\nHTTP_STATUS:%{http_code}" \
-            "https://vammo-reserva.vercel.app/api/cron")
+            "https://vammo-reserva.alvaro-d42.workers.dev/api/cron")
           echo "$resp"
           status=$(echo "$resp" | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
           if [ "$status" != "200" ]; then
