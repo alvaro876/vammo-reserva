@@ -78,6 +78,7 @@ function estado(o, t) {
 
 // ── regras (retornam nome da regra ou null) ───────────────────────────────────
 function regrasBase(o, t, e, cfg, mem) {
+  if (cfg.guinchoFora && o.guincho === 1) return null; // C0 v0.27
   // cfg.reguaCliente: o relógio das regras conta desde o CHECK-IN (régua do Maestro e
   // do cliente), não desde a abertura da OS. Gap mediano 15min, p90 42min.
   const ancora = cfg.reguaCliente ? o.checkin : o.open;
@@ -128,7 +129,9 @@ function regrasBase(o, t, e, cfg, mem) {
   };
   if (!emQa && e.est > 240 && persistOk("ALTO")) return "ALTO";
   if (e.est > 0 && min < 480 && proj > 180 && restante + 8 >= 30) {
-    if (!cfg.combFirmeEst || e.est >= 180) { if (persistOk("COMB")) return "COMB"; }
+    const passaEst = !cfg.combFirmeEst || e.est >= (cfg.combEstMin ?? 180);
+    const passaProj = cfg.combProjMin != null && proj >= cfg.combProjMin;
+    if (passaEst || passaProj) { if (persistOk("COMB")) return "COMB"; }
   }
   mem.last = null;
   return null;
@@ -198,6 +201,24 @@ const CONFIGS = {
   cli: { relogio150: true, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
   cli160: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
   cli170: { relogio150: true, relogioMin: 170, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
+  // sem a trava de estimativa>=180 no COMBINADO: a projecao ja embute o relogio real,
+  // entao travar pela estimativa barra caso forte (OS 52484: projecao 232, estimativa
+  // 171 -> barrada por 9min, e a tela dizia 'dentro do prazo').
+  // recalibracao 12/08: bancada acelerou (mediana 73-96 -> 48-57min) e a trava por
+  // estimativa degradou (erros com est 158-227 terminando em 143-174min)
+  r28atual: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combProjMin: 230 },
+  rSemEscape: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true },
+  rEst210: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 210 },
+  rEst220: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 220 },
+  rEst240: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 240 },
+  rEst220esc: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 220, combProjMin: 260 },
+  cliSemTrava: { relogio150: true, relogioMin: 160, qaRej: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
+  cliProj200: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, combProjMin: 200 },
+  cliProj210: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, combProjMin: 210 },
+  cliProj220: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, combProjMin: 220 },
+  cliProj230: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, combProjMin: 230 },
+  cliProj240: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, combProjMin: 240 },
+  cliTrava150: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, combEstMin: 150, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true },
 };
 const nome = process.argv[2] || "f1";
 const dias = +(process.argv[3] || 92);

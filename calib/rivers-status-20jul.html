@@ -49,7 +49,7 @@
   .big{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:2px 0 10px}
 </style>
 <div class="wrap">
-  <p class="eyebrow">Vammo · Data &amp; Analytics · atualizado 20/jul (~15h50)</p>
+  <p class="eyebrow">Vammo · Data &amp; Analytics · atualizado 20/jul à noite (medição até ~15h50 + as mudanças da noite)</p>
   <h1>RIVERS — status e resumo dos últimos dias</h1>
   <p class="sub">Como o RIVERS (recomendador de moto reserva) vem se comportando na oficina. Janela: <b>25/jun a 20/jul (26 dias)</b>, nas 3 bases. Este é o <b>resumo com os números fechados</b>; o relatório completo com todos os gráficos é o de sempre (dados até 10/jul — este aqui é a atualização). Todo número abaixo tem a definição explícita na tabela da primeira seção, pra não sobrar dúvida de interpretação.</p>
 
@@ -102,7 +102,8 @@
       <tr><td>Furos reais na semana</td><td>1</td><td>4</td></tr>
       <tr><td>Excesso que passou de 3h</td><td>28%</td><td>28%</td></tr>
     </table>
-    <p class="takeaway warn">⚠️ <b>Por que caiu:</b> não é o algoritmo piorando — é <b>cobertura</b>. O RIVERS só roda quando alguém está com a tela aberta, e no fim de semana (18 e 19/jul) ele quase não rodou: <b>6 e 3 sugestões no dia</b>, contra ~30 num dia normal. Sem rodar, ele "perde" reservas que a oficina deu → o recall cai. É exatamente o buraco que o <b>agendador automático (cron)</b> resolve — e é a razão nº 1 dele ser a próxima entrega de infra.</p>
+    <p class="takeaway warn">⚠️ <b>Por que caiu:</b> não é o algoritmo piorando — é <b>cobertura</b>. O RIVERS só rodava quando alguém estava com a tela aberta, e no fim de semana (18 e 19/jul) ele quase não rodou: <b>6 e 3 sugestões no dia</b>, contra ~30 num dia normal. Sem rodar, ele "perde" reservas que a oficina deu → o recall cai.</p>
+    <p class="takeaway" style="background:#EAF5EE">✅ <b>Resolvido na noite de 20/jul:</b> o agendador automático foi <b>ligado e testado</b> — o RIVERS agora roda sozinho a cada 10 minutos, das 7h às 21h, todos os dias, fim de semana e feriado incluídos. Esse buraco de cobertura não existe mais.</p>
   </section>
 
   <!-- Leitura -->
@@ -118,11 +119,11 @@
         </ul>
       </div>
       <div class="at">
-        <b>Pontos de atenção</b>
+        <b>Pontos de atenção (estado na medição — ver correções abaixo)</b>
         <ul>
-          <li><b>Cobertura</b> derrubou a última semana (fim de semana sem rodar). Cron resolve.</li>
-          <li><b>Furos subiram</b> no acumulado (6 → 10) — perfil de serviço complexo de vários dias, que a estimativa de tempo ainda não captura bem.</li>
-          <li>A estimativa <b>superestima</b> moto com muitas peças (ajuste de calibração pendente).</li>
+          <li><b>Cobertura</b> derrubou a última semana (fim de semana sem rodar). ✅ Corrigido à noite: agendador ligado.</li>
+          <li><b>Furos subiram</b> no acumulado (6 → 10) — quase todos por cobertura/janela. ✅ Ambas corrigidas à noite.</li>
+          <li>A estimativa desviava nos consertos <b>pequenos</b>. ✅ Recalibrada à noite (validada fora da amostra).</li>
         </ul>
       </div>
     </div>
@@ -136,16 +137,33 @@
     <p class="q" style="margin:0">Essa regra dispara quando a moto está parada há mais de 2h30 <b>só esperando ser diagnosticada</b> — antes de qualquer conserto começar. Quando só ela marcou, quase 9 em 10 vezes a moto de fato estourou as 3h. É a regra mais certeira do sistema, e prova, com dado, que a <b>fila de diagnóstico</b> (a espera <i>antes</i> do reparo) é um gargalo real — e hoje é o nosso maior ponto cego, porque o algoritmo estima bem o conserto, mas mal a espera que vem antes dele.</p>
   </section>
 
-  <!-- Próximo passo: lógica de fila -->
+  <!-- O que mudou hoje -->
+  <section style="border-color:var(--good)">
+    <h2>O que mudou na noite de 20/jul (depois da medição acima)</h2>
+    <p class="q">Um pacote de correções entrou em produção — cada uma atacando uma causa medida neste relatório. Os números das próximas semanas já refletem essas mudanças.</p>
+    <table>
+      <tr><th>Mudança</th><th>O que resolve</th></tr>
+      <tr><td><b>Agendador ligado (roda sozinho, 10 em 10 min)</b></td><td>A queda de cobertura da última semana (fins de semana no escuro) — causa dos furos recentes</td></tr>
+      <tr><td><b>Janela de avaliação: 1 → 7 dias</b></td><td>A causa direta de 5 dos 6 primeiros furos (OS de sexta sumia do radar na segunda)</td></tr>
+      <tr><td><b>Regra de estoque reescrita</b></td><td>Ela acusava peça cosmética (baú, USB, borracha — que não seguram a moto) e não via peça na bancada/recebimento. Agora só peça que <b>trava</b> a moto dispara reserva. Precisão anterior: 11%</td></tr>
+      <tr><td><b>Estimativa de tempo recalibrada</b></td><td>O modelo superestimava consertos pequenos (validado em 14 mil OS, com teste fora da amostra)</td></tr>
+      <tr><td><b>Fila corrigida: só conta o piso à frente</b></td><td>A decomposição (abaixo) provou que o cliente de piso <b>fura a fila</b> — espera real por mecânico: 4–5 min. A conta antiga somava a fila inteira → era a maior fonte de exagero (regra "saturada", 68%)</td></tr>
+      <tr><td><b>Marcação de autonomia + interruptor</b></td><td>Sugestões das 3 regras de alta precisão vêm marcadas como "pode acatar direto"; qualquer regra sai do automático na hora via configuração</td></tr>
+      <tr><td><b>Monitor diário de precisão por regra</b></td><td>Calcula sozinho, todo dia, a precisão de cada regra e alerta se alguma automática cair abaixo de 70% — o medidor que protege a autonomia</td></tr>
+    </table>
+    <p class="takeaway">🎯 <b>Primeiro resultado do monitor (últimos 14 dias):</b> as 3 regras marcadas como automáticas estão em <b>100% de precisão</b> — esperando sem diagnóstico (11/11), anomalia de fluxo (19/19) e casos críticos (2/2). Somadas: <b>32 sugestões, zero erro</b>. É a base do teste de autonomia em fases.</p>
+  </section>
+
+  <!-- Decomposição / lógica de fila -->
   <section style="border-color:var(--rivers)">
-    <h2>Próximo passo no algoritmo: a lógica de fila (proposta do Simon)</h2>
-    <p class="q">Isso liga direto no doc de arquitetura v1 que o Simon escreveu. Em linguagem simples, o que vem:</p>
+    <h2>A lógica de fila (proposta do Simon): decomposição feita, primeiro fix no ar</h2>
+    <p class="q">O passo nº 1 do doc do Simon era medir onde as 3 horas se perdem. Medimos (30 dias de OS concluídas, por etapa e por base):</p>
     <ul>
-      <li><b>Hoje:</b> o RIVERS estima a fila de um jeito simples — trabalho acumulado ÷ mecânicos escalados. Funciona, mas erra nos picos (foi o que quebrou em Osasco no feriado) e <b>não enxerga a fila de diagnóstico</b>.</li>
-      <li><b>O que vamos implementar:</b> uma <b>lógica de fila mais fiel</b>, que modela a espera <b>por etapa</b> — incluindo a fila de diagnóstico (o ponto cego de cima) — e usa o histórico recente de chegadas, não só o instante. Assim a estimativa para de quebrar quando a carga muda.</li>
-      <li><b>O que NÃO muda:</b> a <b>decisão continua uma regra clara e auditável</b>. A lógica de fila melhora a <i>estimativa de tempo</i>; quem decide reservar continua sendo a camada de produto, explicável. É <b>evolução do que já existe, não reescrita.</b></li>
+      <li><b>O cliente de piso fura a fila</b> — espera real por mecânico: mediana de <b>4–5 min</b> (era o que a conta antiga mais errava). ✅ <b>Fix já aplicado</b>: a fila agora conta só o trabalho de piso à frente.</li>
+      <li><b>Handback é o tempo morto silencioso</b> que o doc previu: mediana ok (10–16 min), mas a cauda chega a <b>11 horas</b> (P90, Mooca) — moto pronta esperando entrega.</li>
+      <li><b>A fila de diagnóstico é o buraco do não-piso</b> (mediana de 3h+ só esperando ser olhada) e da SBC no piso (28 min vs 7–8 nas outras). No piso, 11–19% das motos passam de 3h; no não-piso, 70%+.</li>
+      <li><b>O que vem depois</b> (v1 do produto): estimar a espera por etapa com o histórico de chegadas — a decisão continua regra clara e auditável; a lógica de fila melhora a <i>estimativa</i>. Evolução, não reescrita.</li>
     </ul>
-    <p class="takeaway">🛠️ <b>Primeiro passo concreto (esta semana):</b> decompor o tempo da OS em 6 etapas (fila→diagnóstico · diagnóstico · fila→mecânico · execução · qualidade · entrega) e medir <b>onde os 3h se perdem, por base</b>. É o que diz onde a lógica de fila mais rende — e é o próximo passo nº1 do próprio doc do Simon.</p>
   </section>
 
   <p class="method">

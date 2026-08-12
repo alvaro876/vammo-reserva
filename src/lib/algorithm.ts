@@ -7,7 +7,28 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.27.0"; // 0.27.0 = moto de GUINCHO sai do escopo (pedido dos
+export const ALGO_VERSION = "0.29.0"; // 0.29.0 = RECALIBRAÇÃO DE 12/08 (ordem do Alvaro após 50%
+                                     // no dia 11): (a) REVERTE o escape por projeção da v0.28 —
+                                     // 2 dias de vida, 3 FPs, zero acertos confirmados, incluindo
+                                     // a TIS7A04 que o motivou (pronta em 156min); (b) trava da
+                                     // combinada 180→240 — a oficina acelerou pós-release de
+                                     // sintomas (bancada 73-96→48-57min) e est 182-227 passou a
+                                     // terminar em 143-174min. Backtest em dados frescos:
+                                     // dias 11-12/08 saem de 75-78% para 86-100%; conjunto 96,7%;
+                                     // recall 74,3→73,1% (relógio-160 absorve). Lição dupla:
+                                     // produção > backtest, e calibração tem prazo de validade
+                                     // quando o processo embaixo muda.
+                                     // 0.28.0 = (REVERTIDA em 0.29) escape por projeção no COMB. // 0.28.0 = conserta contradição no C3_TEMPO_COMBINADO: a
+                                     // trava por estimativa (>=180) barrava projeção forte.
+                                     // Caso pego pelo Alvaro (OS 52484, TIS7A04): projeção de
+                                     // 232min e a tela dizia "dentro do prazo: ~232min" — a
+                                     // estimativa era 171, 9min abaixo da trava. Agora tem
+                                     // ESCAPE: projeção >= 230 dispara mesmo com estimativa
+                                     // baixa. Backtest 92d: o COMBINADO vai de 93 para 252
+                                     // disparos com precisão MELHOR (88,2%→91,7%); conjunto
+                                     // 95,7%→94,9%, recall igual. Sem trava nenhuma seria
+                                     // 60,8% — a trava era certa, o critério estava errado.
+                                     // 0.27.0 = moto de GUINCHO sai do escopo (pedido dos
                                      // stakeholders, 08/08). Nova camada 0: guincho devolve
                                      // C0_GUINCHO_FORA_ESCOPO sem avaliar regra nenhuma.
                                      // Decisão de escopo, não de dado — igual ao serviço
@@ -220,9 +241,18 @@ const THRESHOLDS = {
                              // de estouro (n=91). Retrabalho não cabe no prazo.
   qa_retrabalho_min: 45,     // retrabalho pós-rejeição: mediana medida 45min (p75 86) —
                              // substitui o 0 que o motor assumia em QA_REJECTED desde v0.10.
-  est_firme_min: 180,        // C3.5: projeção cedo só vira RESERVA com estimativa >=180
-                             // (80,8% n=120); a faixa 150-180 mede 63,8% (n=141) e fica
-                             // por conta do relógio/aviso. Backtest 92d: scripts/backtest-v23.mjs.
+  // proj_escape_min (v0.28): REVERTIDO em 12/08. O escape por projeção viveu 2 dias
+  // e produziu 3 falsos positivos (est 158-171, motos prontas em 143-168min) sem
+  // nenhum acerto confirmado — incluindo a própria TIS7A04 que o motivou (156min,
+  // dentro do prazo). Produção > backtest: o backtest dizia 89,5%, o mundo real não.
+  est_firme_min: 240,        // C3.5: RECALIBRADO 12/08 (180→240). A oficina ACELEROU depois
+                             // do release de sintomas do Maestro (bancada mediana 73-96min na
+                             // semana anterior → 48-57min em 11-12/08) e a trava de 180
+                             // degradou: 4 erros em 2 dias com estimativa 182-227 e real de
+                             // 143-174min. Backtest em dados frescos: 180 dava 75-78% nos dias
+                             // ruins; 240 dá 86-100% (conjunto 96,7%), recall quase igual
+                             // (74,3→73,1% — o relógio-160 pega o que a combinada solta).
+                             // Backtest 92d: scripts/backtest-v23.mjs (config rEst240).
   relogio_gate_min: 60,      // C3_RELOGIO: "quase pronta" pro relógio-150 = restante+QA < 60.
                              // Era 30 até 05/08: investigado o dia 1 (4 erros, 50% de precisão
                              // vs 86,6% no backtest) — em TODOS, a estimativa achava 40-71min

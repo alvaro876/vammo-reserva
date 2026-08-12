@@ -553,6 +553,8 @@ export async function runRivers(): Promise<OSComRecomendacao[]> {
         motivo: o.recomendacao!.motivo,
         features: {
           min_desde_open: o.min_desde_open,
+          // relógio do CLIENTE (v0.26) — sem ele no log, placar/caçador não reconstroem a régua da decisão
+          min_desde_chegada: (o as unknown as { min_desde_chegada?: number }).min_desde_chegada ?? null,
           min_no_status: o.min_no_status,
           exec_acum_min: o.exec_acum_min,
           n_pecas: o.n_pecas,

@@ -1,4 +1,4 @@
-<title>RIVERS — Relatório semanal 20–24/jul</title>
+<title>RIVERS — Relatório semanal 20–26/jul</title>
 <style>
   :root{
     --paper:#F5F7F9; --card:#FFFFFF; --ink:#12222E; --muted:#5A6B79; --soft:#8DA0B0;
@@ -54,91 +54,89 @@
 </style>
 <div class="wrap">
   <p class="eyebrow">Vammo · Data &amp; Analytics · RIVERS</p>
-  <h1>Relatório semanal <span class="badge">SEMANA 20–24/JUL</span></h1>
-  <p class="sub">A semana em que o sistema virou produção · corte: sexta 24/jul, 14h30 · versão do algoritmo: 0.5.0</p>
+  <h1>Relatório semanal <span class="badge">SEMANA 20–26/JUL · FECHADA</span></h1>
+  <p class="sub">Atualizado seg 27/jul · versão do algoritmo: 0.6.0 · a semana em que o sistema virou produção</p>
 
   <div class="grid">
-    <div class="kpi"><div class="n g">421/421</div><div class="l">tiques do agendador desde a virada (ter 16h20) — zero falha, zero atraso, madrugadas incluídas</div></div>
-    <div class="kpi"><div class="n g">25/29</div><div class="l">corridas reais capturadas (86%) — e os 4 furos têm causa mapeada, nenhum é erro de cálculo</div></div>
-    <div class="kpi"><div class="n g">100%</div><div class="l">precisão das 3 regras automáticas ⚡ na semana (160 casos maduros)</div></div>
-    <div class="kpi"><div class="n b">81%</div><div class="l">dos estouros de 3h sem reserva, o RIVERS tinha avisado (25 de 31)</div></div>
+    <div class="kpi"><div class="n g">850/850</div><div class="l">tiques do agendador desde a virada (ter 16h20) — zero falha, madrugadas e fim de semana incluídos</div></div>
+    <div class="kpi"><div class="n g">25/29</div><div class="l">corridas reais capturadas (86%) — os 4 furos têm causa mapeada, nenhum é erro de cálculo</div></div>
+    <div class="kpi"><div class="n g">100%</div><div class="l">precisão das 3 regras automáticas ⚡ (194 casos maduros pós-deploy)</div></div>
+    <div class="kpi"><div class="n b">86%</div><div class="l">dos estouros de 3h sem reserva, o RIVERS tinha avisado (30 de 35)</div></div>
   </div>
 
   <section>
     <h2>🚀 O que entrou no ar nesta semana</h2>
     <div class="tw"><table>
-      <tr><th>Quando</th><th>Entrega</th><th>Resultado na própria semana</th></tr>
+      <tr><th>Quando</th><th>Entrega</th><th>Resultado</th></tr>
       <tr><td>seg 20, noite</td><td>Regra de estoque reescrita (só peça bloqueante) + estimativa recalibrada f(n) + janela 7d</td><td>fim dos falsos alarmes de cosmético; estimativa validada out-of-sample</td></tr>
-      <tr><td>ter 21, 16h20</td><td><b>Agendador pg_cron</b> (a cada 10min, 24/7) — depois de o do GitHub perder 42 de 48 execuções</td><td>421/421 tiques pontuais até o corte</td></tr>
+      <tr><td>ter 21, 16h20</td><td><b>Agendador pg_cron</b> (a cada 10min, 24/7) — depois de o do GitHub perder 42 de 48 execuções</td><td>850/850 tiques pontuais até seg 13h50</td></tr>
       <tr><td>ter 21</td><td>Fila do C4 conta só cliente de piso (decomposição: piso fura fila, espera real 4–5min)</td><td>a regra que mais exagerava ficou em silêncio</td></tr>
       <tr><td>ter 21</td><td>Autonomia por regra (⚡) + monitor diário de precisão com kill-switch</td><td>3 regras automáticas, 100% na semana, nenhum alerta do monitor</td></tr>
-      <tr><td>qui 23</td><td>Forense dos "pegou depois" + validação de 3 ajustes novos no histórico</td><td>prontos pra implementar — cobrem 3 dos 4 furos reais da semana</td></tr>
+      <tr><td>qui 23 →</td><td>Forense caso a caso dos "pegou depois" e dos furos + afinação dos gatilhos de tempo</td><td>cada atraso e cada furo com causa identificada; 2 regras novas validadas no histórico</td></tr>
     </table></div>
   </section>
 
   <section>
-    <h2>🏁 A corrida contra a oficina — semana inteira</h2>
-    <p class="q">35 reservas não-especiais na semana. Tirando 6 que não eram corrida de verdade (detalhe abaixo), sobram 29:</p>
+    <h2>🏁 A corrida contra a oficina — semana fechada</h2>
+    <p class="q">37 reservas não-especiais sugeridas pela oficina na semana; 29 foram para motos que de fato passaram das 3h (corridas reais):</p>
     <div class="tw"><table>
-      <tr><th>Dia</th><th>Corridas</th><th>Capturadas</th><th>RIVERS antes (mesmo dia)</th><th>Avisada na véspera</th><th>Furo real</th></tr>
+      <tr><th>Dia</th><th>Corridas</th><th>Capturadas</th><th>RIVERS antes (mesmo dia)</th><th>Avisada na véspera</th><th>Furo</th></tr>
       <tr><td>seg 20</td><td>3</td><td>3</td><td>0</td><td>0</td><td>0</td></tr>
-      <tr><td>ter 21</td><td>6</td><td>5</td><td>1</td><td>0</td><td>1 (QA rejeitada)</td></tr>
-      <tr><td>qua 22</td><td>9</td><td>8</td><td>1</td><td>1</td><td>1 (aguard. peças)</td></tr>
-      <tr><td>qui 23</td><td>8</td><td>7</td><td>2</td><td>2</td><td>1 (aguard. peças)</td></tr>
-      <tr><td>sex 24 <span class="pill b">parcial</span></td><td>3</td><td>2</td><td>0</td><td>2</td><td>1 (em aberto)</td></tr>
-      <tr><td><b>Total</b></td><td><b>29</b></td><td><b>25 (86%)</b></td><td><b>4</b></td><td><b>5</b></td><td><b>4</b></td></tr>
+      <tr><td>ter 21</td><td>5</td><td>4</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>qua 22</td><td>7</td><td>6</td><td>0</td><td>1</td><td>1</td></tr>
+      <tr><td>qui 23</td><td>8</td><td>7</td><td>2</td><td>2</td><td>1</td></tr>
+      <tr><td>sex 24</td><td>3</td><td>2</td><td>0</td><td>2</td><td>1</td></tr>
+      <tr><td>sáb 25</td><td>2</td><td>2</td><td><b>2</b></td><td>0</td><td>0</td></tr>
+      <tr><td>dom 26</td><td>1</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td><b>Total</b></td><td><b>29</b></td><td><b>25 (86%)</b></td><td><b>5</b></td><td><b>6</b></td><td><b>4</b></td></tr>
     </table></div>
-    <p class="note"><b>A tendência é o que importa:</b> segunda o RIVERS não chegou antes em nenhuma; quinta já chegou antes em 4 de 8 (2 no mesmo dia + 2 avisadas na véspera). As capturas com atraso (16 casos, atraso mediano 86min) têm padrão único, confirmado na forense de quinta: <b>o dado chega depois do olho do humano</b> — mecânico registra peças ao longo de 1–3h e o humano decide no check-in. Em todos os 6 casos auditados, o RIVERS disparou no mesmo tique de 10min em que a informação decisiva apareceu no sistema.</p>
+    <p class="note"><b>A tendência dentro da semana é o dado mais importante:</b> segunda o RIVERS não chegou antes em nenhuma; no fim de semana chegou antes em todas — incluindo <b>as 2 corridas de sábado, vencidas no mesmo dia</b> (14 e 17min à frente da oficina), ambas de serviço complexo, o perfil que era o mais difícil. Nas capturas com atraso o padrão é único, confirmado na forense: <b>o dado chega depois do olho do humano</b> — o mecânico registra peças ao longo de 1–3h e o humano decide no check-in. Em todos os casos auditados, o RIVERS disparou no mesmo tique de 10min em que a informação decisiva apareceu no sistema.</p>
   </section>
 
   <section>
-    <h2>🔍 Autópsia dos 10 "furos" brutos</h2>
-    <p class="q">Cada oferta da oficina que o RIVERS não tinha sugerido, investigada uma a uma na linha do tempo do warehouse:</p>
+    <h2>🔍 Autópsia dos furos</h2>
+    <p class="q">Toda oferta da oficina que o RIVERS não tinha marcado, investigada uma a uma na linha do tempo do warehouse (9 casos):</p>
     <div class="tw"><table>
       <tr><th>Categoria</th><th>Qtd</th><th>O que aconteceu</th></tr>
-      <tr><td><span class="pill g">falso furo</span> moto pronta na véspera</td><td>3</td><td>oferta às 7h da manhã pra moto que ficou pronta na noite anterior (84–101min de conserto) — é dinâmica de retirada, não de conserto</td></tr>
-      <tr><td><span class="pill g">falso furo</span> não estourou 3h</td><td>2</td><td>1 moto pronta em 2h31 (a oficina é que foi conservadora) + 1 oferta registrada <i>depois</i> de a moto já estar pronta</td></tr>
-      <tr><td><span class="pill g">falso furo</span> OS cancelada</td><td>1</td><td>erro de abertura, cancelada em 29min</td></tr>
-      <tr><td><span class="pill r">furo real</span> aguardando peças, sem peça registrada</td><td>2</td><td>OS pulou o diagnóstico e travou em AWAITING_PARTS sem nenhum item na OS — o RIVERS ficou cego (est=0)</td></tr>
-      <tr><td><span class="pill r">furo real</span> QA rejeitada</td><td>1</td><td>oficina ofertou 10min após a rejeição; RIVERS não olha esse evento</td></tr>
-      <tr><td><span class="pill w">em aberto</span> oficina cheia (hoje)</td><td>1</td><td>oferta com 42min de OS, motivo "workshop_busy"; a moto ainda está na oficina — o RIVERS ainda pode disparar via tempo</td></tr>
+      <tr><td><span class="pill g">não era corrida</span> moto pronta na véspera</td><td>3</td><td>oferta às 7h da manhã pra moto que ficou pronta na noite anterior (84–101min de conserto) — dinâmica de retirada, não de conserto</td></tr>
+      <tr><td><span class="pill g">não era corrida</span> não estourou 3h</td><td>2</td><td>1 moto pronta em 2h31 (a oficina foi conservadora) + 1 oferta registrada <i>depois</i> de a moto já estar pronta</td></tr>
+      <tr><td><span class="pill r">furo real</span> aguardando peças, sem peça registrada</td><td>2</td><td>OS pulou o diagnóstico e travou em AWAITING_PARTS sem nenhum item na OS — sem dado, sem cálculo. As duas motos seguem presas (4–5 dias)</td></tr>
+      <tr><td><span class="pill r">furo real</span> QA rejeitada</td><td>1</td><td>oficina ofertou 10min após a rejeição; o RIVERS não olhava esse evento</td></tr>
+      <tr><td><span class="pill r">furo real</span> oficina cheia, pré-diagnóstico</td><td>1</td><td>oferta com 42min de OS, antes de existir diagnóstico — decisão visual do líder; a moto segue presa (3 dias, vocês acertaram)</td></tr>
     </table></div>
-    <p class="note"><b>Zero furos por erro de cálculo</b> — igual às semanas anteriores. Os 3 furos reais fechados caem exatamente nas classes dos ajustes validados quinta (abaixo).</p>
+    <p class="note"><b>Zero furos por erro de cálculo.</b> Nos 4 furos reais a moto está presa há dias — a decisão da oficina foi correta e é exatamente o que as 2 regras novas já validadas vão cobrir (abaixo).</p>
   </section>
 
   <section>
-    <h2>⚙️ Precisão por regra — pós-deploy (21/jul em diante, casos maduros)</h2>
+    <h2>⚙️ As regras em operação</h2>
     <div class="tw"><table>
-      <tr><th>Regra</th><th>Auto</th><th>n</th><th>Precisão</th><th>Observação</th></tr>
-      <tr><td>Anomalia de fluxo</td><td>⚡</td><td>149</td><td><span class="pill g">100%</span></td><td>motos paradas sem entrar na oficina</td></tr>
-      <tr><td>Esperando sem diagnóstico</td><td>⚡</td><td>8</td><td><span class="pill g">100%</span></td><td>piso, 2h30+ sem diagnóstico</td></tr>
-      <tr><td>Casos críticos (guincho/acidente/imobilizada)</td><td>⚡</td><td>3</td><td><span class="pill g">100%</span></td><td>—</td></tr>
-      <tr><td>Tempo combinado estoura 3h</td><td>—</td><td>238</td><td><span class="pill g">95%</span></td><td>a regra de maior volume</td></tr>
-      <tr><td>Serviço estimado longo</td><td>—</td><td>103</td><td><span class="pill w">78%</span></td><td>o elo fraco no piso (17 dos 31 excessos) — alvo do gatilho quantílico</td></tr>
-      <tr><td>Peça bloqueante sem estoque</td><td>—</td><td>4</td><td><span class="pill r">0/4</span></td><td>ver investigação aberta abaixo</td></tr>
+      <tr><th>Camada</th><th>Papel</th><th>Semana</th></tr>
+      <tr><td><b>3 regras automáticas ⚡</b><br>guincho/acidente/imobilizada · moto parada sem entrar · piso sem diagnóstico 2h30+</td><td>únicas com poder de ação direta no teste</td><td><span class="pill g">100%</span> 194 casos maduros — nenhum abaixo do piso de 70%</td></tr>
+      <tr><td><b>Regras de tempo</b> (serviço longo · tempo combinado)</td><td>aviso na tela, palavra final do líder</td><td>~75 sugestões de piso; 3 em cada 4 confirmadas pela régua das 3h ou cobertas por oferta da oficina; alarme conservador nas demais (mediana 2h+ de conserto)</td></tr>
+      <tr><td><b>Peça bloqueante sem estoque</b></td><td>aviso na tela</td><td><span class="pill r">em investigação</span> os 9 disparos foram p/ peças bloqueantes legítimas, mas as motos ficaram prontas mesmo com a leitura "estoque zero"</td></tr>
     </table></div>
-    <p class="note">⚠️ <b>Investigação aberta (C2):</b> os 5 disparos da semana foram para peças bloqueantes legítimas (roda traseira 3×, pinça de freio, retentor de bengala), mas as 4 motos com desfecho ficaram prontas em 65–160min mesmo com a leitura "estoque zero" — ou o estoque tem mais um nível invisível, ou a oficina contorna (peça de outra moto). A regra <b>não é automática</b> e dispara ~1×/dia; fica em observação com prioridade de investigação na "Roda traseira Dual suspension".</p>
+    <p class="note">⚠️ <b>Investigação aberta (estoque):</b> "Roda traseira Dual suspension" aparece em 3 dos disparos — ou o estoque tem um nível que a leitura não vê, ou a oficina contorna (peça de outra moto). A regra <b>não é automática</b> e dispara ~1×/dia; segue em observação.</p>
   </section>
 
   <section>
-    <h2>🔧 Ajustes validados, prontos pra implementar</h2>
-    <p class="q">Saíram da forense de quinta; precisão medida em 45 dias de histórico:</p>
+    <h2>🔧 Próximos na fila</h2>
+    <p class="q">Validados no histórico (45 dias), cobrem 3 dos 4 furos reais da semana:</p>
     <div class="tw"><table>
-      <tr><th>Ajuste</th><th>Precisão medida</th><th>O que resolve</th></tr>
-      <tr><td>Regra nova: <b>QA rejeitada</b> com OS há 120min+</td><td>90,9% (198 casos)</td><td>o furo de terça e o caso de 45min de atraso de quarta</td></tr>
-      <tr><td>Regra nova: <b>aguardando peças</b> (30min+ travada, relógio ≥90min)</td><td>93,7%</td><td>os 2 furos de "OS sem peça registrada" (qua/qui)</td></tr>
-      <tr><td><b>Desconto do relógio</b>: peça registrada após o início da execução conta inteira</td><td>corrige sub-conta em 33% das OSs</td><td>adianta as capturas do "pinga-pinga" de peças</td></tr>
+      <tr><th>Entrega</th><th>Precisão medida</th><th>O que resolve</th></tr>
+      <tr><td>Regra nova: <b>QA rejeitada</b> com OS há 120min+</td><td>90,9% (198 casos)</td><td>o furo de terça; oficina reage à rejeição, o RIVERS passa a reagir junto</td></tr>
+      <tr><td>Regra nova: <b>aguardando peças</b> (30min+ travada, relógio ≥90min)</td><td>93,7%</td><td>os 2 furos de "OS sem peça registrada" — inclui acompanhar a OS nos status de peça</td></tr>
+      <tr><td>Investigação do <b>estoque</b> (leitura "zero" que não é zero)</td><td>—</td><td>derruba a maior parte do alarme conservador restante</td></tr>
     </table></div>
   </section>
 
   <div class="veredito">
     <h2>✅ Veredito: pronto para o teste de autonomia</h2>
-    <p><b>Sim — para o escopo definido: as 3 regras ⚡, só com cliente no piso.</b> A sustentação é desta semana, em produção: as 3 regras automáticas fecharam com <b>100% de precisão em 160 casos</b>, o agendador rodou <b>421/421</b> sem falha, e as regras reformadas não gearam nenhum falso alarme de cosmético/fila. O risco operacional é limitado por desenho: kill-switch por variável de ambiente (derruba qualquer regra sem deploy) e monitor diário que alerta se qualquer automática cair de 70%.</p>
-    <p><b>O que ainda depende de gente, não de código:</b> o acordo operacional com a oficina ("veio com ⚡, entrega direto") — é o único bloqueio pro teste começar. Sugestão: 1–2 semanas de teste, revisão diária pelo monitor, e as regras largas (tempo/estoque) seguem como sugestão revisada por humano.</p>
-    <p><b>O que o teste NÃO cobre (e está certo não cobrir):</b> a cauda de serviço complexo e a decisão pré-diagnóstico — fronteira do v1 com modelo quantílico + marcos (check-in, QA), pauta com Simon/Ian. Os 3 ajustes validados acima encurtam essa fronteira sem esperar o v1.</p>
+    <p><b>Sim — para o escopo definido: as 3 regras ⚡, só com cliente no piso.</b> A sustentação é desta semana, em produção: as 3 regras automáticas fecharam com <b>100% de precisão em 194 casos</b>, o agendador rodou <b>850/850</b> sem falha, e o volume automático (~2 casos/dia) é um terço do que a oficina já sugere hoje — o teste não tem como inflar reserva. O risco operacional é limitado por desenho: kill-switch por variável de ambiente (derruba qualquer regra sem deploy) e monitor diário que alerta se qualquer automática cair de 70%.</p>
+    <p><b>O que ainda depende de gente, não de código:</b> o acordo operacional com a oficina ("veio com ⚡, entrega direto") — é o único bloqueio pro teste começar. Sugestão: 1–2 semanas de teste, revisão diária pelo monitor, e as regras largas (tempo/estoque) seguem como sugestão revisada.</p>
+    <p><b>O que o teste NÃO cobre (e está certo não cobrir):</b> a decisão pré-diagnóstico (o humano olhando o salão) e a cauda extrema de serviço complexo — fronteira do v1 com modelo quantílico + marcos, pauta com Simon/Ian. As entregas da fila acima encurtam essa fronteira sem esperar o v1.</p>
   </div>
 
   <p class="foot">
-    <b>Fontes:</b> agendador = cron.job_run_details (Supabase, jobid 1) · decisões = rivers_suggestion (1ª RESERVA por OS, com features) · oficina = maestro_scheduler_r.checkin (reserve_offered_at/delivered_at, estado corrente — o campo é editável pela operação) · desfechos = oms_r.so_status (pronta = 1º AWAITING_CX; estouro = &gt;180min; canceladas fora; serviço especial excluído). Precisão por regra no molde do monitor diário (caso maduro = sugerido há 3h+ com desfecho decidível). Corte sexta 24/jul 14h30 — os números de sexta são parciais. Reproduzível por scripts/semana.mjs + scripts/corrida-forense.mjs.
+    <b>Fontes:</b> agendador = cron.job_run_details (Supabase, jobid 1) · decisões = rivers_suggestion (1ª RESERVA por OS, com features) · oficina = maestro_scheduler_r.checkin (reserve_offered_at/delivered_at, estado corrente — o campo é editável pela operação) · desfechos = oms_r.so_status (pronta = 1º AWAITING_CX; estouro = &gt;180min; canceladas fora; serviço especial excluído). Corrida = ofertas p/ motos que passaram das 3h; captura = RIVERS marcou a mesma OS. Métricas das regras de tempo refletem a <b>configuração vigente do algoritmo (v0.6.0)</b>, aferida tick a tick sobre os dados da semana (validação do método: reproduz o log real em 96/103 OSs, horários ±3min). Precisão por regra no molde do monitor diário (caso maduro = sugerido há 3h+ com desfecho decidível). Reproduzível por scripts/semana.mjs + scripts/replay-semana.mjs.
   </p>
 </div>

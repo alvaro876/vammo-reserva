@@ -1,0 +1,164 @@
+<title>RIVERS — Plano de adoção · teste assistido</title>
+<style>
+  :root{
+    --paper:#F5F7F9; --card:#FFFFFF; --ink:#12222E; --muted:#5A6B79; --soft:#8DA0B0;
+    --line:#DBE3EA; --blue:#1E6FB8; --blue-soft:#CFE0EF; --good:#1C824A; --good-soft:#DDEEE3;
+    --warn:#B4740F; --warn-soft:#F6E8CE; --bad:#C03D3D; --bad-soft:#F3D2D2;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--paper:#0D1922; --card:#14232F; --ink:#EAF1F6; --muted:#8FA3B2; --soft:#6B8093;
+      --line:#22323F; --blue:#57A2E4; --blue-soft:#1C3A57; --good:#3BB170; --good-soft:#173627;
+      --warn:#E09A3E; --warn-soft:#3A2D14; --bad:#E06060; --bad-soft:#46201F;}
+  }
+  :root[data-theme="light"]{--paper:#F5F7F9; --card:#FFFFFF; --ink:#12222E; --muted:#5A6B79; --soft:#8DA0B0;
+    --line:#DBE3EA; --blue:#1E6FB8; --blue-soft:#CFE0EF; --good:#1C824A; --good-soft:#DDEEE3; --warn:#B4740F; --warn-soft:#F6E8CE; --bad:#C03D3D; --bad-soft:#F3D2D2;}
+  :root[data-theme="dark"]{--paper:#0D1922; --card:#14232F; --ink:#EAF1F6; --muted:#8FA3B2; --soft:#6B8093;
+    --line:#22323F; --blue:#57A2E4; --blue-soft:#1C3A57; --good:#3BB170; --good-soft:#173627; --warn:#E09A3E; --warn-soft:#3A2D14; --bad:#E06060; --bad-soft:#46201F;}
+  *{box-sizing:border-box}
+  body{font-family:"Segoe UI",system-ui,sans-serif; background:var(--paper); color:var(--ink); margin:0;
+    font-size:15px; font-variant-numeric:tabular-nums; line-height:1.6;}
+  .wrap{max-width:860px; margin:0 auto; padding:44px 24px 72px}
+  .eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:var(--soft); font-weight:700; margin:0 0 10px}
+  h1{font-size:29px; letter-spacing:-.02em; margin:0 0 8px; text-wrap:balance}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 28px}
+
+  .resumo{background:var(--card); border:1px solid var(--line); border-left:4px solid var(--blue); border-radius:12px;
+    padding:22px 26px; margin-bottom:32px}
+  .resumo h2{font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:var(--blue); margin:0 0 12px}
+  .resumo p{font-size:15px; margin:0 0 10px; line-height:1.7}
+  .resumo p:last-child{margin:0}
+
+  section{margin-bottom:36px}
+  section h2{font-size:18px; margin:0 0 6px; letter-spacing:-.01em}
+  section .q{font-size:13.5px; color:var(--muted); margin:0 0 14px}
+  .tw{overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:12px}
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th{text-align:left; color:var(--soft); font-size:11px; text-transform:uppercase; letter-spacing:.07em; padding:12px 14px 8px; border-bottom:1px solid var(--line); font-weight:700}
+  td{padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; line-height:1.55}
+  tr:last-child td{border-bottom:0}
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; white-space:nowrap}
+  .pill.g{background:var(--good-soft); color:var(--good)}
+  .pill.w{background:var(--warn-soft); color:var(--warn)}
+  .pill.b{background:var(--blue-soft); color:var(--blue)}
+  .pill.r{background:var(--bad-soft); color:var(--bad)}
+  .note{font-size:13.5px; color:var(--muted); margin-top:12px; line-height:1.6}
+  .note b{color:var(--ink)}
+  .foot{font-size:12px; color:var(--soft); margin-top:28px; line-height:1.7; border-top:1px solid var(--line); padding-top:16px}
+</style>
+<div class="wrap">
+  <p class="eyebrow">Vammo · Data &amp; Analytics · RIVERS</p>
+  <h1>Colocando o RIVERS pra rodar</h1>
+  <p class="sub">Plano do teste assistido · piloto na Mooca · proposta para Guida e Chalela · 29 de julho a 4 de agosto, retro dia 5</p>
+
+  <div class="resumo">
+    <h2>Em 30 segundos</h2>
+    <p>O RIVERS rodou a semana inteira em produção. Detectou <b>86% das reservas que a oficina deu</b> e, nas 3 situações mais óbvias, decidiu com <b>100% de acerto em 194 casos</b>.</p>
+    <p>A proposta: por uma semana, <b>na Mooca</b>, <b>só essas 3 situações viram entrega direta</b> (cerca de 2 por dia, um terço do que a oficina já sugere). Todo o resto continua como recomendação, com palavra final do encarregado do turno.</p>
+    <p>Pedimos duas coisas: <b>o ok no acordo "sugestão automática = entrega direta"</b> e três conversas de alinhamento (Marcelo, Terceiro e Lídia).</p>
+  </div>
+
+  <section>
+    <h2>1 · O que ele sabe fazer</h2>
+    <p class="q">Tudo medido em produção. O verde age sozinho; o âmbar e o vermelho têm gente do lado — e plano.</p>
+    <div class="tw"><table>
+      <tr><th style="width:46%">Capacidade</th><th style="width:14%">Nível</th><th>Evidência</th></tr>
+      <tr><td><b>Vigiar as 3 bases, 24 horas por dia</b>, a cada 10 minutos</td><td><span class="pill g">FAZ BEM</span></td><td>850 execuções, zero falha</td></tr>
+      <tr><td><b>Casos óbvios</b>: guincho e acidente, moto parada sem entrar na oficina, cliente 2h30 sem diagnóstico</td><td><span class="pill g">FAZ BEM</span></td><td>100% de acerto em 194 casos</td></tr>
+      <tr><td><b>Serviço longo já diagnosticado</b>, pela estimativa de tempo por peça</td><td><span class="pill g">FAZ BEM</span></td><td>100% na faixa alta; 94% no geral</td></tr>
+      <tr><td><b>Explicar cada decisão e se autoavaliar</b> todo dia</td><td><span class="pill g">FAZ BEM</span></td><td>motivo em texto + monitor diário + kill-switch</td></tr>
+      <tr><td><b>Conserto que termina perto das 3h</b>, a zona de fronteira</td><td><span class="pill w">RESSALVA</span></td><td>a sugestão sai marcada <b>"fronteira"</b> e o encarregado dá a palavra final</td></tr>
+      <tr><td><b>Peça segurando a moto</b>, mesmo sem item registrado</td><td><span class="pill g">FAZ BEM</span></td><td>dispara quando a moto está de fato travada; 94% no histórico</td></tr>
+      <tr><td><b>Demanda da oficina</b> ("oficina cheia")</td><td><span class="pill w">RESSALVA</span></td><td>termômetro do piso já medido ao vivo e exposto; medimos que lotação não muda a taxa de estouro — a régua de agir é política da operação (seção 6)</td></tr>
+      <tr><td><b>Ver o que não foi registrado</b> no sistema</td><td><span class="pill r">NÃO FAZ</span></td><td>papel do encarregado no teste</td></tr>
+      <tr><td><b>Decidir antes do diagnóstico existir</b></td><td><span class="pill r">NÃO FAZ</span></td><td>encarregado decide; modelo v1 no roadmap</td></tr>
+      <tr><td><b>QA rejeitada</b></td><td><span class="pill b">EM BREVE</span></td><td>regra validada (91%), entra após o teste</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>2 · O desenho do teste</h2>
+    <p class="q">Age sozinho só no que provou 100%. Todo o resto tem a pessoa certa do lado.</p>
+    <div class="tw"><table>
+      <tr><th style="width:34%">Tipo de sugestão</th><th style="width:18%">Volume</th><th>O que a oficina faz</th></tr>
+      <tr><td><span class="pill g">AUTOMÁTICA</span> as 3 situações de 100%</td><td>cerca de 2/dia</td><td>entrega a reserva, sem revalidar</td></tr>
+      <tr><td><span class="pill b">RECOMENDAÇÃO</span> tempo e peça</td><td>cerca de 14/dia</td><td>segue se concordar; se discordar, marca "discordo" e escreve uma linha</td></tr>
+    </table></div>
+    <div class="tw" style="margin-top:12px"><table>
+      <tr><th style="width:26%">O ciclo</th><th>Como funciona</th></tr>
+      <tr><td><b>1 · Sugestão</b></td><td>o bot posta no canal com placa e motivo. Só cliente de piso; backlog não gera ruído</td></tr>
+      <tr><td><b>2 · Ação</b></td><td>encarregado entrega (automática) ou avalia (recomendação) e registra quando discorda</td></tr>
+      <tr><td><b>3 · Cliente avisado</b></td><td>com a reserva confirmada, CX avisa o cliente dizendo o que fazer, e registra "cliente avisado"</td></tr>
+      <tr><td><b>4 · Resposta</b></td><td>toda discordância volta respondida em 24h, e o boletim diário fecha o placar</td></tr>
+    </table></div>
+    <p class="note"><b>O produto da semana é a discordância registrada</b> — a visão técnica da oficina calibrando o algoritmo caso a caso. Usamos canal com bot em vez de dashboard porque ação com prazo pede aviso com dono; e o cliente só é avisado com a reserva já garantida, no padrão das companhias aéreas: resolve primeiro, avisa depois.</p>
+  </section>
+
+  <section>
+    <h2>3 · Quem envolver e por quê</h2>
+    <div class="tw"><table>
+      <tr><th style="width:24%">Quem</th><th style="width:40%">Papel</th><th>Por quê</th></tr>
+      <tr><td><b>Chalela e Guida</b></td><td>aprovam o acordo e decidem a expansão na retro</td><td>donos da operação e do SOP</td></tr>
+      <tr><td><b>Marcelo</b><br>gerente da oficina</td><td>uma conversa de alinhamento: como entra na rotina e quem avalia por base e turno</td><td>cascateia com autoridade, sem tomar o tempo dele depois</td></tr>
+      <tr><td><b>Encarregado do turno da Mooca</b><br>indicado pelo Marcelo</td><td>o avaliador do dia a dia</td><td>a visão técnica do piso cobre o que o algoritmo não vê</td></tr>
+      <tr><td><b>Terceiro</b><br>Control Tower</td><td>chip RIVERS em todo card de piso</td><td>o RIVERS aparece na tela que o time já olha</td></tr>
+      <tr><td><b>Lídia</b><br>coordenação CX</td><td>CX Piso avisa o cliente quando a reserva é aprovada</td><td>nasce a métrica "tempo entre a decisão e o cliente saber"</td></tr>
+      <tr><td><b>Alvaro</b><br>Dados</td><td>responde discordâncias em 24h, boletim diário, ajusta regras</td><td>fecha o ciclo do feedback</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>4 · Critérios de sucesso</h2>
+    <div class="tw"><table>
+      <tr><th style="width:46%">Métrica</th><th style="width:14%">Meta</th><th>Se falhar</th></tr>
+      <tr><td>Acerto das regras automáticas</td><td><b>90%+</b></td><td>a regra sai do automático na hora</td></tr>
+      <tr><td>Reserva indevida entregue pelo automático</td><td><b>zero</b></td><td>revisão da regra no mesmo dia</td></tr>
+      <tr><td>Acato das automáticas pela oficina</td><td><b>100%</b></td><td>conversa com o turno</td></tr>
+      <tr><td>Discordâncias respondidas em 24h</td><td><b>100%</b></td><td>responsabilidade de Dados</td></tr>
+      <tr><td>Captura das reservas reais</td><td><b>85%+</b></td><td>investigação dos furos, como já é rotina</td></tr>
+    </table></div>
+    <p class="note">Travas permanentes, já em produção: monitor diário por regra (alerta abaixo de 70%) e kill-switch em um minuto, sem deploy. A sugestão não cria moto — disponibilidade de frota segue o fluxo atual.</p>
+  </section>
+
+  <section>
+    <h2>5 · Cronograma</h2>
+    <div class="tw"><table>
+      <tr><th style="width:26%">Quando</th><th>O quê</th></tr>
+      <tr><td><b>seg 27 e ter 28</b></td><td>ok no plano · conversas com Marcelo, Lídia e Terceiro · canal pronto com o time dentro</td></tr>
+      <tr><td><b>qua 29 a ter 4</b></td><td>teste assistido rodando <b>na Mooca</b>, com boletim diário</td></tr>
+      <tr><td><b>qua 5</b></td><td>retro com números: expandir (regras novas e Osasco/SBC), manter ou recuar</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>6 · Pra onde isso cresce</h2>
+    <p class="q">Cada item entra como recomendação e só vira automático provando precisão no monitor.</p>
+    <div class="tw"><table>
+      <tr><th style="width:46%">Evolução</th><th style="width:16%">Status</th><th>O que destrava</th></tr>
+      <tr><td>Regra de <b>QA rejeitada</b> (91%)</td><td><span class="pill g">VALIDADA</span></td><td>o furo que faltava da semana passada</td></tr>
+      <tr><td><b>Política de piso cheio</b> — termômetro ao vivo no painel + régua definida com a operação</td><td><span class="pill b">EM DESENHO</span></td><td>o dado mostra que "oficina cheia" é alívio de fila, não previsão — vira política explícita, decidida por vocês</td></tr>
+      <tr><td><b>Sinal de cliente presente</b> direto da fonte</td><td><span class="pill g">NO AR</span></td><td>fechou o buraco: 29% dos clientes presentes eram invisíveis pro automático</td></tr>
+      <tr><td><b>Backstop de comunicação</b>: cliente não avisado, o bot cobra</td><td><span class="pill b">EM DESENHO</span></td><td>a promessa nunca quebra em silêncio</td></tr>
+      <tr><td><b>Plano B sem moto reserva</b>, como crédito de transporte</td><td><span class="pill w">IDEIA</span></td><td>decisão de negócio para o SOP</td></tr>
+      <tr><td><b>Modelo v1</b> com o time de modelagem</td><td><span class="pill w">ROADMAP</span></td><td>decisão pré-diagnóstico e cauda longa</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>7 · Referências de mercado</h2>
+    <p class="q">Cases verificados em fontes primárias. O desenho monta peças que já funcionaram em outros setores.</p>
+    <div class="tw"><table>
+      <tr><th style="width:30%">Quem</th><th>O que aproveitamos</th></tr>
+      <tr><td><b>United Airlines</b> · ConnectionSaver</td><td>máquina decide o caso óbvio, humano executa, cliente recebe mensagem que diz o que fazer. 3,3 milhões de conexões salvas desde 2019</td></tr>
+      <tr><td><b>Delta</b> · Messenger</td><td>política oficial de resolver primeiro e avisar depois: a mensagem só sai com a solução garantida</td></tr>
+      <tr><td><b>American Airlines</b> · HEAT</td><td>automação condicionada à confiança comprovada da previsão; cerca de 1.000 cancelamentos evitados</td></tr>
+      <tr><td><b>Xtime, Clutch e Dealerware</b> · carro-cortesia em concessionárias</td><td>reserva acoplada ao status da ordem de serviço e entrega em 2 minutos; vendors reportam +27 pontos de CSI</td></tr>
+      <tr><td><b>UpdatePromise</b> · service automotivo</td><td>se o humano esquece de avisar o cliente, o sistema avisa sozinho</td></tr>
+      <tr><td><b>Tesla Service</b> · contra-exemplo</td><td>critério de cortesia no olho, variando por centro, gera reclamação crônica — validação do caminho algorítmico</td></tr>
+      <tr><td><b>Google SRE e PagerDuty</b> · padrão de operações</td><td>ação com prazo vai por aviso com dono e confirmação nominal; dashboard fica pra tendência</td></tr>
+    </table></div>
+  </section>
+
+  <p class="foot">
+    Base da proposta: relatório semanal de 20 a 26 de julho (corrida contra a oficina, autópsia de furos, precisão por regra) · monitor diário e kill-switch em produção desde 21 de julho · números reproduzíveis do log de decisões e do warehouse · referências verificadas em fontes primárias.
+  </p>
+</div>
