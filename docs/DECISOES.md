@@ -131,3 +131,27 @@ essa flag como atalho.
 do rivers-engine, exposição em `/api/cx`, selo em `src/app/cx/page.tsx`.
 **Pendente:** medir em ~3 semanas se o sintoma relatado se comporta como a peça trocada; se
 sim, virar estimativa inicial (resolve a estimativa em branco pré-diagnóstico).
+
+### D14 — Calibração tem prazo de validade: trava da combinada 180→240 e escape revertido (2026-08-12) ✅
+**Contexto:** depois de uma semana estável (07-10/08 entre 87% e 100%), o dia 11/08 caiu
+para 50% e o 12/08 rodava a 70% — meta é 80%. Os 7 erros dos dois dias eram TODOS da
+combinada disparando cedo (27-74min de relógio) em motos que ficaram prontas em 143-174min.
+**Causa raiz (medida, não chutada):** a oficina ACELEROU depois do release de sintomas do
+Maestro — a bancada que fazia mediana de 73-96min na semana anterior passou a 48-57min em
+11-12/08 — e as estimativas por peça ficaram paradas no mundo antigo. Estimativa de
+182-227min passou a terminar em menos de 3h. Não foi inflação de peças (grupos/OS estável
+em ~6): foi o denominador que mudou.
+**Decisão dupla:**
+1. **Trava da combinada sobe de 180 para 240** (est_firme_min). Backtest nos dados frescos
+   (config rEst240): dias 11-12/08 saem de 75-78% para **86-100%**; conjunto 96,7%; recall
+   74,3→73,1% — o relógio-160 pega o que a combinada solta, ~20min depois.
+2. **Escape por projeção (v0.28) REVERTIDO** com 2 dias de vida: produziu 3 falsos
+   positivos (est 158-171) e zero acertos confirmados — incluindo a própria TIS7A04 que o
+   motivou, pronta em 156min. O backtest dizia 89,5%; produção disse não. Produção > backtest.
+**Lição operacional:** quando o processo embaixo muda (release do Maestro, contratação,
+mudança de rampa), a calibração por estimativa envelhece EM DIAS. O sinal robusto é o
+relógio real; estimativa é coadjuvante (reafirma D11). Vigiar a mediana da bancada no
+placar diário — se ela mexer >20min, recalibrar sem esperar a precisão cair.
+**Onde vive:** v0.29.0 em `src/lib/algorithm.ts`; sweep em `scripts/backtest-v23.mjs`
+(configs r28atual/rSemEscape/rEst210/220/240). Log de features agora grava
+`min_desde_chegada` (a régua do cliente ficava fora do log desde a v0.26).
