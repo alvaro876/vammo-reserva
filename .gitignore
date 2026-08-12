@@ -62,3 +62,6 @@ docs/RIVERS-SUMMARY-EN.md
 
 # credenciais recuperadas pra migracao — NUNCA commitar
 CREDENCIAIS-CLOUDFLARE.txt
+
+# relatorios e artefatos de calibracao locais (contem placas/dados internos)
+calib/
