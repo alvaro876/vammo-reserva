@@ -18,6 +18,15 @@ import { getAvisosCx, registrarAvisoCx } from "@/lib/supabase";
 const BASES: Record<number, string> = { 1: "Mooca", 34: "Osasco", 166: "SBC" };
 const SLA_MIN = 180;
 
+// Cache do payload por isolate (13/08, erro 1102 na TV): no plano free do Workers o
+// limite é ~10ms de CPU por request, e cada refresh da TV (45s) recalculava o motor
+// inteiro (query grande no CH + avaliação + log no Supabase). O isolate sobrevive
+// entre requests, então um cache global corta o recálculo pra ~1x/75s e os demais
+// requests saem por micro-CPU. Efeito colateral desejado: se o motor falhar num
+// tique, a TV segura a última foto boa em vez de mostrar erro.
+let cxCache: { ts: number; payload: object } | null = null;
+const CX_TTL_MS = 75_000;
+
 interface ContextoCheckin {
   os_id: number;
   cliente: string;
@@ -64,6 +73,9 @@ WHERE c._peerdb_is_deleted = 0
 `;
 
 export async function GET() {
+  if (cxCache && Date.now() - cxCache.ts < CX_TTL_MS) {
+    return NextResponse.json(cxCache.payload);
+  }
   try {
     const bases = [...basesTeste()];
     const [rows, ctxRows, avisos] = await Promise.all([
@@ -133,15 +145,19 @@ export async function GET() {
 
     const pressao = rows.find((o) => bases.includes(o.location_id))?.pressao_piso ?? 0;
 
-    return NextResponse.json({
+    const payload = {
       atualizado_em: new Date().toISOString(),
       base: bases.map((b) => BASES[b] ?? String(b)).join(" · "),
       pressao_piso: pressao,
       total: clientes.length,
       clientes,
-    });
+    };
+    cxCache = { ts: Date.now(), payload };
+    return NextResponse.json(payload);
   } catch (e) {
     console.error("[cx] erro:", e);
+    // com cache velho na mão, servir a última foto boa vale mais que um erro na TV
+    if (cxCache) return NextResponse.json(cxCache.payload);
     return NextResponse.json({ error: "Erro ao montar a fila do CX" }, { status: 500 });
   }
 }
