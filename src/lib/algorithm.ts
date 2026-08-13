@@ -305,6 +305,35 @@ const THRESHOLDS = {
 // Moto em conferência final: o trabalho de rampa já acabou.
 const QA_STATUSES = new Set(["AWAITING_QA", "IN_QA", "QA_REJECTED"]);
 
+// ── "Pronta em quanto tempo?" — o número que guia a conversa do CX (13/08) ────
+// Pedido do Alvaro: o CX decide a conversa com o cliente por aqui ("fica pronta
+// em ~40min, quer esperar?" × "ainda vai ~2h — quer reserva?"). Fonte ÚNICA da
+// conta, a mesma régua que as regras usam — a tela nunca pode divergir do motor.
+// Regra de honestidade: número só quando a conta tem lastro. Sem diagnóstico não
+// há previsão; execução que já PASSOU da estimativa prova que a conta errou —
+// dizer isso vale mais que um número falso (lição da OS 50408, que ficou 176min
+// "quase pronta" pelo restante clampado em 0).
+export type RestantePronta =
+  | { tipo: "estimado" | "qa" | "retrabalho"; min: number }
+  | { tipo: "sem_diag" | "vencida"; min: null };
+
+export function restanteParaPronta(
+  status_atual: string,
+  tempo_estimado_min: number,
+  exec_acum_min?: number
+): RestantePronta {
+  if (QA_STATUSES.has(status_atual)) {
+    // reprovada = retrabalho (mediana medida 45min) + nova conferência; senão só a conferência
+    return status_atual === "QA_REJECTED"
+      ? { tipo: "retrabalho", min: THRESHOLDS.qa_retrabalho_min + THRESHOLDS.qa_min }
+      : { tipo: "qa", min: THRESHOLDS.qa_min };
+  }
+  if (tempo_estimado_min <= 0) return { tipo: "sem_diag", min: null };
+  const restante = tempo_estimado_min - (exec_acum_min ?? 0);
+  if (restante <= 0) return { tipo: "vencida", min: null };
+  return { tipo: "estimado", min: Math.round(restante + THRESHOLDS.qa_min) };
+}
+
 // Peças que sozinhas justificam reserva imediata
 const PECAS_CRITICAS = new Set([
   257, 258, 259, 260,  // Motor

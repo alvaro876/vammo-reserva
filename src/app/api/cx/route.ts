@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runRivers } from "@/lib/rivers-engine";
 import { query } from "@/lib/clickhouse";
 import { basesTeste } from "@/lib/autonomia";
+import { restanteParaPronta } from "@/lib/algorithm";
 import { piorSintoma } from "@/lib/sintomas";
 import { getAvisosCx, registrarAvisoCx } from "@/lib/supabase";
 
@@ -96,6 +97,8 @@ export async function GET() {
       .map((o) => {
         const c = ctx.get(o.os_id);
         const rec = o.recomendacao!;
+        // quanto falta pra pronta — guia a conversa do CX (reserva × "já vai sair")
+        const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
         return {
           os_id: o.os_id,
           placa: o.placa,
@@ -129,6 +132,8 @@ export async function GET() {
             return s ? { nome: s.nome, pct: s.pctEstouro, n: s.n } : null;
           })(),
           tempo_previsto_min: rec.tempo_previsto_min,
+          pronta_em_min: pronta.min,
+          pronta_tipo: pronta.tipo,
           // estado no Maestro (o que a oficina já fez)
           ofertada_em: c && Number(c.ofertada_ts) > 0 ? Number(c.ofertada_ts) * 1000 : null,
           ofertou: c?.ofertou || null,

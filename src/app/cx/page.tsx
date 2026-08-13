@@ -29,6 +29,9 @@ interface ClienteCx {
   confianca: "alta" | "fronteira" | null;
   acao_automatica: boolean;
   tempo_previsto_min: number | null;
+  // quanto falta pra moto ficar pronta (13/08) — guia a conversa do CX
+  pronta_em_min: number | null;
+  pronta_tipo: "estimado" | "qa" | "retrabalho" | "sem_diag" | "vencida";
   ofertada_em: number | null;
   ofertou: string | null;
   recusada: boolean;
@@ -84,6 +87,23 @@ function relogio(min: number) {
 
 function hora(iso: string | number) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+// "pronta em ~X" — o que o CX fala pro cliente (13/08). `forte` = número com lastro
+// (vira destaque); sem lastro a tela diz o porquê em texto miúdo, nunca um número falso.
+function prontaInfo(c: ClienteCx): { txt: string; forte: boolean } {
+  switch (c.pronta_tipo) {
+    case "estimado":
+      return { txt: `~${relogio(c.pronta_em_min ?? 0)}`, forte: true };
+    case "qa":
+      return { txt: `revisão final · ~${relogio(c.pronta_em_min ?? 0)}`, forte: true };
+    case "retrabalho":
+      return { txt: `reprovou na revisão · ~${relogio(c.pronta_em_min ?? 0)}`, forte: true };
+    case "sem_diag":
+      return { txt: "sem previsão — aguarda diagnóstico", forte: false };
+    case "vencida":
+      return { txt: "passou da estimativa — confirmar com o mecânico", forte: false };
+  }
 }
 
 // Zona de urgência — UM sistema de cor só (o relógio do SLA), pra cor significar
@@ -177,6 +197,7 @@ function Selo({ tom, children }: { tom: "auto" | "fronteira" | "oficina" | "aler
 function CardAcao({ c }: { c: ClienteCx }) {
   const estourou = c.minutos_pro_sla <= 0;
   const z = zona(c.minutos_pro_sla);
+  const pi = prontaInfo(c);
 
   return (
     <div
@@ -198,6 +219,17 @@ function CardAcao({ c }: { c: ClienteCx }) {
           </div>
           <div className="mt-2">
             <Medidor minutosNaBase={c.minutos_na_base} cor={z.cor} altura={8} />
+          </div>
+          {/* o outro relógio da conversa: quanto falta pra PRONTA (13/08) */}
+          <div className="mt-3 border-t border-slate-100 pt-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              moto pronta em
+            </div>
+            {pi.forte ? (
+              <div className="text-xl font-black leading-tight tabular-nums text-slate-700">{pi.txt}</div>
+            ) : (
+              <div className="text-xs font-semibold leading-snug text-slate-500">{pi.txt}</div>
+            )}
           </div>
         </div>
 
@@ -402,6 +434,10 @@ export default function CxPiso() {
                   <span className="text-sm text-slate-500">
                     {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
                     {c.mecanico ? ` · mecânico ${c.mecanico.split(" ")[0]}` : ""}
+                    {" · "}
+                    <span className="font-semibold text-slate-600">
+                      {c.pronta_tipo === "estimado" ? `pronta em ${prontaInfo(c).txt}` : prontaInfo(c).txt}
+                    </span>
                   </span>
                   <span className="ml-auto flex items-center gap-2 text-sm">
                     {c.entregue && <Selo tom="auto">reserva entregue</Selo>}
@@ -456,7 +492,10 @@ export default function CxPiso() {
                     <span className="min-w-0 flex-1 truncate text-slate-500">
                       {STATUS_HUMANO[c.status_atual] ?? c.status_atual.toLowerCase()}
                       {c.mecanico ? ` · mec. ${c.mecanico.split(" ")[0]}` : ""}
-                      {c.tempo_previsto_min ? ` · previsão ${relogio(c.tempo_previsto_min)}` : ""}
+                      {/* "pronta em" trocou a "previsão" (total projetado): é o número
+                          que o CX fala pro cliente, não o que o motor usa por dentro */}
+                      {" · "}
+                      {c.pronta_tipo === "estimado" ? `pronta em ${prontaInfo(c).txt}` : prontaInfo(c).txt}
                     </span>
                     <span
                       className="shrink-0 font-semibold tabular-nums"
