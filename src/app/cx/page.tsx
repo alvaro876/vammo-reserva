@@ -194,6 +194,18 @@ function Selo({ tom, children }: { tom: "auto" | "fronteira" | "oficina" | "aler
   );
 }
 
+// AVISO ANTECIPADO (13/08, pedido do Victor/CX, caso SVY1F76: a tela só gritou no
+// minuto 190, com a moto saindo em ~19min — tarde demais pra conversar com calma).
+// Faltando <=30min pro SLA e sem número dizendo que a moto sai ANTES da linha, o
+// estouro é questão de relógio: o card sobe pra fila de aviso ANTES de estourar.
+function vaiEstourar(c: ClienteCx) {
+  return (
+    c.minutos_pro_sla > 0 &&
+    c.minutos_pro_sla <= 30 &&
+    !(c.pronta_em_min !== null && c.pronta_em_min <= c.minutos_pro_sla)
+  );
+}
+
 function CardAcao({ c }: { c: ClienteCx }) {
   const estourou = c.minutos_pro_sla <= 0;
   const z = zona(c.minutos_pro_sla);
@@ -257,6 +269,9 @@ function CardAcao({ c }: { c: ClienteCx }) {
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
+            {!estourou && vaiEstourar(c) && (
+              <Selo tom="fronteira">VAI PASSAR DAS 3H — dá pra avisar o cliente com antecedência</Selo>
+            )}
             {c.acao_automatica && <Selo tom="auto">AUTOMÁTICA — pode entregar</Selo>}
             {c.confianca === "fronteira" && <Selo tom="fronteira">MARGEM APERTADA — confirme com o mecânico se sai a tempo</Selo>}
             {c.ofertada_em && (
@@ -335,7 +350,13 @@ export default function CxPiso() {
   // de 240, restante era curto) → nenhuma regra disparou e o card ficou em "dentro do
   // prazo" com relógio vermelho. Estourar o SLA é FATO, não previsão: o aviso ao
   // cliente é devido sempre; a reserva continua sendo decisão das regras.
-  const precisaAtencao = (c: ClienteCx) => c.reservar || c.minutos_pro_sla <= 0;
+  //
+  // AVISO ANTECIPADO (13/08, pedido do Victor/CX, caso SVY1F76): faltando <=30min pro
+  // SLA e a moto NÃO ficando pronta antes da linha (ou sem número confiável), o estouro
+  // é questão de relógio — o card sobe ANTES, pro CX conversar com antecedência em vez
+  // de correr atrás no minuto 181. Só fica no "no prazo" quem tem número dizendo que
+  // sai ANTES da linha.
+  const precisaAtencao = (c: ClienteCx) => c.reservar || c.minutos_pro_sla <= 0 || vaiEstourar(c);
   const precisaAvisar = clientes.filter((c) => precisaAtencao(c) && !jaAvisado(c) && !c.entregue);
   const emAndamento = clientes.filter((c) => precisaAtencao(c) && (jaAvisado(c) || c.entregue));
   const noPrazo = clientes.filter((c) => !precisaAtencao(c));
