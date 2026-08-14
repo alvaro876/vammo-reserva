@@ -7,7 +7,14 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.29.0"; // 0.29.0 = RECALIBRAÇÃO DE 12/08 (ordem do Alvaro após 50%
+export const ALGO_VERSION = "0.30.0"; // 0.30.0 = DEVOLUÇÃO fora do piso (13/08, reporte do Victor/CX,
+                                     // caso DEM0I42): cancelamento de plano escaneia QR e vira
+                                     // check-in "piso" sem cliente esperando. is_piso agora exclui
+                                     // so_type RETURN_INSPECTION (medido: 193/90d Mooca, ~2 cards/dia
+                                     // de poluição; as 28 "reservas" nesses casos têm mediana de 27h
+                                     // até entrega = administrativo). Regras e tela do CX param de
+                                     // tratar devolução como cliente em piso.
+                                     // 0.29.0 = RECALIBRAÇÃO DE 12/08 (ordem do Alvaro após 50%
                                      // no dia 11): (a) REVERTE o escape por projeção da v0.28 —
                                      // 2 dias de vida, 3 FPs, zero acertos confirmados, incluindo
                                      // a TIS7A04 que o motivou (pronta em 156min); (b) trava da

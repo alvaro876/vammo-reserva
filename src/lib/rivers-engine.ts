@@ -357,7 +357,13 @@ SELECT
     coalesce(se.n_sem_estoque_bloq, 0) AS n_sem_estoque_bloq,
     coalesce(se.pecas_sem_estoque_bloq, '') AS pecas_sem_estoque_bloq,
     coalesce(pcn.pecas_criticas, '') AS pecas_criticas,
-    if(ip.os_id IS NOT NULL, 1, 0) AS is_piso,
+    -- DEVOLUÇÃO NÃO É PISO (13/08, reporte do Victor/CX, caso DEM0I42): cancelamento
+    -- de plano escaneia QR, cria check-in com nome e chamada — e o cliente foi embora
+    -- DEVOLVENDO a moto. Medido 90d/Mooca: 193 check-ins assim (~2/dia poluindo a
+    -- tela); 28 constam "reserva entregue" mas com mediana de 27h (p90 16 DIAS) até a
+    -- entrega = fluxo administrativo, não resgate de piso. Vistoria (INSURANCE_QUOTE)
+    -- continua piso — lá o cliente espera de verdade.
+    if(ip.os_id IS NOT NULL AND om.so_type != 'RETURN_INSPECTION', 1, 0) AS is_piso,
     -- coalesce(...) > 0, NÃO "IS NOT NULL": so_service.so_id é Int32 não-nulável, e o
     -- LEFT JOIN sem match preenche com 0, não com NULL. Com "IS NOT NULL" a flag ficava
     -- 1 pra TODA OS e o motor marcou as 3 motos da tela como troca de placa automática.
