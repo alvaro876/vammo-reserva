@@ -69,7 +69,10 @@ LEFT JOIN ev ON ev.os_id = c.so_id
 WHERE c._peerdb_is_deleted = 0
   AND c.checkin_type = 'MAINTENANCE'
   AND c.so_id IS NOT NULL
-  AND c.location_id IN (${bases.join(",")})
+  -- SEM filtro de location aqui (17/08): o Check-in 2.0 trocou o espaço de IDs do
+  -- location_id do check-in (apareceram 100/199; service_center usa 1-4) — filtrar
+  -- pelo ID antigo apagaria o nome do cliente dos cards. O so_id já escopa: a lista
+  -- de clientes é filtrada pela base da OS (OMS) no código.
   AND c.created_at >= now() - INTERVAL 3 DAY
 `;
 
