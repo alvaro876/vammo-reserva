@@ -101,15 +101,11 @@ export async function GET(req: NextRequest) {
       const relogio =
         (o as unknown as { min_desde_chegada?: number }).min_desde_chegada ?? o.min_desde_open;
       const slaRestante = 180 - relogio;
-      if (slaRestante > 30) return false;
-      const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
-      if (slaRestante > 0) {
-        // PRÉ-aviso só com número FIRME dizendo que NÃO sai a tempo. Sem número
-        // (estimativa vencida / sem diagnóstico), a regra do relógio assume em
-        // minutos e vira sugestão de reserva — avisar antes disso manda 2 mensagens
-        // pra mesma moto (caso TKX1J23, 18/08: aviso 14:52, reserva ~15:00).
-        if (pronta.min === null || pronta.min <= slaRestante) return false;
-      }
+      // Só ESTOURO (18/08, ajuste do Alvaro): o pré-aviso "vai passar mas sai logo"
+      // virou ruído no grupo — no Slack fica só o caso específico que importa:
+      // cliente que JÁ cruzou as 3h sem reserva sugerida e sem oferta da oficina
+      // (o estouro silencioso). O pré-aviso continua na TELA (selo VAI PASSAR DAS 3H).
+      if (slaRestante > 0) return false;
       return true;
     });
     const avisadas = await notifyAviso(
