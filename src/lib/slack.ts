@@ -50,22 +50,15 @@ export async function notifyAviso(itens: AvisoNotificavel[]): Promise<number> {
   const webhook = process.env.SLACK_WEBHOOK_URL;
   if (!webhook || itens.length === 0) return 0;
 
+  // linha mínima (Alvaro, 18/08): fato + previsão quando existe. Nada de justificativa
+  // no texto — "reserva não chegaria antes"/"confirmar com o mecânico" foram vetados.
   const linhas = itens
     .map((i) => {
       const base = BASES[i.location_id ?? 0] ?? `base ${i.location_id ?? "?"}`;
       const placa = i.placa || "sem placa";
-      const quando =
-        i.sla_restante_min > 0
-          ? `passa das 3h em ~${Math.round(i.sla_restante_min)}min`
-          : `passou das 3h (${Math.round(-i.sla_restante_min)}min de atraso)`;
-      // a justificativa mora na LINHA, e só quando é verdade — o cabeçalho fixo dizia
-      // "o conserto termina antes de uma reserva chegar" em cima de linha "sem previsão
-      // firme", uma contradição que o Alvaro pegou no 1º dia do bot (TKX1J23, 18/08)
-      const pronta =
-        i.pronta_em_min !== null
-          ? `moto pronta em ~${Math.round(i.pronta_em_min)}min (reserva não chegaria antes)`
-          : `sem previsão firme — confirmar com o mecânico`;
-      return `${i.sla_restante_min > 0 ? "🟡" : "🔴"} *${placa}* (${base}) — ${quando} · ${pronta}  _OS ${i.os_id}_`;
+      const quando = `passou das 3h (${Math.round(-i.sla_restante_min)}min de atraso)`;
+      const pronta = i.pronta_em_min !== null ? ` · moto pronta em ~${Math.round(i.pronta_em_min)}min` : "";
+      return `🔴 *${placa}* (${base}) — ${quando}${pronta}  _OS ${i.os_id}_`;
     })
     .join("\n");
 
