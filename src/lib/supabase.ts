@@ -74,6 +74,37 @@ export async function getLoggedReservaOsIds(_algoVersion: string): Promise<Set<n
   return new Set(data.map((r) => r.os_id as number));
 }
 
+// Dedup dos AVISOS do bot (18/08): aviso de SLA não é decisão de reserva, então não
+// vive no rivers_suggestion — o bot registra o que já postou em rivers_bot_aviso e
+// nunca cutuca o grupo duas vezes pela mesma OS (nem no upgrade pré-aviso → estouro).
+export async function getAvisosBotOsIds(): Promise<Set<number>> {
+  const c = client();
+  if (!c) return new Set();
+  const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await c
+    .from("rivers_bot_aviso")
+    .select("os_id")
+    .gte("created_at", desde)
+    .limit(5000);
+  if (error || !data) {
+    if (error) console.error("[rivers] erro ao ler avisos do bot:", error.message);
+    return new Set();
+  }
+  return new Set(data.map((r) => r.os_id as number));
+}
+
+export async function registrarAvisosBot(
+  itens: { os_id: number; tipo: string }[],
+  algoVersion: string
+): Promise<void> {
+  const c = client();
+  if (!c || itens.length === 0) return;
+  const { error } = await c
+    .from("rivers_bot_aviso")
+    .insert(itens.map((i) => ({ os_id: i.os_id, tipo: i.tipo, algo_version: algoVersion })));
+  if (error) console.error("[rivers] erro ao registrar avisos do bot:", error.message);
+}
+
 export interface SuggestionRow {
   os_id: number;
   decision: string;
