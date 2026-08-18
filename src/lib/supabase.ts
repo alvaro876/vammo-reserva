@@ -74,20 +74,22 @@ export async function getLoggedReservaOsIds(_algoVersion: string): Promise<Set<n
   return new Set(data.map((r) => r.os_id as number));
 }
 
-// Dedup dos AVISOS do bot (18/08): aviso de SLA não é decisão de reserva, então não
-// vive no rivers_suggestion — o bot registra o que já postou em rivers_bot_aviso e
-// nunca cutuca o grupo duas vezes pela mesma OS (nem no upgrade pré-aviso → estouro).
-export async function getAvisosBotOsIds(): Promise<Set<number>> {
+// Dedup do BOT (18/08): rastreia o que o bot POSTOU (rivers_bot_aviso), não o que o
+// motor logou. O log de decisões (rivers_suggestion) NÃO serve de dedup: a TV refresca
+// a cada 45s e loga a decisão antes do tique de 10min do bot — com a tela ligada, o
+// dedup pelo log fazia o bot perder quase toda reserva nova (caso TKX1J23, 18/08:
+// virou reserva às 15h10 e o bot ficou mudo). tipo='reserva' e tipo='pre'/'estouro'
+// deduplicam separados: reserva DEPOIS de aviso é escalada legítima; aviso depois de
+// reserva é ruído (suprimido no cron).
+export async function getBotPostsOsIds(tipo: "reserva" | "aviso"): Promise<Set<number>> {
   const c = client();
   if (!c) return new Set();
   const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  const { data, error } = await c
-    .from("rivers_bot_aviso")
-    .select("os_id")
-    .gte("created_at", desde)
-    .limit(5000);
+  let q = c.from("rivers_bot_aviso").select("os_id").gte("created_at", desde).limit(5000);
+  q = tipo === "reserva" ? q.eq("tipo", "reserva") : q.in("tipo", ["pre", "estouro"]);
+  const { data, error } = await q;
   if (error || !data) {
-    if (error) console.error("[rivers] erro ao ler avisos do bot:", error.message);
+    if (error) console.error("[rivers] erro ao ler posts do bot:", error.message);
     return new Set();
   }
   return new Set(data.map((r) => r.os_id as number));

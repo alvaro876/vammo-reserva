@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runRivers } from "@/lib/rivers-engine";
-import { getLoggedReservaOsIds, getAvisosBotOsIds, registrarAvisosBot } from "@/lib/supabase";
+import { getBotPostsOsIds, registrarAvisosBot } from "@/lib/supabase";
 import { notifyReserva, notifyAviso } from "@/lib/slack";
 import { basesTeste } from "@/lib/autonomia";
 import { ALGO_VERSION, restanteParaPronta } from "@/lib/algorithm";
@@ -49,9 +49,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 3) Quem já foi reservado (pra não notificar de novo) — ANTES de logar esta rodada.
-    //    Em teste, ignora (set vazio) pra forçar o envio das reservas atuais.
-    const jaLogadas = isTest ? new Set<number>() : await getLoggedReservaOsIds(ALGO_VERSION);
+    // 3) O que o BOT já postou (não o que o motor logou!) — a TV loga decisão a cada
+    //    45s e o dedup pelo log fazia o bot perder quase toda reserva nova (TKX1J23).
+    //    Em teste, ignora (sets vazios) pra forçar o envio dos casos atuais.
+    const jaPostadasReserva = isTest ? new Set<number>() : await getBotPostsOsIds("reserva");
 
     // 4) Avalia + grava o log (idempotente)
     const result = await runRivers();
@@ -64,10 +65,10 @@ export async function GET(req: NextRequest) {
     // E nunca anuncia cliente que a oficina JÁ atendeu — o check-in segue aberto ~4h depois
     // da oferta, então sem esse filtro o bot ficava pedindo reserva pra quem já tinha.
     const novas = reservasPiso.filter(
-      (o) => !jaLogadas.has(o.os_id) && basesTeste().has(o.location_id) && o.oferta_ativa !== 1
+      (o) => !jaPostadasReserva.has(o.os_id) && basesTeste().has(o.location_id) && o.oferta_ativa !== 1
     );
 
-    // 6) Notifica só as novas
+    // 6) Notifica só as novas — e REGISTRA o post (é o registro que deduplica)
     const notificadas = await notifyReserva(
       novas.map((o) => ({
         os_id: o.os_id,
@@ -78,12 +79,15 @@ export async function GET(req: NextRequest) {
         fronteira: o.recomendacao!.confianca === "fronteira",
       }))
     );
+    if (notificadas > 0 && !isTest) {
+      await registrarAvisosBot(novas.map((o) => ({ os_id: o.os_id, tipo: "reserva" })), ALGO_VERSION);
+    }
 
     // 7) AVISOS de SLA (18/08, caso UGA1G47): cliente que vai cruzar (<=30min) ou já
     //    cruzou as 3h SEM regra de reserva — a moto sai antes de uma reserva chegar,
     //    e a ação certa é o CX conversar com o cliente. Mesma lógica do bucket
     //    "precisa avisar" da tela. Dedup próprio (rivers_bot_aviso, 48h, 1 por OS).
-    const jaAvisadas = isTest ? new Set<number>() : await getAvisosBotOsIds();
+    const jaAvisadas = isTest ? new Set<number>() : await getBotPostsOsIds("aviso");
     const candidatosAviso = result.filter((o) => {
       if (o.is_piso !== 1 || !basesTeste().has(o.location_id)) return false;
       if (o.recomendacao?.decision === "RESERVA") return false; // reserva já tem mensagem própria
@@ -92,7 +96,8 @@ export async function GET(req: NextRequest) {
       // OS que o bot JÁ anunciou como reserva não ganha aviso depois (caso SWI9B54,
       // 18/08: "dê reserva" às 14:04 e "sem reserva, avisa que tá saindo" às 14:30 —
       // pra mesma moto isso lê como contradição; quem viu o alerta já está de olho).
-      if (jaLogadas.has(o.os_id)) return false;
+      // (O contrário — reserva depois de aviso — é escalada legítima e continua indo.)
+      if (jaPostadasReserva.has(o.os_id)) return false;
       const relogio =
         (o as unknown as { min_desde_chegada?: number }).min_desde_chegada ?? o.min_desde_open;
       const slaRestante = 180 - relogio;
