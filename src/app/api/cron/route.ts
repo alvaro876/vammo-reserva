@@ -89,6 +89,10 @@ export async function GET(req: NextRequest) {
       if (o.recomendacao?.decision === "RESERVA") return false; // reserva já tem mensagem própria
       if (o.oferta_ativa === 1) return false; // oficina já agiu — cliente já sabe
       if (jaAvisadas.has(o.os_id)) return false;
+      // OS que o bot JÁ anunciou como reserva não ganha aviso depois (caso SWI9B54,
+      // 18/08: "dê reserva" às 14:04 e "sem reserva, avisa que tá saindo" às 14:30 —
+      // pra mesma moto isso lê como contradição; quem viu o alerta já está de olho).
+      if (jaLogadas.has(o.os_id)) return false;
       const relogio =
         (o as unknown as { min_desde_chegada?: number }).min_desde_chegada ?? o.min_desde_open;
       const slaRestante = 180 - relogio;
