@@ -58,16 +58,19 @@ export async function notifyAviso(itens: AvisoNotificavel[]): Promise<number> {
         i.sla_restante_min > 0
           ? `passa das 3h em ~${Math.round(i.sla_restante_min)}min`
           : `passou das 3h (${Math.round(-i.sla_restante_min)}min de atraso)`;
+      // a justificativa mora na LINHA, e só quando é verdade — o cabeçalho fixo dizia
+      // "o conserto termina antes de uma reserva chegar" em cima de linha "sem previsão
+      // firme", uma contradição que o Alvaro pegou no 1º dia do bot (TKX1J23, 18/08)
       const pronta =
         i.pronta_em_min !== null
-          ? `moto pronta em ~${Math.round(i.pronta_em_min)}min`
+          ? `moto pronta em ~${Math.round(i.pronta_em_min)}min (reserva não chegaria antes)`
           : `sem previsão firme — confirmar com o mecânico`;
       return `${i.sla_restante_min > 0 ? "🟡" : "🔴"} *${placa}* (${base}) — ${quando} · ${pronta}  _OS ${i.os_id}_`;
     })
     .join("\n");
 
   const text =
-    `⏰ *RIVERS — avisar o cliente* _(sem reserva: o conserto termina antes de uma reserva chegar)_\n` +
+    `⏰ *RIVERS — avisar o cliente* _(sem sugestão de reserva)_\n` +
     linhas +
     `\n<https://vammo-reserva.alvaro-d42.workers.dev|abrir o painel>`;
 

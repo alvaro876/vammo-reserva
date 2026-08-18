@@ -98,8 +98,13 @@ export async function GET(req: NextRequest) {
       const slaRestante = 180 - relogio;
       if (slaRestante > 30) return false;
       const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
-      // só fica quieto quem tem número dizendo que sai ANTES da linha
-      if (slaRestante > 0 && pronta.min !== null && pronta.min <= slaRestante) return false;
+      if (slaRestante > 0) {
+        // PRÉ-aviso só com número FIRME dizendo que NÃO sai a tempo. Sem número
+        // (estimativa vencida / sem diagnóstico), a regra do relógio assume em
+        // minutos e vira sugestão de reserva — avisar antes disso manda 2 mensagens
+        // pra mesma moto (caso TKX1J23, 18/08: aviso 14:52, reserva ~15:00).
+        if (pronta.min === null || pronta.min <= slaRestante) return false;
+      }
       return true;
     });
     const avisadas = await notifyAviso(
