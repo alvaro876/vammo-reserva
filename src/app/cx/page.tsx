@@ -217,7 +217,12 @@ function Selo({ tom, children }: { tom: "auto" | "fronteira" | "oficina" | "aler
 // relógio) — aqui é a fila de atenção/conversa do CX.
 function vaiEstourar(c: ClienteCx) {
   if (c.minutos_pro_sla <= 0) return false; // já estourou — outro caminho cuida
-  if (c.pronta_em_min !== null) return c.pronta_em_min > c.minutos_pro_sla;
+  // estimativa POR SINTOMA é informativa, não conta firme — não promove o card pra
+  // fila de aviso (feedback do Vitinho/oficina, 20/08: "é mais assertivo depois do
+  // diagnóstico" — e o dado concorda: sintoma prevê 6-33% de estouro). Conta firme
+  // = estimativa por peça diagnosticada / QA / retrabalho.
+  const firme = c.pronta_em_min !== null && c.pronta_tipo !== "sintoma";
+  if (firme) return (c.pronta_em_min ?? 0) > c.minutos_pro_sla;
   return c.minutos_pro_sla <= 30;
 }
 

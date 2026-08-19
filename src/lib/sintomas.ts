@@ -54,8 +54,11 @@ export const SINTOMAS: Record<number, SintomaCalib> = {
 export const BASE_ESTOURO_PCT = 15;
 
 // Múltiplos sintomas alongam a visita (medido, dado real): 1 sintoma mediana 74min ·
-// 2 = 85 · 3 = 101 · 4+ = 116. Fator relativo sobre a mediana do pior sintoma.
-const FATOR_N_SINTOMAS = [1, 1, 1.15, 1.35, 1.55];
+// 2 = 85 · 3 = 101 · 4+ = 116. MEDIDO DIRETO por contagem — não multiplicar em cima
+// da mediana do pior sintoma (a v1 desta função fazia isso e contava o efeito DUAS
+// vezes: perfil de ~2h aparecia como "~3h02 pelo sintoma" aos 23min de casa; pego
+// pelo Vitinho/oficina em 20/08, nos primeiros cards ao vivo).
+const MEDIANA_POR_CONTAGEM = [0, 74, 85, 101, 116];
 
 // Resumo do pior sintoma da OS, pro card do CX. null = sem sintoma calibrado.
 export function piorSintoma(ids: number[]): (SintomaCalib & { id: number }) | null {
@@ -82,8 +85,9 @@ export function estimativaInicialPorSintomas(ids: number[], minDecorrido: number
     if (s.medianaMin > piorMediana) piorMediana = s.medianaMin;
   }
   if (calibrados === 0) return null;
-  const fator = FATOR_N_SINTOMAS[Math.min(calibrados, 4)];
-  const totalEsperado = piorMediana * fator;
+  // total esperado = o MAIOR entre a mediana do pior sintoma e a mediana medida pra
+  // essa quantidade de sintomas — nunca o produto dos dois (dupla contagem)
+  const totalEsperado = Math.max(piorMediana, MEDIANA_POR_CONTAGEM[Math.min(calibrados, 4)]);
   if (minDecorrido > totalEsperado * 1.5) return null;
   return Math.max(15, Math.round(totalEsperado - minDecorrido));
 }
