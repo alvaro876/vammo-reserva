@@ -50,15 +50,19 @@ export async function notifyAviso(itens: AvisoNotificavel[]): Promise<number> {
   const webhook = process.env.SLACK_WEBHOOK_URL;
   if (!webhook || itens.length === 0) return 0;
 
-  // linha mínima (Alvaro, 18/08): fato + previsão quando existe. Nada de justificativa
-  // no texto — "reserva não chegaria antes"/"confirmar com o mecânico" foram vetados.
+  // linha mínima (Alvaro, 18-19/08): fato + previsão quando existe. Nada de
+  // justificativa no texto. 🟡 antes da linha só chega aqui no caso específico
+  // aprovado (número firme dizendo que não sai a tempo — filtro no cron).
   const linhas = itens
     .map((i) => {
       const base = BASES[i.location_id ?? 0] ?? `base ${i.location_id ?? "?"}`;
       const placa = i.placa || "sem placa";
-      const quando = `passou das 3h (${Math.round(-i.sla_restante_min)}min de atraso)`;
+      const quando =
+        i.sla_restante_min > 0
+          ? `passa das 3h em ~${Math.round(i.sla_restante_min)}min`
+          : `passou das 3h (${Math.round(-i.sla_restante_min)}min de atraso)`;
       const pronta = i.pronta_em_min !== null ? ` · moto pronta em ~${Math.round(i.pronta_em_min)}min` : "";
-      return `🔴 *${placa}* (${base}) — ${quando}${pronta}  _OS ${i.os_id}_`;
+      return `${i.sla_restante_min > 0 ? "🟡" : "🔴"} *${placa}* (${base}) — ${quando}${pronta}  _OS ${i.os_id}_`;
     })
     .join("\n");
 

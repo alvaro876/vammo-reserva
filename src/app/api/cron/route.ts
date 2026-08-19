@@ -101,11 +101,15 @@ export async function GET(req: NextRequest) {
       const relogio =
         (o as unknown as { min_desde_chegada?: number }).min_desde_chegada ?? o.min_desde_open;
       const slaRestante = 180 - relogio;
-      // Só ESTOURO (18/08, ajuste do Alvaro): o pré-aviso "vai passar mas sai logo"
-      // virou ruído no grupo — no Slack fica só o caso específico que importa:
-      // cliente que JÁ cruzou as 3h sem reserva sugerida e sem oferta da oficina
-      // (o estouro silencioso). O pré-aviso continua na TELA (selo VAI PASSAR DAS 3H).
-      if (slaRestante > 0) return false;
+      if (slaRestante > 0) {
+        // 🟡 antes da linha SÓ no caso específico que o Alvaro aprovou (19/08, caso
+        // TIS7I35): faltam <=30min E existe número FIRME dizendo que a moto NÃO sai
+        // a tempo (pronta > tempo restante). Sem número (estimativa vencida/sem
+        // diagnóstico), NADA de achismo no grupo — espera a linha e vira 🔴.
+        if (slaRestante > 30) return false;
+        const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
+        if (pronta.min === null || pronta.min <= slaRestante) return false;
+      }
       return true;
     });
     const avisadas = await notifyAviso(
