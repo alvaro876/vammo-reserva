@@ -308,11 +308,13 @@ function CardAcao({ c }: { c: ClienteCx }) {
             {c.guincho && <Selo tom="ok">veio de guincho</Selo>}
             {c.acidente && <Selo tom="ok">acidente</Selo>}
             {c.imobilizada && <Selo tom="ok">moto imobilizada</Selo>}
-            {/* Sintoma do cliente: só destaca quando o histórico é ruim (>=50% passa de
-                3h, contra base de ~27%). Abaixo disso não vira selo pra não poluir a TV. */}
-            {c.sintoma && c.sintoma.pct >= 50 && (
-              <Selo tom="fronteira">
-                {c.sintoma.nome} — {c.sintoma.pct}% passa de 3h
+            {/* FLAG DE SINTOMA (20/08, pedido do Alvaro): sempre que há sintoma calibrado,
+                o selo mostra o número REAL — informa, não alarma, não sugere reserva.
+                Âmbar quando o perfil é acima da média da base (>=20% vs ~15% de estouro):
+                "fica de olho". Números da recalibração com dado real (sintomas.ts). */}
+            {c.sintoma && (
+              <Selo tom={c.sintoma.pct >= 20 ? "fronteira" : "ok"}>
+                sintoma: {c.sintoma.nome} — {c.sintoma.pct}% passa de 3h
               </Selo>
             )}
           </div>
@@ -545,6 +547,8 @@ export default function CxPiso() {
                           que o CX fala pro cliente, não o que o motor usa por dentro */}
                       {" · "}
                       {["estimado", "sintoma"].includes(c.pronta_tipo) ? `pronta em ${prontaInfo(c).txt}` : prontaInfo(c).txt}
+                      {/* flag de sintoma acima da média também no card compacto (20/08) */}
+                      {c.sintoma && c.sintoma.pct >= 20 ? ` · ⚠ sintoma ${c.sintoma.pct}%` : ""}
                     </span>
                     <span
                       className="shrink-0 font-semibold tabular-nums"
