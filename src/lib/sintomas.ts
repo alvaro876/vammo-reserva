@@ -1,63 +1,61 @@
-// CALIBRAÇÃO DE SINTOMAS — gerada em 2026-08-10 (Mooca, piso, 90 dias).
+// CALIBRAÇÃO DE SINTOMAS — v2, RECALIBRADA EM 2026-08-20 COM DADO REAL.
 //
-// O Maestro lançou "diagnóstico orientado a sintomas" em 05/08: o cliente relata o que
-// sentiu ao abrir a OS. Isso é a PRIMEIRA informação que existe antes de qualquer peça
-// ser lançada — exatamente o buraco onde o RIVERS era cego (moto em execução com
-// estimativa 0 porque nada foi registrado ainda).
+// A v1 (10/08) usava a ponte histórica sintoma -> componente -> peça trocada e dizia
+// 51-70% de estouro pros piores sintomas. A validação com 2 semanas de sintoma REAL
+// (673 OSs concluídas com relato do cliente) DERRUBOU a ponte: quem RELATA "carenagem
+// quebrada" leva 23% de estouro, não 70% — a ponte media quem TROCAVA a peça (4h52 de
+// serviço); o relato geralmente é aperto de parafuso. Era o risco registrado na D13,
+// confirmado. E mais: quem relata sintoma sai MAIS RÁPIDO que a base (1 sintoma =
+// mediana 74min, 4% de estouro) — o fluxo de agendamento+sintoma deixa a oficina se
+// preparar. Sintoma NÃO é gatilho de reserva; é o NÚMERO inicial da moto sem diagnóstico.
 //
-// COMO FOI MEDIDO (e por que é aproximação): só existem ~28 OSs com sintoma real, e a
-// medição direta deu n=10/n=14 com sinal INVERTIDO — ruído puro. Então medi INDIRETO:
-// sintoma -> symptom_component -> public_diagnosis_component -> item_group (match por
-// nome normalizado, 26 dos 33 sintomas casam, 110 grupos) -> tempo real das OSs
-// históricas que trocaram essas peças. É bom pra calibrar, NÃO é prova final: o cliente
-// que relata "freio fraco" às vezes só precisa de regulagem, não de troca.
-//
-// ACHADO QUE CONTRARIA O CATÁLOGO: o campo is_complex_service NÃO prevê tempo.
-// "Carenagem quebrada" é marcada como simples e é a PIOR (70%); "Suspensão batendo
-// seco" é marcada como complexa e dá 40%. Complexidade de diagnóstico != tempo de
-// reparo. Não usar essa flag como atalho.
-//
-// USO ATUAL: só CONTEXTO na tela do CX. Não decide reserva — promoção depende de ~3
-// semanas de sintoma real pra validar se o relatado se comporta como a peça trocada.
-// Regenerar: ver a query em docs/DECISOES.md (D13).
+// MEDIANA aqui = tempo TOTAL da abertura da OS até a moto pronta (fila + serviço) das
+// OSs reais com aquele sintoma. Serve de estimativa inicial de conclusão enquanto o
+// diagnóstico não existe — quando as peças são apontadas, a estimativa real assume.
+// Recalibrar semanalmente enquanto o rollout cresce (a query está em docs/DECISOES.md).
 
 export interface SintomaCalib {
   nome: string;
-  pctEstouro: number;  // % das OSs históricas com essa peça que passaram de 3h
-  medianaMin: number;  // tempo mediano real (chegada -> pronta)
-  n: number;           // tamanho da amostra histórica
+  pctEstouro: number;  // % REAL das OSs com esse sintoma relatado que passaram de 3h
+  medianaMin: number;  // tempo TOTAL mediano real (abertura -> pronta), fila incluída
+  n: number;           // amostra real (05-19/08/2026, todas as bases)
 }
 
 export const SINTOMAS: Record<number, SintomaCalib> = {
-  4: { nome: "Carenagem quebrada ou solta", pctEstouro: 70, medianaMin: 292, n: 476 },
-  29: { nome: "Farol não funciona", pctEstouro: 64.8, medianaMin: 246, n: 99 },
-  26: { nome: "Moto perdendo força ou desliga andando", pctEstouro: 58.5, medianaMin: 199, n: 550 },
-  27: { nome: "Bateria não carrega ou descarrega rápido", pctEstouro: 58.4, medianaMin: 198, n: 520 },
-  25: { nome: "Moto não anda (com painel aceso)", pctEstouro: 58, medianaMin: 199, n: 610 },
-  33: { nome: "Painel com defeito ou erro", pctEstouro: 55.2, medianaMin: 203, n: 92 },
-  5: { nome: "Paralama quebrado ou solto", pctEstouro: 53.4, medianaMin: 187, n: 368 },
-  1: { nome: "Freio fraco ou não freia", pctEstouro: 51.2, medianaMin: 194, n: 43 },
-  2: { nome: "Freio com barulho ou trepidando", pctEstouro: 51.2, medianaMin: 194, n: 43 },
-  22: { nome: "Frente torta ou desalinhada", pctEstouro: 50.7, medianaMin: 183, n: 713 },
-  10: { nome: "Refletor quebrado ou faltando", pctEstouro: 50.4, medianaMin: 181, n: 242 },
-  9: { nome: "Placa solta, torta ou ilegível", pctEstouro: 50, medianaMin: 179, n: 65 },
-  20: { nome: "Direção dura ou pesada", pctEstouro: 49.2, medianaMin: 177, n: 294 },
-  19: { nome: "Roda vibrando ou com barulho", pctEstouro: 48.7, medianaMin: 177, n: 518 },
-  18: { nome: "Roda torta ou amassada", pctEstouro: 48.7, medianaMin: 177, n: 518 },
-  31: { nome: "Lanterna não funciona", pctEstouro: 47, medianaMin: 169, n: 270 },
-  24: { nome: "Vazamento de óleo na suspensão", pctEstouro: 45.4, medianaMin: 168, n: 441 },
-  21: { nome: "Frente boba, solta ou balançando", pctEstouro: 45, medianaMin: 169, n: 559 },
-  23: { nome: "Suspensão batendo seco", pctEstouro: 40.4, medianaMin: 156, n: 640 },
-  17: { nome: "Pneu gasto ou careca", pctEstouro: 40.1, medianaMin: 157, n: 1186 },
-  16: { nome: "Pneu furado, rasgado ou com bolha", pctEstouro: 40.1, medianaMin: 157, n: 1186 },
-  32: { nome: "Buzina não funciona", pctEstouro: 38.2, medianaMin: 147, n: 68 },
-  8: { nome: "USB não carrega", pctEstouro: 30.5, medianaMin: 128, n: 262 },
-  11: { nome: "Bolha para-brisa quebrada ou faltando", pctEstouro: 15.3, medianaMin: 99, n: 266 },
+  1: { nome: "Freio fraco ou não freia", pctEstouro: 10, medianaMin: 100, n: 188 },
+  2: { nome: "Freio com barulho ou trepidando", pctEstouro: 9, medianaMin: 93, n: 272 },
+  3: { nome: "Manete quebrado ou frouxo", pctEstouro: 14, medianaMin: 90, n: 42 },
+  4: { nome: "Carenagem quebrada ou solta", pctEstouro: 16, medianaMin: 117, n: 43 },
+  5: { nome: "Paralama quebrado ou solto", pctEstouro: 12, medianaMin: 84, n: 64 },
+  6: { nome: "Retrovisor quebrado ou faltando", pctEstouro: 6, medianaMin: 94, n: 49 },
+  7: { nome: "Suporte de celular danificado ou faltando", pctEstouro: 0, medianaMin: 124, n: 16 },
+  8: { nome: "USB não carrega", pctEstouro: 11, medianaMin: 95, n: 61 },
+  9: { nome: "Placa solta, torta ou ilegível", pctEstouro: 18, medianaMin: 126, n: 11 },
+  11: { nome: "Bolha para-brisa quebrada ou faltando", pctEstouro: 15, medianaMin: 94, n: 20 },
+  14: { nome: "Cavalete (descanso) com problema", pctEstouro: 7, medianaMin: 96, n: 14 },
+  16: { nome: "Pneu furado, rasgado ou com bolha", pctEstouro: 15, medianaMin: 93, n: 82 },
+  17: { nome: "Pneu gasto ou careca", pctEstouro: 16, medianaMin: 94, n: 81 },
+  18: { nome: "Roda torta ou amassada", pctEstouro: 11, medianaMin: 98, n: 35 },
+  19: { nome: "Roda vibrando ou com barulho", pctEstouro: 12, medianaMin: 102, n: 119 },
+  20: { nome: "Direção dura ou pesada", pctEstouro: 16, medianaMin: 103, n: 62 },
+  21: { nome: "Frente boba, solta ou balançando", pctEstouro: 9, medianaMin: 107, n: 90 },
+  22: { nome: "Frente torta ou desalinhada", pctEstouro: 12, medianaMin: 113, n: 52 },
+  23: { nome: "Suspensão batendo seco", pctEstouro: 12, medianaMin: 108, n: 88 },
+  26: { nome: "Moto perdendo força ou desliga andando", pctEstouro: 10, medianaMin: 108, n: 41 },
+  27: { nome: "Bateria não carrega ou descarrega rápido", pctEstouro: 28, medianaMin: 119, n: 18 },
+  30: { nome: "Seta não funciona", pctEstouro: 12, medianaMin: 132, n: 26 },
+  32: { nome: "Buzina não funciona", pctEstouro: 8, medianaMin: 104, n: 12 },
+  33: { nome: "Painel com defeito ou erro", pctEstouro: 8, medianaMin: 86, n: 24 },
 };
 
-// Base de comparação: ~27% das OSs de piso da Mooca passam de 3h. Acima de 55% é sinal
-// forte de espera longa; abaixo de 35%, sinal de serviço rápido.
-export const BASE_ESTOURO_PCT = 27;
+// Base de comparação da era atual (pós-release, bancada rápida): ~15% das OSs de piso
+// passam de 3h. Nenhum sintoma isolado chega perto de sinal de reserva — o selo de
+// alerta na tela (>=50%) fica naturalmente apagado até o dado dizer o contrário.
+export const BASE_ESTOURO_PCT = 15;
+
+// Múltiplos sintomas alongam a visita (medido, dado real): 1 sintoma mediana 74min ·
+// 2 = 85 · 3 = 101 · 4+ = 116. Fator relativo sobre a mediana do pior sintoma.
+const FATOR_N_SINTOMAS = [1, 1, 1.15, 1.35, 1.55];
 
 // Resumo do pior sintoma da OS, pro card do CX. null = sem sintoma calibrado.
 export function piorSintoma(ids: number[]): (SintomaCalib & { id: number }) | null {
@@ -67,4 +65,25 @@ export function piorSintoma(ids: number[]): (SintomaCalib & { id: number }) | nu
     if (s && (!pior || s.pctEstouro > pior.pctEstouro)) pior = { ...s, id };
   }
   return pior;
+}
+
+// ESTIMATIVA INICIAL POR SINTOMA (v0.32): quanto falta pra moto ficar pronta quando
+// AINDA NÃO HÁ diagnóstico, baseada na mediana real do perfil de sintomas.
+// Retorna minutos restantes (mínimo 15) ou null quando não dá pra afirmar nada:
+// sem sintoma calibrado, ou a moto já passou de 1,5x a mediana do perfil (aí o
+// perfil provou que não descreve esse caso — número nenhum é melhor que um falso).
+export function estimativaInicialPorSintomas(ids: number[], minDecorrido: number): number | null {
+  let piorMediana = 0;
+  let calibrados = 0;
+  for (const id of ids) {
+    const s = SINTOMAS[id];
+    if (!s) continue;
+    calibrados++;
+    if (s.medianaMin > piorMediana) piorMediana = s.medianaMin;
+  }
+  if (calibrados === 0) return null;
+  const fator = FATOR_N_SINTOMAS[Math.min(calibrados, 4)];
+  const totalEsperado = piorMediana * fator;
+  if (minDecorrido > totalEsperado * 1.5) return null;
+  return Math.max(15, Math.round(totalEsperado - minDecorrido));
 }

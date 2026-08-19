@@ -31,7 +31,7 @@ interface ClienteCx {
   tempo_previsto_min: number | null;
   // quanto falta pra moto ficar pronta (13/08) — guia a conversa do CX
   pronta_em_min: number | null;
-  pronta_tipo: "estimado" | "qa" | "retrabalho" | "sem_diag" | "vencida";
+  pronta_tipo: "estimado" | "qa" | "retrabalho" | "sintoma" | "sem_diag" | "vencida";
   ofertada_em: number | null;
   ofertou: string | null;
   recusada: boolean;
@@ -42,12 +42,19 @@ interface ClienteCx {
 }
 
 interface Resposta {
+  versao?: string;
   atualizado_em: string;
   base: string;
   pressao_piso: number;
   total: number;
   clientes: ClienteCx[];
 }
+
+// AUTO-RELOAD por versão (20/08, caso TLT6B13): a TV fica aberta por dias — os DADOS
+// atualizam a cada 45s, mas o CÓDIGO da página só troca com reload. Quando a versão
+// que a API manda muda (= houve deploy), a página se recarrega UMA vez: mesma URL,
+// mesma tela, sem rotação nem redirect — só o código fresco. (Regra da TV fixa intacta.)
+let versaoVista: string | null = null;
 
 const STATUS_HUMANO: Record<string, string> = {
   OPEN: "aguardando diagnóstico",
@@ -95,6 +102,10 @@ function prontaInfo(c: ClienteCx): { txt: string; forte: boolean } {
   switch (c.pronta_tipo) {
     case "estimado":
       return { txt: `~${relogio(c.pronta_em_min ?? 0)}`, forte: true };
+    case "sintoma":
+      // estimativa inicial pela mediana real do perfil de sintomas (v0.32) — some
+      // quando o diagnóstico chega e a conta por peça assume
+      return { txt: `~${relogio(c.pronta_em_min ?? 0)} (pelo sintoma)`, forte: true };
     case "qa":
       return { txt: `revisão final · ~${relogio(c.pronta_em_min ?? 0)}`, forte: true };
     case "retrabalho":
@@ -330,7 +341,15 @@ export default function CxPiso() {
     try {
       const res = await fetch("/api/cx");
       if (!res.ok) throw new Error(`Erro ${res.status}`);
-      setDados(await res.json());
+      const json: Resposta = await res.json();
+      if (json.versao) {
+        if (versaoVista && versaoVista !== json.versao) {
+          window.location.reload();
+          return;
+        }
+        versaoVista = json.versao;
+      }
+      setDados(json);
       setErro(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro desconhecido");
@@ -461,7 +480,7 @@ export default function CxPiso() {
                     {c.mecanico ? ` · mecânico ${c.mecanico.split(" ")[0]}` : ""}
                     {" · "}
                     <span className="font-semibold text-slate-600">
-                      {c.pronta_tipo === "estimado" ? `pronta em ${prontaInfo(c).txt}` : prontaInfo(c).txt}
+                      {["estimado", "sintoma"].includes(c.pronta_tipo) ? `pronta em ${prontaInfo(c).txt}` : prontaInfo(c).txt}
                     </span>
                   </span>
                   <span className="ml-auto flex items-center gap-2 text-sm">
@@ -520,7 +539,7 @@ export default function CxPiso() {
                       {/* "pronta em" trocou a "previsão" (total projetado): é o número
                           que o CX fala pro cliente, não o que o motor usa por dentro */}
                       {" · "}
-                      {c.pronta_tipo === "estimado" ? `pronta em ${prontaInfo(c).txt}` : prontaInfo(c).txt}
+                      {["estimado", "sintoma"].includes(c.pronta_tipo) ? `pronta em ${prontaInfo(c).txt}` : prontaInfo(c).txt}
                     </span>
                     <span
                       className="shrink-0 font-semibold tabular-nums"

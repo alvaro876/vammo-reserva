@@ -12,8 +12,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { runRivers } from "@/lib/rivers-engine";
 import { query } from "@/lib/clickhouse";
 import { basesTeste } from "@/lib/autonomia";
-import { restanteParaPronta } from "@/lib/algorithm";
-import { piorSintoma } from "@/lib/sintomas";
+import { restanteParaPronta, ALGO_VERSION } from "@/lib/algorithm";
+import { piorSintoma, estimativaInicialPorSintomas } from "@/lib/sintomas";
 import { getAvisosCx, registrarAvisoCx } from "@/lib/supabase";
 
 const BASES: Record<number, string> = { 1: "Mooca", 34: "Osasco", 166: "SBC" };
@@ -101,7 +101,17 @@ export async function GET() {
         const c = ctx.get(o.os_id);
         const rec = o.recomendacao!;
         // quanto falta pra pronta — guia a conversa do CX (reserva × "já vai sair")
-        const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
+        let pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
+        // SEM diagnóstico mas COM sintoma relatado (v0.32, 20/08): a mediana real do
+        // perfil de sintomas vira estimativa inicial — o card deixa de dizer "sem
+        // previsão" nos primeiros ~40min. Quando o diagnóstico chega, a conta real assume.
+        if (pronta.tipo === "sem_diag" && (o.sintoma_ids?.length ?? 0) > 0) {
+          const est = estimativaInicialPorSintomas(
+            o.sintoma_ids ?? [],
+            o.min_desde_chegada ?? o.min_desde_open
+          );
+          if (est !== null) pronta = { tipo: "sintoma", min: est };
+        }
         return {
           os_id: o.os_id,
           placa: o.placa,
@@ -154,6 +164,9 @@ export async function GET() {
     const pressao = rows.find((o) => bases.includes(o.location_id))?.pressao_piso ?? 0;
 
     const payload = {
+      // versão do app: a TV compara a cada busca e se recarrega sozinha quando muda
+      // (deploy não depende mais de alguém apertar F5 — caso TLT6B13, 20/08)
+      versao: ALGO_VERSION,
       atualizado_em: new Date().toISOString(),
       base: bases.map((b) => BASES[b] ?? String(b)).join(" · "),
       pressao_piso: pressao,

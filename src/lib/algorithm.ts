@@ -7,7 +7,17 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.31.0"; // 0.31.0 = CHEGAR CEDO (20/08, caso SUI0J43 pego pelo Alvaro:
+export const ALGO_VERSION = "0.32.0"; // 0.32.0 = SINTOMA COMO NÚMERO INICIAL (20/08): recalibração dos
+                                     // sintomas com DADO REAL (673 OSs concluídas, 05-19/08) derrubou
+                                     // a ponte histórica (carenagem: 70% na ponte → 23% real; quem
+                                     // relata sai MAIS RÁPIDO que a base — agendamento prepara a
+                                     // oficina). Sintoma NÃO vira gatilho de reserva (nenhum passa de
+                                     // 33%); vira ESTIMATIVA INICIAL da moto sem diagnóstico no card
+                                     // do CX ("pronta em ~X (pelo sintoma)", mediana real × fator por
+                                     // quantidade), some quando o diagnóstico chega. + TV se recarrega
+                                     // sozinha quando a versão muda (deploy não depende mais de F5 —
+                                     // caso TLT6B13 preso no bundle velho).
+                                     // 0.31.0 = CHEGAR CEDO (20/08, caso SUI0J43 pego pelo Alvaro:
                                      // est 236, aguardando mecânico, tela dizendo "pronta em 4h04"
                                      // e nenhuma regra disparada): (a) C3_NAO_COMECOU — moto sem
                                      // execução não recupera relógio queimado; se relógio +
@@ -342,7 +352,9 @@ const QA_STATUSES = new Set(["AWAITING_QA", "IN_QA", "QA_REJECTED"]);
 // dizer isso vale mais que um número falso (lição da OS 50408, que ficou 176min
 // "quase pronta" pelo restante clampado em 0).
 export type RestantePronta =
-  | { tipo: "estimado" | "qa" | "retrabalho"; min: number }
+  // "sintoma" = estimativa inicial pela mediana real do perfil de sintomas (v0.32) —
+  // preenchida na rota do CX enquanto não há diagnóstico; some quando a conta real chega.
+  | { tipo: "estimado" | "qa" | "retrabalho" | "sintoma"; min: number }
   | { tipo: "sem_diag" | "vencida"; min: null };
 
 export function restanteParaPronta(
