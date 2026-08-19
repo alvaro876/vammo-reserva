@@ -120,6 +120,13 @@ function regrasBase(o, t, e, cfg, mem) {
   }
   if (cfg.qaRej && o.rej && t >= o.rej && (o.rej - o.open) / 60 >= 165) return "QA_REJ_165";
 
+  // NEM COMEÇOU (caso SUI0J43, 20/08): moto aguardando mecânico com exec~0 — a
+  // bancada rápida não devolve o relógio já queimado. Dispara se relógio +
+  // estimativa COMPRIMIDA (fator cfg.compressao, default 0.6) + QA passa de 180.
+  if (cfg.naoComecou && !emQa && e.exec < 5 && (e.st === 'AWAITING_MECHANIC' || e.st === 'OPEN') &&
+      e.est > 0 && min >= (cfg.naoComecouMin ?? 60) &&
+      min + e.est * (cfg.compressao ?? 0.6) + 8 > 180) return "NAO_COMECOU";
+
   // tempo
   let restante = restanteBruto;
   const proj = min + restante + 8;
@@ -206,6 +213,10 @@ const CONFIGS = {
   // 171 -> barrada por 9min, e a tela dizia 'dentro do prazo').
   // recalibracao 12/08: bancada acelerou (mediana 73-96 -> 48-57min) e a trava por
   // estimativa degradou (erros com est 158-227 terminando em 143-174min)
+  rNC230: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 230, naoComecou: true },
+  rNC60: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 240, naoComecou: true },
+  rNC90: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 240, naoComecou: true, naoComecouMin: 90 },
+  rNC60c5: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 240, naoComecou: true, compressao: 0.5 },
   r28atual: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combProjMin: 230 },
   rSemEscape: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true },
   rEst210: { relogio150: true, relogioMin: 160, qaRej: true, combFirmeEst: true, relogioGate: true, hardGate: true, fator9: 0.85, fator13: 0.8, relogioGateMin: 60, gateCru: true, reguaCliente: true, guinchoFora: true, combEstMin: 210 },

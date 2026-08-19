@@ -7,7 +7,16 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.30.0"; // 0.30.0 = DEVOLUÇÃO fora do piso (13/08, reporte do Victor/CX,
+export const ALGO_VERSION = "0.31.0"; // 0.31.0 = CHEGAR CEDO (20/08, caso SUI0J43 pego pelo Alvaro:
+                                     // est 236, aguardando mecânico, tela dizendo "pronta em 4h04"
+                                     // e nenhuma regra disparada): (a) C3_NAO_COMECOU — moto sem
+                                     // execução não recupera relógio queimado; se relógio +
+                                     // est×0,6 + QA > 180, estouro é matemático (backtest 98,4%,
+                                     // n=127, ~1,4/dia); (b) trava da combinada 240→230 ("sempre
+                                     // que a estimativa for alta assim, deve aparecer") — margem
+                                     // sobre a banda de FPs da regressão (182-227). Antecedência
+                                     // mediana do sistema: 19min → ~79min antes da linha.
+                                     // 0.30.0 = DEVOLUÇÃO fora do piso (13/08, reporte do Victor/CX,
                                      // caso DEM0I42): cancelamento de plano escaneia QR e vira
                                      // check-in "piso" sem cliente esperando. is_piso agora exclui
                                      // so_type RETURN_INSPECTION (medido: 193/90d Mooca, ~2 cards/dia
@@ -252,7 +261,19 @@ const THRESHOLDS = {
   // e produziu 3 falsos positivos (est 158-171, motos prontas em 143-168min) sem
   // nenhum acerto confirmado — incluindo a própria TIS7A04 que o motivou (156min,
   // dentro do prazo). Produção > backtest: o backtest dizia 89,5%, o mundo real não.
-  est_firme_min: 240,        // C3.5: RECALIBRADO 12/08 (180→240). A oficina ACELEROU depois
+  nao_comecou_min: 60,       // C3_NAO_COMECOU: relógio mínimo pra disparar (evita ruído do
+                             // minuto zero; aos 60min a fila de mecânico já é fato, não foto).
+  compressao_bancada: 0.6,   // C3_NAO_COMECOU: fator de compressão da estimativa — a bancada
+                             // real entrega ~60% do estimado no melhor ritmo (medido 12/08:
+                             // mediana 48-57min contra estimativas ~90). Se nem ASSIM a conta
+                             // fecha, o estouro é matemático. Backtest: 98,4% (n=127).
+  est_firme_min: 230,        // C3.5: 240→230 em 20/08, ordem do Alvaro no caso SUI0J43 ("sempre
+                             // que a estimativa for alta assim, deve aparecer") — est 236 ficou
+                             // 4min abaixo da trava de 240 com a tela dizendo "pronta em 4h04".
+                             // 230 mantém margem sobre a banda de erro medida da regressão de
+                             // 11-12/08 (FPs tinham est 182-227). Backtest rNC230: 96,5%,
+                             // dias da regressão 85,7%/95,7%, antecedência mediana 79min.
+                             // Histórico do 240: RECALIBRADO 12/08 (180→240). A oficina ACELEROU depois
                              // do release de sintomas do Maestro (bancada mediana 73-96min na
                              // semana anterior → 48-57min em 11-12/08) e a trava de 180
                              // degradou: 4 erros em 2 dias com estimativa 182-227 e real de
@@ -609,6 +630,34 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     return reserva(
       "C1_QA_TARDIA",
       `reprovada na qualidade aos ${input.min_ate_rejeicao}min — o retrabalho (mediana 45min) não cabe nas 3h`,
+      base,
+      "alta"
+    );
+  }
+
+  // ── NEM COMEÇOU E A CONTA NÃO FECHA (v0.31, caso SUI0J43 pego pelo Alvaro em 20/08:
+  // est 236min — 4min abaixo da trava de 240 — aguardando mecânico com 1h28 de casa e
+  // a tela dizendo "pronta em ~4h04", sem reserva) ─────────────────────────────────
+  // A trava de 240 existe porque bancada rápida VENCE estimativa inflada — mas isso só
+  // vale pra moto que JÁ ESTÁ na mão do mecânico. Moto sem execução não recupera o
+  // relógio queimado: mesmo comprimindo a estimativa pelo fator real da bancada (0,6,
+  // medido na recalibração de 12/08), se relógio + est×0,6 + QA passa de 180 o estouro
+  // é matemático. Backtest 92d (config rNC60): 98,4% de precisão (125/127, ~1,4/dia),
+  // conjunto intacto, e a antecedência mediana do sistema vai de 19min pra 78min.
+  if (
+    input.is_piso === 1 &&
+    !emQa &&
+    execFeita < 5 &&
+    (input.status_atual === "AWAITING_MECHANIC" || input.status_atual === "OPEN") &&
+    input.tempo_estimado_min > 0 &&
+    relogio >= THRESHOLDS.nao_comecou_min &&
+    relogio + input.tempo_estimado_min * THRESHOLDS.compressao_bancada + THRESHOLDS.qa_min > 180
+  ) {
+    return reserva(
+      "C3_NAO_COMECOU",
+      `na base há ${relogio}min e o conserto nem começou — mesmo em ritmo acelerado (~${Math.round(
+        input.tempo_estimado_min * THRESHOLDS.compressao_bancada
+      )}min de serviço) passa das 3h; 98% desses casos estouram`,
       base,
       "alta"
     );
