@@ -194,16 +194,20 @@ function Selo({ tom, children }: { tom: "auto" | "fronteira" | "oficina" | "aler
   );
 }
 
-// AVISO ANTECIPADO (13/08, pedido do Victor/CX, caso SVY1F76: a tela só gritou no
-// minuto 190, com a moto saindo em ~19min — tarde demais pra conversar com calma).
-// Faltando <=30min pro SLA e sem número dizendo que a moto sai ANTES da linha, o
-// estouro é questão de relógio: o card sobe pra fila de aviso ANTES de estourar.
+// AVISO ANTECIPADO (13/08, caso SVY1F76; AMPLIADO em 20/08, caso SUI0J43 + ordem do
+// Alvaro: "se a estimativa diz que vai passar das 3h, independente do tempo, deve
+// aparecer"). O card da SUI0J43 dizia "pronta em ~4h04" e "faltam 1h32" ao mesmo
+// tempo — contradição na cara do CX. Regra:
+//  - com número FIRME dizendo que NÃO sai a tempo (pronta > tempo que falta): sobe
+//    pra fila de aviso NA HORA, não importa há quanto tempo o cliente chegou;
+//  - sem número confiável (sem diagnóstico / estimativa vencida): sobe só na janela
+//    final (<=30min), senão toda moto recém-chegada viraria alarme.
+// A RESERVA continua com as regras medidas (nem-começou 98%, estimativa >=230,
+// relógio) — aqui é a fila de atenção/conversa do CX.
 function vaiEstourar(c: ClienteCx) {
-  return (
-    c.minutos_pro_sla > 0 &&
-    c.minutos_pro_sla <= 30 &&
-    !(c.pronta_em_min !== null && c.pronta_em_min <= c.minutos_pro_sla)
-  );
+  if (c.minutos_pro_sla <= 0) return false; // já estourou — outro caminho cuida
+  if (c.pronta_em_min !== null) return c.pronta_em_min > c.minutos_pro_sla;
+  return c.minutos_pro_sla <= 30;
 }
 
 function CardAcao({ c }: { c: ClienteCx }) {
