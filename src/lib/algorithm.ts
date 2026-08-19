@@ -687,12 +687,14 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       decision: "SEM_RESERVA" as ReservaDecision,
       rule_triggered: "C4_OK",
       // caso SVY1F76 (13/08, Victor): a projeção passava de 180 e o texto dizia
-      // "dentro do prazo: ~215min" — contradição na cara do CX. Quando a projeção
-      // cruza a linha mas nenhuma regra dispara, o motivo real é "o restante é
-      // curto demais pra reserva compensar" — dizer isso.
+      // "dentro do prazo: ~215min" — contradição na cara do CX. E caso UDF6I45
+      // (20/08, Alvaro): "a moto sai antes de uma reserva chegar" com 103min de
+      // restante é FALSO — essa frase só vale com restante curto de verdade.
       motivo:
         tempoTotal > THRESHOLDS.tempo_total_max
-          ? `projeção ~${tempoTotal}min passa das 3h, mas restam só ~${tempoRestanteC3 + THRESHOLDS.qa_min}min de serviço — a moto sai antes de uma reserva chegar; avisar o cliente`
+          ? tempoRestanteC3 + THRESHOLDS.qa_min < THRESHOLDS.restante_min_reserva
+            ? `projeção ~${tempoTotal}min passa das 3h, mas restam só ~${tempoRestanteC3 + THRESHOLDS.qa_min}min de serviço — a moto sai antes de uma reserva chegar; avisar o cliente`
+            : `projeção ~${tempoTotal}min passa das 3h (restam ~${tempoRestanteC3 + THRESHOLDS.qa_min}min de serviço) — avisar o cliente; nenhuma regra de reserva disparou ainda`
           : `dentro do prazo: ~${tempoTotal}min (fila ~${tempoEspera}min com ${cap} mec esperados + ${tempoRestanteC3}min serviço + ${THRESHOLDS.qa_min}min QA)`,
     };
   }
@@ -706,7 +708,9 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     motivo: semDiag
       ? `aguardando diagnóstico (na base há ${relogio}min, sem estimativa de tempo ainda)`
       : relogio + tempoRestanteC3 + THRESHOLDS.qa_min > THRESHOLDS.tempo_total_max
-        ? `projeção ~${relogio + tempoRestanteC3 + THRESHOLDS.qa_min}min passa das 3h, mas restam só ~${tempoRestanteC3 + THRESHOLDS.qa_min}min de serviço — a moto sai antes de uma reserva chegar; avisar o cliente`
+        ? tempoRestanteC3 + THRESHOLDS.qa_min < THRESHOLDS.restante_min_reserva
+          ? `projeção ~${relogio + tempoRestanteC3 + THRESHOLDS.qa_min}min passa das 3h, mas restam só ~${tempoRestanteC3 + THRESHOLDS.qa_min}min de serviço — a moto sai antes de uma reserva chegar; avisar o cliente`
+          : `projeção ~${relogio + tempoRestanteC3 + THRESHOLDS.qa_min}min passa das 3h (restam ~${tempoRestanteC3 + THRESHOLDS.qa_min}min de serviço) — avisar o cliente; nenhuma regra de reserva disparou ainda`
         : `dentro do prazo: na base há ${relogio}min, estimado ${input.tempo_estimado_min}min`,
   };
 }
