@@ -102,11 +102,11 @@ export async function GET(req: NextRequest) {
         (o as unknown as { min_desde_chegada?: number }).min_desde_chegada ?? o.min_desde_open;
       const slaRestante = 180 - relogio;
       if (slaRestante > 0) {
-        // 🟡 antes da linha SÓ no caso específico que o Alvaro aprovou (19/08, caso
-        // TIS7I35): faltam <=30min E existe número FIRME dizendo que a moto NÃO sai
-        // a tempo (pronta > tempo restante). Sem número (estimativa vencida/sem
-        // diagnóstico), NADA de achismo no grupo — espera a linha e vira 🔴.
-        if (slaRestante > 30) return false;
+        // 🟡 antes da linha SÓ com número FIRME dizendo que a moto NÃO sai a tempo
+        // (pronta > tempo restante). SEM janela de tempo (20/08, caso TJN6F12: projeção
+        // 216min aos 45min de casa e o bot mudo até 2h30 — a tela já promovia na hora,
+        // o grupo ficou pra trás). Sem número (estimativa vencida/sem diagnóstico),
+        // NADA de achismo no grupo — espera a linha e vira 🔴.
         const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
         if (pronta.min === null || pronta.min <= slaRestante) return false;
       }
