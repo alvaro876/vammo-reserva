@@ -415,6 +415,7 @@ export interface AlgoritmoInput {
   min_desde_chegada?: number;    // relógio do CLIENTE (desde o check-in). Fallback: min_desde_open
   exec_acum_min?: number;        // execução acumulada (todos os episódios IN_PROGRESS), em min
   oferta_ativa?: number;         // 1 = a oficina já ofereceu reserva (e o cliente não recusou)
+  oferta_recusada?: number;      // 1 = ofereceram e o cliente RECUSOU — escolheu esperar (20/08)
   capacidade_esperada?: number;  // nº esperado de mecânicos na base/hora atual (curva do histórico)
   fila_min?: number;             // soma do tempo estimado das OS esperando mecânico na base
 }

@@ -374,7 +374,11 @@ export default function CxPiso() {
   }
 
   const clientes = dados?.clientes ?? [];
-  const jaAvisado = (c: ClienteCx) => Boolean(c.avisado_em) || avisadosLocal.has(c.os_id);
+  // Cliente que RECUSOU a reserva conta como avisado (20/08, ordem do Alvaro: "quando
+  // o cliente recusa tem que sumir") — ele foi oferecido, sabe da situação e escolheu
+  // esperar. Sai da fila de ação e fica na faixa "cliente já avisado" (selo mantém o
+  // "cliente recusou" pra rastreabilidade).
+  const jaAvisado = (c: ClienteCx) => Boolean(c.avisado_em) || c.recusada || avisadosLocal.has(c.os_id);
   // Cliente que JÁ CRUZOU as 3h entra na fila de aviso MESMO sem regra de reserva —
   // caso real UFJ8I67 (31/07): 3h01 na base, em execução, projeção 195min (< gatilho
   // de 240, restante era curto) → nenhuma regra disparou e o card ficou em "dentro do
@@ -492,6 +496,9 @@ export default function CxPiso() {
                   </span>
                   <span className="ml-auto flex items-center gap-2 text-sm">
                     {c.entregue && <Selo tom="auto">reserva entregue</Selo>}
+                    {c.recusada && !c.entregue && (
+                      <Selo tom="alerta">recusou a reserva — esperando a moto</Selo>
+                    )}
                     {c.avisado_em && (
                       <span className="text-slate-500">
                         avisado {hora(c.avisado_em)}

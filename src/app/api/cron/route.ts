@@ -65,7 +65,12 @@ export async function GET(req: NextRequest) {
     // E nunca anuncia cliente que a oficina JÁ atendeu — o check-in segue aberto ~4h depois
     // da oferta, então sem esse filtro o bot ficava pedindo reserva pra quem já tinha.
     const novas = reservasPiso.filter(
-      (o) => !jaPostadasReserva.has(o.os_id) && basesTeste().has(o.location_id) && o.oferta_ativa !== 1
+      (o) =>
+        !jaPostadasReserva.has(o.os_id) &&
+        basesTeste().has(o.location_id) &&
+        o.oferta_ativa !== 1 &&
+        // cliente que RECUSOU a reserva escolheu esperar — o bot não insiste (20/08)
+        (o as unknown as { oferta_recusada?: number }).oferta_recusada !== 1
     );
 
     // 6) Notifica só as novas — e REGISTRA o post (é o registro que deduplica)
@@ -92,6 +97,8 @@ export async function GET(req: NextRequest) {
       if (o.is_piso !== 1 || !basesTeste().has(o.location_id)) return false;
       if (o.recomendacao?.decision === "RESERVA") return false; // reserva já tem mensagem própria
       if (o.oferta_ativa === 1) return false; // oficina já agiu — cliente já sabe
+      // recusou a oferta = foi avisado e escolheu esperar — sem re-ping (20/08)
+      if ((o as unknown as { oferta_recusada?: number }).oferta_recusada === 1) return false;
       if (jaAvisadas.has(o.os_id)) return false;
       // OS que o bot JÁ anunciou como reserva não ganha aviso depois (caso SWI9B54,
       // 18/08: "dê reserva" às 14:04 e "sem reserva, avisa que tá saindo" às 14:30 —

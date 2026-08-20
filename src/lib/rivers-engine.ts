@@ -370,7 +370,10 @@ SELECT
     -- (O is_piso acima escapa disso porque checkin.so_id é Nullable.)
     if(coalesce(sp.os_id, 0) > 0, 1, 0) AS troca_placa,
     -- 1 = a oficina já ofereceu e o cliente não recusou depois
-    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.ofertada_ts, 0) > coalesce(oo.cancelada_ts, 0), 1, 0) AS oferta_ativa
+    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.ofertada_ts, 0) > coalesce(oo.cancelada_ts, 0), 1, 0) AS oferta_ativa,
+    -- 1 = ofereceram e o cliente RECUSOU (20/08, ordem do Alvaro: quem recusa some da
+    -- fila de ação — já foi avisado e escolheu esperar; o bot também não fala mais dele)
+    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.cancelada_ts, 0) >= coalesce(oo.ofertada_ts, 0), 1, 0) AS oferta_recusada
 FROM os_meta om
 LEFT JOIN mecanico_atual ma ON ma.os_id = om.os_id
 LEFT JOIN pecas_diag p ON p.os_id = om.os_id
