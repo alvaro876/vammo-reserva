@@ -13,6 +13,13 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  // Identidade da versão deployada (20/08): alimenta o auto-reload da TV. O reload
+  // era chaveado só na ALGO_VERSION e deploys de tela sem bump ficavam invisíveis
+  // pras TVs abertas (caso TJN6F12 preso com cliente que recusou). Com o metadata,
+  // TODO deploy muda a "versao" do payload e as TVs se recarregam sozinhas.
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
   "observability": {
     "enabled": true
   }

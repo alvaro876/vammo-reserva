@@ -163,10 +163,22 @@ export async function GET() {
 
     const pressao = rows.find((o) => bases.includes(o.location_id))?.pressao_piso ?? 0;
 
+    // Identidade COMPLETA da versão: ALGO_VERSION + id do deploy do Worker (binding
+    // CF_VERSION_METADATA). Só a ALGO_VERSION não basta: deploy de tela sem bump de
+    // versão ficava invisível pras TVs abertas (TJN6F12 preso com cliente que recusou).
+    let buildId = "";
+    try {
+      const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+      const env = getCloudflareContext().env as { CF_VERSION_METADATA?: { id?: string } };
+      buildId = env.CF_VERSION_METADATA?.id?.slice(0, 8) ?? "";
+    } catch {
+      // fora do Workers (dev local), segue só com a ALGO_VERSION
+    }
+
     const payload = {
       // versão do app: a TV compara a cada busca e se recarrega sozinha quando muda
       // (deploy não depende mais de alguém apertar F5 — caso TLT6B13, 20/08)
-      versao: ALGO_VERSION,
+      versao: buildId ? `${ALGO_VERSION}+${buildId}` : ALGO_VERSION,
       atualizado_em: new Date().toISOString(),
       base: bases.map((b) => BASES[b] ?? String(b)).join(" · "),
       pressao_piso: pressao,
