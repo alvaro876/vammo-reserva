@@ -17,6 +17,17 @@ export interface ReservaNotificavel {
   fronteira?: boolean;
 }
 
+// Link das mensagens: a TELA DO CX com o token (a audiência do grupo é o CX; pedido
+// do Alvaro em 20/08 — o link da raiz é o painel do líder, que o grupo não usa).
+// O token vem do secret RIVERS_CX_TOKEN — NUNCA literal no código: o repo é público
+// e o token protege nomes de clientes. Sem o secret, cai na raiz.
+function linkPainel(): string {
+  const tk = process.env.RIVERS_CX_TOKEN;
+  return tk
+    ? `<https://vammo-reserva.alvaro-d42.workers.dev/cx?k=${tk}|abrir a tela do CX>`
+    : `<https://vammo-reserva.alvaro-d42.workers.dev|abrir o painel>`;
+}
+
 // Posta um texto simples no canal (alertas do monitor de precisão etc.).
 export async function notifyTexto(text: string): Promise<boolean> {
   const webhook = process.env.SLACK_WEBHOOK_URL;
@@ -69,7 +80,7 @@ export async function notifyAviso(itens: AvisoNotificavel[]): Promise<number> {
   const text =
     `⏰ *RIVERS — avisar o cliente* _(sem sugestão de reserva)_\n` +
     linhas +
-    `\n<https://vammo-reserva.alvaro-d42.workers.dev|abrir o painel>`;
+    `\n${linkPainel()}`;
 
   try {
     const r = await fetch(webhook, {
@@ -108,7 +119,7 @@ export async function notifyReserva(itens: ReservaNotificavel[]): Promise<number
     `🛵 *RIVERS — ${itens.length} reserva(s) sugerida(s)*\n` +
     linhas +
     (temAuto ? `\n_⚡ = regra de alta precisão — pode acatar direto_` : "") +
-    `\n<https://vammo-reserva.alvaro-d42.workers.dev|abrir o painel>`;
+    `\n${linkPainel()}`;
 
   try {
     const r = await fetch(webhook, {
