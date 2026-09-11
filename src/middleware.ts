@@ -16,7 +16,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 // /kpi entrou em 26/08: não mostra nome de cliente, mas mostra desempenho interno
 // (precisão, adesão do CX por faixa) — não é pra ficar aberto na internet.
-const PROTEGIDAS = ["/cx", "/api/cx", "/kpi", "/api/kpi"];
+// /diario entrou em 10/09: mostra PLACA e o desfecho de cada moto do dia — mesmo
+// nível de sigilo do /cx.
+const PROTEGIDAS = ["/cx", "/api/cx", "/kpi", "/api/kpi", "/diario", "/api/diario"];
 const COOKIE = "rivers_acesso";
 
 export function middleware(req: NextRequest) {
@@ -68,5 +70,9 @@ export const config = {
     "/kpi/:path*",
     "/api/kpi",
     "/api/kpi/:path*",
+    "/diario",
+    "/diario/:path*",
+    "/api/diario",
+    "/api/diario/:path*",
   ],
 };

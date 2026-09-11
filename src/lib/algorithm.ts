@@ -421,10 +421,10 @@ const THRESHOLDS = {
 };
 
 // Moto em conferência final: o trabalho de rampa já acabou.
-const QA_STATUSES = new Set(["AWAITING_QA", "IN_QA", "QA_REJECTED"]);
+export const QA_STATUSES = new Set(["AWAITING_QA", "IN_QA", "QA_REJECTED"]);
 // Moto que ainda não entrou em execução (v0.35, regra C3_SEM_EXECUCAO_90). AWAITING_VMGMT e
 // AWAITING_SERVICE ficam fora: já são cobertos pelo C2_PARADA_TERCEIRO.
-const STATUS_PRE_EXECUCAO = new Set(["OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "AWAITING_PARTS", "PAUSED"]);
+export const STATUS_PRE_EXECUCAO = new Set(["OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "AWAITING_PARTS", "PAUSED"]);
 
 // ── "Pronta em quanto tempo?" — o número que guia a conversa do CX (13/08) ────
 // Pedido do Alvaro: o CX decide a conversa com o cliente por aqui ("fica pronta

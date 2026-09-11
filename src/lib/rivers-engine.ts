@@ -12,6 +12,7 @@ import { logRiversSuggestions, SuggestionLog } from "@/lib/supabase";
 import { pEstouro } from "@/lib/classificador";
 import { MINUTOS_POR_PECA, TEMPO_BASE_MIN, TEMPO_FALLBACK_MIN } from "@/lib/tempo-pecas";
 import { PECAS_UNICAS_SQL, CHAVE_PECA_SQL, FAMILIA_IDS_SQL } from "@/lib/pecas-unicas";
+import { FIXACAO_IDS_SQL, fatorMultiPecaSQL } from "@/lib/pecas-sql";
 import { Recomendacao } from "@/types";
 
 // Tempos calibrados (minutos por peça) injetados no SQL via transform().
@@ -33,9 +34,9 @@ const TEMPO_MINS = Object.values(MINUTOS_POR_PECA).join(",");
 // 05/08 (madrugada, backtest 92d): 9+ peças estendido — o viés crescia +39min (9-12
 // peças) e +47min (13+) porque a soma trava no fator de 8; com 0,85/0,80 o backtest
 // foi de 84,3%→88,7% de precisão mantendo recall (config f2b, scripts/backtest-v23.mjs).
-const FATOR_N_PECAS = "transform(least(uniqExact(si.item_group_id), 13), [1,2,3,4,5,6,7,8,9,10,11,12,13], [1.39,1.11,1.04,1.04,1.0,1.03,0.95,0.94,0.85,0.85,0.85,0.85,0.8], 0.8)";
+const FATOR_N_PECAS = fatorMultiPecaSQL("uniqExact(si.item_group_id)");
 // Mesmo fator, contando FAMÍLIA de variantes como uma peça (v0.34, CTE pecas_tempo).
-const FATOR_N_CHAVES = "transform(least(uniqExact(chave), 13), [1,2,3,4,5,6,7,8,9,10,11,12,13], [1.39,1.11,1.04,1.04,1.0,1.03,0.95,0.94,0.85,0.85,0.85,0.85,0.8], 0.8)";
+const FATOR_N_CHAVES = fatorMultiPecaSQL("uniqExact(chave)");
 
 // Peças BLOQUEANTES: a falta delas impede liberar a moto (tração/freio/rodante/direção).
 // Peça cosmética/acessório em falta NÃO segura a moto — a oficina libera e fica pendência.
@@ -168,9 +169,7 @@ pecas_diag AS (
         -- Ids abaixo = tudo que casa parafuso|porca|arruela|presilha|clipe|borracha de
         -- vedação|abraçadeira|rebite no cadastro (28 ids, extraídos em 27/08). Fixos de
         -- propósito: casar por nome faria o comportamento mudar em silêncio num rename.
-        round(sum(if(si.item_group_id IN (172,181,262,263,264,265,266,267,268,269,281,290,
-                                         291,292,293,294,350,351,352,353,354,355,356,623,
-                                         824,825,827,1068),
+        round(sum(if(si.item_group_id IN (${FIXACAO_IDS_SQL}),
                      1, si.quantity) * coalesce(
             nullIf(transform(si.item_group_id, [${TEMPO_IDS}], [${TEMPO_MINS}], 0), 0),
             nullIf(ig.time_target, 0), ${TEMPO_FALLBACK_MIN})) * ${FATOR_N_PECAS} + ${TEMPO_BASE_MIN}) AS tempo_estimado_min,
@@ -213,8 +212,7 @@ pecas_tempo AS (
             SELECT si.so_id AS so_id,
                 ${CHAVE_PECA_SQL} AS chave,
                 if(si.item_group_id IN (${FAMILIA_IDS_SQL}) OR si.item_group_id IN (${PECAS_UNICAS_SQL}), 1, 0) AS conta_uma,
-                if(si.item_group_id IN (172,181,262,263,264,265,266,267,268,269,281,290,291,292,293,294,
-                                        350,351,352,353,354,355,356,623,824,825,827,1068), 1, si.quantity) AS qtd_eff,
+                if(si.item_group_id IN (${FIXACAO_IDS_SQL}), 1, si.quantity) AS qtd_eff,
                 coalesce(nullIf(transform(si.item_group_id, [${TEMPO_IDS}], [${TEMPO_MINS}], 0), 0),
                          nullIf(ig.time_target, 0), ${TEMPO_FALLBACK_MIN}) AS minutos
             FROM oms_r.so_item si FINAL

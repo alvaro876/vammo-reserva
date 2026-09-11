@@ -69,3 +69,6 @@ calib/
 # sessao do Claude Code e artefatos locais do modelo (podem conter placas) - fora do repo publico
 .claude/
 modelo/
+
+# fixture de teste do relatorio diario: dado real com placa, nunca vai pro repo
+scripts/fixture/

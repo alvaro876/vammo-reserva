@@ -137,6 +137,7 @@ export async function getRecentSuggestions(days: number): Promise<SuggestionRow[
 
 export interface SuggestionKpiRow {
   os_id: number;
+  algo_version?: string | null;
   decision: string;
   reason_code: string | null;
   status_atual: string | null; // submotivo: ONDE a moto estava travada no disparo
@@ -172,6 +173,40 @@ export async function getSuggestionsSince(desdeISO: string): Promise<SuggestionK
       .range(inicio, inicio + PAGINA - 1);
     if (error) {
       console.error("[kpi] erro ao ler sugestoes:", error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    out.push(...(data as unknown as SuggestionKpiRow[]));
+    if (data.length < PAGINA) break;
+  }
+  return out;
+}
+
+// Sugestões numa JANELA FECHADA (com teto), e SEM filtrar decision — o relatório
+// diário precisa das linhas SEM_RESERVA também: é delas que sai o que o motor achou
+// que valia (C4_OK, C5_DENTRO_PRAZO, C5_AGUARDA_DIAG) e o `features` congelado que
+// serve pra conferir o replay contra o que o motor de fato viu.
+//
+// Por que teto (o getSuggestionsSince não tem): num relatório de UM dia, sem `lt` a
+// mesma OS traz decisões de dias posteriores e o "primeiro aviso" anda pra frente.
+export async function getSuggestionsWindow(
+  desdeISO: string,
+  ateISO: string
+): Promise<SuggestionKpiRow[]> {
+  const c = client();
+  if (!c) return [];
+  const PAGINA = 1000;
+  const out: SuggestionKpiRow[] = [];
+  for (let inicio = 0; ; inicio += PAGINA) {
+    const { data, error } = await c
+      .from("rivers_suggestion")
+      .select("os_id,algo_version,decision,reason_code,status_atual,is_piso,location_id,created_at,features")
+      .gte("created_at", desdeISO)
+      .lt("created_at", ateISO)
+      .order("created_at", { ascending: true })
+      .range(inicio, inicio + PAGINA - 1);
+    if (error) {
+      console.error("[diario] erro ao ler sugestoes:", error.message);
       break;
     }
     if (!data || data.length === 0) break;
