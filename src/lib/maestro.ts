@@ -59,7 +59,17 @@ export async function enviarSugestaoMaestro(
 
     // Sem check-in ativo pra essa OS (ou ingest desligado no scheduler): não é erro,
     // só não há onde propor agora. Não marca como enviado → tenta na próxima rodada.
-    if (resp.status === 404) return "no_checkin";
+    //
+    // LOGADO DE PROPÓSITO (11/09): sem esta linha o 404 some, e "está mandando e tomando
+    // 404" fica indistinguível de "não está nem tentando" — as duas produzem zero registro
+    // no Supabase. Foi exatamente o que travou a verificação do primeiro espelhamento: a
+    // OS 223228 (BZG5H82, Mooca, piso) virou reserva às 16:51 e não houve como saber se o
+    // POST saiu. Caso provável: o motor lê o ClickHouse de PRODUÇÃO e a env aponta pro
+    // scheduler de DEV, que não conhece os ids de produção.
+    if (resp.status === 404) {
+      console.warn(`[maestro] so_id=${s.soId} reason=${s.reason}: 404 sem check-in ativo (ou ingest off) — repete na próxima rodada`);
+      return "no_checkin";
+    }
 
     if (!resp.ok) {
       console.error(
@@ -71,7 +81,10 @@ export async function enviarSugestaoMaestro(
     const data = (await resp.json().catch(() => null)) as {
       applied?: boolean;
     } | null;
-    return data?.applied ? "applied" : "skipped";
+    const r = data?.applied ? "applied" : "skipped";
+    // sucesso também é logado: é o que prova, no tail, que a integração está viva
+    console.log(`[maestro] so_id=${s.soId} reason=${s.reason} → ${r}`);
+    return r;
   } catch (e) {
     console.error(
       `[maestro] POST suggest-reserve so_id=${s.soId} erro de rede:`,
