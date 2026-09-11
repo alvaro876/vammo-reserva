@@ -7,7 +7,63 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.32.0"; // 0.32.0 = SINTOMA COMO NÚMERO INICIAL (20/08): recalibração dos
+export const ALGO_VERSION = "0.35.0"; // 0.35.0 = AVISAR ANTES (10/09, pedido do Alvaro depois da
+                                     // cobrança do Billy): o motor em produção avisava com 60min+
+                                     // de antecedência em 69 casos do piloto (52 certos + 17
+                                     // errados, 75%) e pegava 52 dos 210 estouros. Três regras
+                                     // novas, medidas nas mesmas 1.185 OS da Mooca (13/08–06/09),
+                                     // 1º disparo por OS, alerta contando só com 60min+ de
+                                     // antecedência: (a) C1_FILA_DIAG_LONGA cai de 90 pra 60min
+                                     // (20 = 18 + 2); (b) C3_SEM_EXECUCAO_90: 90min de relógio e a
+                                     // moto ainda não entrou em execução, qualquer status
+                                     // pré-execução, sem depender de estimativa (88 = 73 + 15, 83%);
+                                     // (c) C3_CONTA_NAO_FECHA: relógio + restante×0,67 + QA passa
+                                     // de 210 (3h + 30 de folga), sem a trava de est≥230
+                                     // (73 = 62 + 11, 85%). Conjunto produção + 3 regras:
+                                     // 142 = 106 certos + 36 errados (74,6%), pega 106 dos 210
+                                     // (50,5%); 5,9 alertas/dia e 1,5 errados/dia (era 2,9 e 0,7).
+                                     // Quem dispara primeiro nesses 142: sem diagnóstico 20 (18+2),
+                                     // sem execução 50 (38+12), conta corrigida 23 (17+6), regras
+                                     // antigas 49 (33+16). Sem filtro de antecedência o conjunto
+                                     // pega 162 dos 210 (209 = 162 + 47, 77,5%); era 125 (153 = 125+28).
+                                     // Fator 0,67 = mediana (real ÷ estimado) do restante, medida
+                                     // de forma prospectiva semana a semana (0,664–0,688). Também
+                                     // entra no "pronta em ~" da tela e do bot: viés da estimativa
+                                     // cai de +28min pra +2min (MAE 52→40). Multiplicador por
+                                     // mecânico e fator por fase foram testados e perderam (53,8%
+                                     // e 62,8% no conjunto), ficam fora. Ressalva: o escape por
+                                     // projeção da 0.28 foi revertido em 12/08 com 3 falsos em 2
+                                     // dias; este é diferente (estimativa corrigida + 30 de folga:
+                                     // moto com est 160 aos 30min projeta 151, não dispara).
+                                     // 0.34.1 = revisão: sai o Amortecedor traseiro V2 (1067) da
+                                     // lista de peças únicas (dupla suspensão usa dois); 99 ids.
+                                     // 0.34.0 = PEÇA ÚNICA CONTA UMA (06/09): peça que a moto só
+                                     // tem uma (pneu, garfo, carenagem por lado, controladora,
+                                     // motor… lista em pecas-unicas.ts) conta 1 por OS, mesmo
+                                     // lançada com quantidade 2 ou em duas linhas, e duas
+                                     // variantes da mesma peça (_v1 + _v2) contam como uma. Pedido do Alvaro pro caso do Billy.
+                                     // Medido (3 bases, jun–set): 1,0% das OS, inflação
+                                     // mediana 13 min (máx 72), 8 OS cruzaram 230/240 só por
+                                     // isso; na Mooca pós-13/08 nenhuma sugestão mudaria. É
+                                     // higiene de cadastro, não correção de regra; a regra
+                                     // definitiva é a validação no Maestro.
+                                     // 0.33.0 = TRES CORRECOES DA CONTA DE TEMPO (27/08):
+                                     // (a) qa_min 8→14 — o 8 era só a conferência
+                                     // (IN_QA→AWAITING_CX, mediana 5) e faltava a fila
+                                     // (AWAITING_QA→IN_QA, mediana 8). Medido: 1.613 OS,
+                                     // mediana 14, p90 53; o 8 valia pra 20,8%.
+                                     // (b) quantidade não multiplica peça de fixação
+                                     // (28 ids). Achado do Victor no TJQ9C16: 3 parafusos
+                                     // de disco = 24min. 21,6% das OS tinham qtd>1, com
+                                     // inflação mediana de 29min e p90 de 90min.
+                                     // (c) pré-aviso do bot ganhou dois pisos: atraso
+                                     // previsto >= 20min e folga >= 20min. Crítica do
+                                     // Guida no SVR5D34/61392 — dos 77 pré-avisos com
+                                     // desfecho, 46 (60%) nem estouraram e a mediana foi
+                                     // o cliente sair 12min ANTES do prazo.
+                                     // Efeito medido nos gatilhos: OS cruzando 230 cai de
+                                     // 107 pra 85; cruzando 240, de 92 pra 71.
+                                     // 0.32.0 = SINTOMA COMO NÚMERO INICIAL (20/08): recalibração dos
                                      // sintomas com DADO REAL (673 OSs concluídas, 05-19/08) derrubou
                                      // a ponte histórica (carenagem: 70% na ponte → 23% real; quem
                                      // relata sai MAIS RÁPIDO que a base — agendamento prepara a
@@ -330,18 +386,45 @@ const THRESHOLDS = {
                              // FRONTEIRA (até gatilho+30) pro CX confirmar no piso antes de
                              // prometer. Estourar de fato continua coberto pela fila de aviso da
                              // tela (relógio >= 3h entra sem depender de regra).
-  qa_min: 8,                 // C3.5 / C4: tempo médio de QA somado ao total (pedido da operação)
+  qa_min: 14,                // C3.5 / C4: a etapa de QA somada ao total.
+                             // 8→14 em 27/08. O 8 era pedido da operação e valia pra
+                             // 20,8% dos casos. MEDIDO (Mooca, agosto, AWAITING_QA até
+                             // AWAITING_CX, 1.613 OS que passaram direto): mediana 14min,
+                             // p75 25, p90 53. Reprovada no QA: mediana 58 — coberta à
+                             // parte por qa_retrabalho_min (45) + qa_min, que dá 59 e
+                             // bate com o medido.
+                             // O 8 vinha só da CONFERÊNCIA (IN_QA→AWAITING_CX, mediana 5);
+                             // faltava a FILA (AWAITING_QA→IN_QA, mediana 8). Caso que
+                             // expôs: SVR5D34/OS 61392 em 27/08 — QA levou 55min, o bot
+                             // previu 6min de atraso e o real foi 36.
   espera_sem_diag_min: 150,  // C1: piso aberto há +2h30 sem diagnóstico → esperando demais
-  fila_diag_min: 90,         // C1: piso há +1h30 e a moto NEM entrou em diagnóstico (status OPEN).
+  fila_diag_min: 60,         // C1: piso há +1h e a moto NEM entrou em diagnóstico (status OPEN).
+                             // v0.35 (10/09): 90→60. Piloto Mooca 13/08–06/09: aos 60min em OPEN,
+                             // 18 de 20 estouraram (90%); aos 90 eram 18 de 23. Ganha 30min de aviso.
                              // Medido em 45d: 5,4 casos/dia, 79% estouram — bom pra avisar cedo,
                              // não pra entregar sozinho (por isso fica como recomendação; aos
                              // 2h30 o mesmo cliente escala pra automática pela regra acima).
+  fator_bancada: 0.67,       // v0.35: real ÷ estimado do restante de execução. Mediana medida de
+                             // forma prospectiva, semana a semana, no piloto (0,664–0,688); a
+                             // recalibração por fase (QA 0,18 / execução 0,69 / esperando
+                             // mecânico 1,14) e por mecânico foram testadas e perderam no conjunto.
+                             // Entra no "pronta em ~" (restanteParaPronta), no tempo_previsto_min e
+                             // na regra C3_CONTA_NAO_FECHA. NÃO mexe no compressao_bancada (0,6) do
+                             // C3_NAO_COMECOU, que já está no ar e medido.
+  sem_execucao_min: 90,      // v0.35 C3_SEM_EXECUCAO_90: relógio a partir do qual moto ainda sem
+                             // execução vira reserva, sem olhar estimativa. Piloto: 88 = 73 + 15 (83%).
+  conta_folga_min: 30,       // v0.35 C3_CONTA_NAO_FECHA: folga acima de projecao_reserva_min (180)
+                             // exigida da conta corrigida → corte 210. Testado 190/200/210: 190 dá
+                             // 67,8% e 200 dá 79,8% na regra sozinha; 210 dá 84,9% (73 = 62 + 11).
   fronteira_margem_min: 30,  // projeção a menos de 30min da linha das 3h = "fronteira"
                              // (zona cara-ou-coroa: variação natural do serviço decide o lado)
 };
 
 // Moto em conferência final: o trabalho de rampa já acabou.
 const QA_STATUSES = new Set(["AWAITING_QA", "IN_QA", "QA_REJECTED"]);
+// Moto que ainda não entrou em execução (v0.35, regra C3_SEM_EXECUCAO_90). AWAITING_VMGMT e
+// AWAITING_SERVICE ficam fora: já são cobertos pelo C2_PARADA_TERCEIRO.
+const STATUS_PRE_EXECUCAO = new Set(["OPEN", "IN_DIAGNOSIS", "AWAITING_MECHANIC", "AWAITING_PARTS", "PAUSED"]);
 
 // ── "Pronta em quanto tempo?" — o número que guia a conversa do CX (13/08) ────
 // Pedido do Alvaro: o CX decide a conversa com o cliente por aqui ("fica pronta
@@ -371,7 +454,9 @@ export function restanteParaPronta(
   if (tempo_estimado_min <= 0) return { tipo: "sem_diag", min: null };
   const restante = tempo_estimado_min - (exec_acum_min ?? 0);
   if (restante <= 0) return { tipo: "vencida", min: null };
-  return { tipo: "estimado", min: Math.round(restante + THRESHOLDS.qa_min) };
+  // v0.35: o restante de execução entra corrigido pelo fator real da bancada (0,67); a
+  // conferência de QA não comprime. Medido: viés +28min → +2min, MAE 52 → 40.
+  return { tipo: "estimado", min: Math.round(restante * THRESHOLDS.fator_bancada + THRESHOLDS.qa_min) };
 }
 
 // Peças que sozinhas justificam reserva imediata
@@ -415,7 +500,10 @@ export interface AlgoritmoInput {
   min_desde_chegada?: number;    // relógio do CLIENTE (desde o check-in). Fallback: min_desde_open
   exec_acum_min?: number;        // execução acumulada (todos os episódios IN_PROGRESS), em min
   oferta_ativa?: number;         // 1 = a oficina já ofereceu reserva (e o cliente não recusou)
-  oferta_recusada?: number;      // 1 = ofereceram e o cliente RECUSOU — escolheu esperar (20/08)
+  oferta_recusada?: number;      // 1 = ofereceram e o cliente RECUSOU — escolheu esperar (20/08).
+                                 // Só cancelamento de OPERADOR conta (corrigido 26/08).
+  oferta_encerrada_pronta?: number; // 1 = o OMS encerrou a reserva porque a moto ficou
+                                 // pronta. NÃO é recusa — não misture nas contagens.
   capacidade_esperada?: number;  // nº esperado de mecânicos na base/hora atual (curva do histórico)
   fila_min?: number;             // soma do tempo estimado das OS esperando mecânico na base
 }
@@ -520,8 +608,10 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   }
 
   // Cliente em piso e a moto ainda NÃO ENTROU em diagnóstico (segue em OPEN, ou
-  // seja, parada na fila de diagnóstico). Aviso adiantado: dispara 1h antes da regra
-  // acima, com 79% de acerto no histórico — logo, recomendação e não entrega direta.
+  // seja, parada na fila de diagnóstico). Aviso adiantado: dispara antes da regra
+  // acima. v0.35: o gatilho caiu de 90 pra 60min — no piloto da Mooca (13/08–06/09,
+  // 1.185 OS), aos 60min sem diagnóstico 18 de 20 estouraram (90%), e o alerta sai com
+  // 2h de antecedência em vez de 1h30.
   if (
     input.is_piso === 1 &&
     input.status_atual === "OPEN" &&
@@ -675,7 +765,31 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
       "alta"
     );
   }
+
+  // ── 90 MINUTOS E A MOTO NÃO ENTROU EM EXECUÇÃO (v0.35, 10/09) ─────────────────────
+  // Versão sem estimativa da regra acima: não importa o tamanho do serviço, moto que
+  // aos 90min ainda está na fila (aberta, em diagnóstico, esperando mecânico, esperando
+  // peça ou pausada) tem no máximo 90min pra fazer tudo, incluindo QA. Medido no piloto
+  // da Mooca (1.185 OS, 13/08–06/09): 87 disparos = 73 estouros + 14 dentro do prazo
+  // (84%). É a regra que mais acrescenta ao conjunto: sozinha pega 73 dos 210 estouros,
+  // sempre com 90min de antecedência.
+  if (
+    input.is_piso === 1 &&
+    !emQa &&
+    STATUS_PRE_EXECUCAO.has(input.status_atual) &&
+    relogio >= THRESHOLDS.sem_execucao_min
+  ) {
+    return reserva(
+      "C3_SEM_EXECUCAO_90",
+      `na base há ${relogio}min e o conserto ainda não começou (${input.status_atual}) — sobram no máximo ${180 - relogio}min pra serviço e QA; 84% desses casos passam das 3h`,
+      base,
+      "alta"
+    );
+  }
   const totalSemMec = relogio + tempoRestanteC3 + THRESHOLDS.qa_min;
+  // v0.35: mesma conta com o restante corrigido pelo fator real da bancada (0,67).
+  const restanteCorrigido = emQa ? tempoRestanteC3 : Math.round(tempoRestanteC3 * THRESHOLDS.fator_bancada);
+  const totalCorrigido = relogio + restanteCorrigido + THRESHOLDS.qa_min;
   // Projeção a menos de 30min da linha = fronteira: a sugestão sai marcada pro
   // encarregado saber que é decisão de foto de chegada, não de convicção.
   const confiancaTempo = (proj: number): "alta" | "fronteira" =>
@@ -707,6 +821,30 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     );
   }
 
+  // ── A CONTA CORRIGIDA NÃO FECHA (v0.35, 10/09) ───────────────────────────────────
+  // Mesma soma da regra acima, mas SEM a trava de est≥230 e com o restante já
+  // descontado pelo fator real da bancada (0,67): relógio + restante×0,67 + QA. Exige
+  // 30min de folga acima das 3h (corte 210) porque a estimativa erra. Medido no piloto
+  // da Mooca (1.185 OS, 13/08–06/09), 1º disparo por OS e só alertas com 60min+ de
+  // antecedência: 73 = 62 estouros + 11 no prazo (85%). Cobre o buraco da moto de
+  // serviço médio (est 120–229) que ninguém pegava antes das 2h40. O escape por
+  // projeção da 0.28 (revertido em 12/08) usava a estimativa CRUA e sem folga: moto
+  // com est 160 aos 30min disparava; aqui projeta 30 + 107 + 14 = 151 e não dispara.
+  if (
+    input.is_piso === 1 &&
+    !emQa &&
+    relogio < 480 &&
+    restanteCorrigido + THRESHOLDS.qa_min >= THRESHOLDS.restante_min_reserva &&
+    totalCorrigido > THRESHOLDS.projecao_reserva_min + THRESHOLDS.conta_folga_min
+  ) {
+    return reserva(
+      "C3_CONTA_NAO_FECHA",
+      `já esperou ${relogio}min + restante ~${restanteCorrigido}min (estimativa ${tempoRestanteC3}min × ${THRESHOLDS.fator_bancada}) + ${THRESHOLDS.qa_min}min QA = ${totalCorrigido}min, mais de 3h30`,
+      base,
+      "alta"
+    );
+  }
+
   // ── CAMADA 4: Capacidade da oficina (modelo de presença) ───────────────
   // Usa a CAPACIDADE ESPERADA de mecânicos na base/hora (curva do histórico,
   // injetada em route.ts) + a fila de trabalho esperando mecânico, pra estimar
@@ -720,7 +858,8 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     const esperaBruta = Math.round(filaMin / cap);   // fila de serviço ÷ mecânicos em paralelo
     const tempoEspera = input.is_piso === 1 ? Math.min(esperaBruta, THRESHOLDS.fila_piso_max_min) : esperaBruta;
     base.tempo_para_inicio_min = tempoEspera;
-    const tempoTotal = relogio + tempoEspera + tempoRestanteC3 + THRESHOLDS.qa_min;
+    // v0.35: o tempo previsto mostrado usa o restante corrigido (mesma conta do "pronta em ~").
+    const tempoTotal = relogio + tempoEspera + restanteCorrigido + THRESHOLDS.qa_min;
     base.tempo_previsto_min = tempoTotal;
 
     // C4 DESLIGADO como gatilho de reserva (03/08 23h, meta 80%/dia do Alvaro).

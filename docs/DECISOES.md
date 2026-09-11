@@ -155,3 +155,108 @@ placar diário — se ela mexer >20min, recalibrar sem esperar a precisão cair.
 **Onde vive:** v0.29.0 em `src/lib/algorithm.ts`; sweep em `scripts/backtest-v23.mjs`
 (configs r28atual/rSemEscape/rEst210/220/240). Log de features agora grava
 `min_desde_chegada` (a régua do cliente ficava fora do log desde a v0.26).
+
+### D15 — Motivo da recusa registrado na tela do CX, não no Maestro (2026-09-04) ✅
+**Decisão:** a tela `/cx` ganha a seção "Recusou a reserva hoje: por quê?" — lista as recusas
+do dia (cancelamento de oferta por operador, base do piloto) e pede um clique num motivo de
+lista fechada (`src/lib/recusa.ts`), gravado em `rivers_recusa_motivo` (Supabase, uma linha por
+OS, upsert). Rota `POST /api/cx/recusa`, protegida pelo mesmo token da tela.
+**Por quê:** no piloto 13/08–03/09, 79 das 170 ofertas foram recusadas e o Maestro não guarda
+motivo em nenhuma (RESERVE_CANCELLED vem sem `reason`). Sem isso não dá pra saber se o problema
+é o algoritmo, a oferta ou o cliente. O campo certo é no fluxo de cancelamento do Maestro
+(eng da Vammo); enquanto não existe, o dado nasce aqui. A lista separa "cliente recusou" de
+"não foi o cliente" (cancelamento interno), porque a taxa de recusa hoje mistura os dois.
+**Como fica na tela:** o cliente que recusou continua FORA da fila de ação (D de 20/08); a
+seção nova fica no fim da página, é a única parte clicável (computador do CX, não TV) e mostra
+quantas recusas do dia estão sem motivo.
+**Revisto em 08/09 — ver D17:** a posição no fim da página foi trocada.
+**Quem:** Alvaro (pedido em 04/09, pra levar pronto à conversa com o Billy).
+
+### D16 — Peça única conta uma vez na estimativa (2026-09-06) ✅
+**Decisão:** na conta de tempo por peça (v0.34.0, CTE `pecas_tempo` em `rivers-engine.ts`), peça
+que a moto só tem UMA (pneu, garfo, guidão, carenagem por lado, roda, controladora, motor, farol,
+lanterna, banco, descanso, tampa do motor… 99 ids em `src/lib/pecas-unicas.ts`, 10 famílias) conta 1 por OS,
+mesmo lançada com quantidade 2 ou em duas linhas; e duas VARIANTES da mesma peça física na mesma
+OS (Roda traseira _v1 + _v2, Tampa do motor v1 + v2, Controladora 3500W + 4000W) contam como uma,
+a de maior tempo, inclusive no nº de peças do fator multi-peça. Mesma família da regra de fixação
+da v0.33.
+**Por quê:** pedido do Alvaro (06/09), a partir do levantamento pro Billy. Medido em 3 bases,
+01/06–05/09 (11.742 OS com itens): 1,0% das OS têm esse erro de lançamento; inflação da estimativa
+mediana 13 min, p90 30, máx 72; 8 OS cruzaram a trava de reserva (230/240) só por isso. Na Mooca
+desde 13/08 nenhuma sugestão do RIVERS mudaria — é higiene de cadastro, não correção de regra. A
+correção definitiva é validação no Maestro (quantidade máxima 1 e uma variante por família; lista
+em `Downloads\Metabase\pecas_unicas_regra_maestro.csv`); enquanto não existe, o motor neutraliza.
+**Fora da lista, de propósito:** Seta LD/LE (duas por lado), Conjunto de seta, Amortecedor
+traseiro genérico (dupla suspensão usa dois), pedaleiras, pastilhas, rolamentos, retentores.
+**Validação:** CTE isolada bateu com recálculo independente em Python nos 24 casos conhecidos
+(inclusive OS sem duplicidade, paridade com a conta antiga); query completa executada no
+ClickHouse antes do deploy; revisão adversarial do código.
+**Quem:** Alvaro.
+
+### D17 — O motivo da recusa sobe pra junto da fila de ação, em bloco dobrável (2026-09-08) ✅
+**Decisão:** a seção de motivo da recusa sai do fim da página e passa a ficar imediatamente
+depois de "Precisa avisar o cliente". Ela é um `<details>` fechado por padrão: a faixa sempre
+visível traz o título, o total de recusas do dia e o selo "N sem motivo"; a lista de linhas com
+os botões e o campo de nome ficam dentro do aberto. Nenhuma cor de zona no bloco.
+**Por quê:** no fim da página ninguém via (pedido do Alvaro em 08/09, apontando os cards).
+**Por que não dentro do card do cliente:** `clientes` filtra `!c.recusada` (D de 20/08), então
+não existe card de quem recusou. Além disso `recusas_hoje` vem do contexto do check-in e inclui
+OS que já saíram do motor (cliente recusou e foi embora, ou a moto ficou pronta), que nunca
+teriam card. Pendurar no card cobriria só parte do dia e o selo "N sem motivo" deixaria de
+fechar a conta. Fica bloco autônomo.
+**Por que dobrável e sem cor:** medido no ClickHouse, o pico foi de 13 recusas em 02/09, com 5
+dias de 9+ nas últimas 3 semanas. Como card aberto cada recusa ocupa ~200px (os 7 rótulos de
+motivo quebram em 3 linhas), 13 delas dariam ~2.800px contra ~930px úteis na TV, e as seções
+"Cliente já avisado" e "no prazo" sairiam da tela. Fechado, o custo na TV é uma faixa de ~56px.
+O filete âmbar que a 1ª versão usou para "falta motivo" foi barrado: âmbar e vermelho são do
+relógio do SLA e o rodapé da tela promete isso ao CX; sinal de pendência aqui é slate.
+**Ressalva:** a lógica de gravação (upsert, "outro", "trocar") não foi tocada, é a de D15.
+**Correção no mesmo dia:** a 1ª versão mantinha o `return null` em dia sem recusa, e o Alvaro
+abriu a tela duas vezes sem achar o campo (08/09 fechou com zero recusa). Feature que não se
+acha não está entregue: a faixa passou a aparecer SEMPRE, com o estado vazio explicando quando
+o cliente aparece ali. Custa 46px na TV.
+
+### D18 — Três regras pra avisar antes das 2h40 e estimativa corrigida pela bancada (2026-09-10) ✅
+**Decisão:** ALGO_VERSION 0.35.0. Entram três regras e um fator, todos medidos no piloto da
+Mooca (1.185 OS com cliente na base, check-in de 13/08 a 06/09, 210 estouros das 3h):
+1. `C1_FILA_DIAG_LONGA` cai de 90 pra 60 min: cliente na base há 1h e a moto ainda em OPEN.
+2. `C3_SEM_EXECUCAO_90` (nova): 90 min de relógio e a moto ainda não entrou em execução
+   (OPEN, IN_DIAGNOSIS, AWAITING_MECHANIC, AWAITING_PARTS ou PAUSED), sem olhar estimativa.
+3. `C3_CONTA_NAO_FECHA` (nova): fora de QA, relógio + restante × 0,67 + 14 de QA passa de 210
+   (3h mais 30 min de folga). É a "soma dos tempos" sem a trava de estimativa ≥ 230.
+4. `fator_bancada = 0,67`: o restante de execução entra corrigido no "pronta em ~" da tela e do
+   bot (`restanteParaPronta`), no `tempo_previsto_min` e na regra 3. QA não comprime.
+**Por quê:** o motor no ar avisava com 60 min ou mais de antecedência em 69 casos do piloto
+(52 certos + 17 errados, 75,4%) e pegava 52 dos 210 estouros (24,8%). O resto saía no relógio
+de 2h40, tarde demais pra reserva servir. Pedido do Alvaro em 08/09 depois da cobrança do Billy.
+**O que foi medido (mesmas OS, 1º disparo por OS, só alertas com 60 min ou mais de antecedência,
+denominador sempre os 210 estouros):**
+| regra | alertas | certos | errados | precisão | estouros pegos |
+|---|---|---|---|---|---|
+| motor em produção (log) | 69 | 52 | 17 | 75,4% | 52 de 210 |
+| 60 min sem diagnóstico, sozinha | 20 | 18 | 2 | 90,0% | 18 |
+| 90 min sem execução, sozinha | 88 | 73 | 15 | 83,0% | 73 |
+| conta corrigida > 210, sozinha | 73 | 62 | 11 | 84,9% | 62 |
+| **v0.35 = produção + as três** | **142** | **106** | **36** | **74,6%** | **106 de 210 (50,5%)** |
+Quem dispara primeiro nos 142: sem diagnóstico 20 (18 + 2), sem execução 50 (38 + 12), conta
+corrigida 23 (17 + 6), regras antigas 49 (33 + 16). Soma: 142 = 106 + 36.
+Volume: 5,9 alertas/dia e 1,5 errados/dia (era 2,9 e 0,7); mediana 6 por dia, máximo 15.
+Sem filtro de antecedência o conjunto pega 162 dos 210 (209 = 162 + 47, 77,5%); era 125 de 210.
+Os 104 estouros que continuam sem alerta a tempo têm estimativa mediana de 126 min aos 36 min
+de relógio: são serviços grandes feitos em ritmo normal, que só a hora mostra.
+**Por que 0,67 e por que 210:** 0,67 é a mediana (real ÷ estimado) do restante de execução,
+calculada de forma prospectiva semana a semana (variou de 0,664 a 0,688). Com ela o viés da
+estimativa cai de +28 pra +2 min e o MAE de 52 pra 40. O corte 210 foi escolhido entre 190
+(67,8% na regra sozinha), 200 (79,8%) e 210 (84,9%); 200 acrescentava 8 certos por 7 errados.
+**O que foi testado e ficou de fora:** fator por fase (QA 0,18 / execução 0,69 / esperando
+mecânico 1,14) perde pro global no conjunto (62,8% contra 74,6%) porque dispara cedo demais
+em "esperando mecânico"; multiplicador pela razão histórica do mecânico piora (53,8%); o
+modelo LightGBM não supera a regra na régua de 60 min. Regra e fator ficam; modelo segue em
+sombra, com o Ian.
+**Ressalvas:** (1) o escape por projeção da 0.28 foi revertido em 12/08 com 3 falsos em 2 dias;
+este usa estimativa corrigida e exige 30 min de folga, o caso que derrubou a 0.28 (est 160 aos
+30 min) projeta 151 e não dispara. (2) O motor não vê check-in sem OS; os 3 disparos do
+backtest em PRE_OS (0 certos) foram excluídos da conta acima. (3) Backtest é backtest: a
+precisão real das regras novas será lida em `/kpi` a partir de 11/09.
+**Quem:** Alvaro (pedido), Claude (medição e código). Reprodutível em
+`rivers-preditivo/src/rivers_modelo/backtest_v035_final.py` → `reports/v035_final.csv`.

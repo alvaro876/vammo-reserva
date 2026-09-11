@@ -7,6 +7,7 @@
 //      (fonte viva pós Check-in 2.0: maestro_scheduler_r.checkin_event; o campo
 //       reserve_offered_at subconta desde 21/07)
 //   3. quem o CX já avisou (rivers_cx_aviso) → métrica decisão → cliente sabendo
+//   4. (04/09) as RECUSAS de hoje e o motivo que o CX registrou (rivers_recusa_motivo)
 
 import { NextRequest, NextResponse } from "next/server";
 import { runRivers } from "@/lib/rivers-engine";
@@ -14,7 +15,7 @@ import { query } from "@/lib/clickhouse";
 import { basesTeste } from "@/lib/autonomia";
 import { restanteParaPronta, ALGO_VERSION } from "@/lib/algorithm";
 import { piorSintoma, estimativaInicialPorSintomas } from "@/lib/sintomas";
-import { getAvisosCx, registrarAvisoCx } from "@/lib/supabase";
+import { getAvisosCx, registrarAvisoCx, getRecusaMotivos } from "@/lib/supabase";
 
 const BASES: Record<number, string> = { 1: "Mooca", 34: "Osasco", 166: "SBC" };
 const SLA_MIN = 180;
@@ -37,6 +38,9 @@ interface ContextoCheckin {
   cancelada_ts: number;
   chamada_ts: number;
   entregue: number;
+  // base e placa vêm da OS (OMS) — o location_id do check-in não é confiável pós 2.0
+  location_id: number;
+  placa: string;
 }
 
 // Contexto do cliente na base: nome (o CX fala com a pessoa), horário de chegada
@@ -47,13 +51,28 @@ WITH ev AS (
     SELECT e.so_id AS os_id,
         maxIf(toUnixTimestamp(e.created_at), e.event_type = 'RESERVE_OFFERED') AS ofertada_ts,
         argMaxIf(coalesce(e.operator_user_name, ''), e.created_at, e.event_type = 'RESERVE_OFFERED') AS ofertou,
-        maxIf(toUnixTimestamp(e.created_at), e.event_type = 'RESERVE_CANCELLED') AS cancelada_ts,
+        -- só cancelamento de OPERADOR é recusa. O OMS cancela sozinho (source KAFKA_OMS)
+        -- quando a moto fica pronta, e isso fazia a tela marcar "cliente recusou" pra
+        -- quem só teve a moto liberada — 26 de 69 casos em 13 dias (corrigido 26/08).
+        maxIf(toUnixTimestamp(e.created_at),
+              e.event_type = 'RESERVE_CANCELLED' AND e.source = 'OPERATOR') AS cancelada_ts,
         maxIf(toUnixTimestamp(e.created_at), e.event_type = 'CALL_FOR_RESERVE') AS chamada_ts
     FROM maestro_scheduler_r.checkin_event e FINAL
     WHERE e._peerdb_is_deleted = 0
       AND e.so_id IS NOT NULL
       AND e.created_at >= now() - INTERVAL 3 DAY
     GROUP BY e.so_id
+),
+os_info AS (
+    -- base e placa da OS: a lista de recusas de hoje precisa dos dois mesmo quando a
+    -- OS já saiu do radar do motor (moto pronta e entregue no mesmo dia)
+    SELECT id AS os_id, location_id,
+           JSONExtractString(coalesce(maintenance_metadata, '{}'), 'license_plate') AS placa
+    FROM oms_r.so FINAL
+    WHERE _peerdb_is_deleted = 0
+      -- 60 dias, não 7: OS antiga (aguardando peça, retorno) com check-in novo ficava sem
+      -- base e a recusa sumia da lista em silêncio (revisão de 04/09)
+      AND created_at >= now() - INTERVAL 60 DAY
 )
 SELECT
     c.so_id AS os_id,
@@ -63,9 +82,12 @@ SELECT
     coalesce(ev.ofertou, '') AS ofertou,
     coalesce(ev.cancelada_ts, 0) AS cancelada_ts,
     coalesce(ev.chamada_ts, 0) AS chamada_ts,
-    if(c.service_conclusion = 'RESERVE_DELIVERED', 1, 0) AS entregue
+    if(c.service_conclusion = 'RESERVE_DELIVERED', 1, 0) AS entregue,
+    coalesce(oi.location_id, 0) AS location_id,
+    coalesce(oi.placa, '') AS placa
 FROM maestro_scheduler_r.checkin c FINAL
 LEFT JOIN ev ON ev.os_id = c.so_id
+LEFT JOIN os_info oi ON oi.os_id = c.so_id
 WHERE c._peerdb_is_deleted = 0
   AND c.checkin_type = 'MAINTENANCE'
   AND c.so_id IS NOT NULL
@@ -76,16 +98,26 @@ WHERE c._peerdb_is_deleted = 0
   AND c.created_at >= now() - INTERVAL 3 DAY
 `;
 
+// Dia civil em São Paulo (AAAA-MM-DD) de um instante em ms — "recusas de HOJE".
+const FMT_DIA_SP = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Sao_Paulo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const diaSP = (ms: number) => FMT_DIA_SP.format(new Date(ms));
+
 export async function GET() {
   if (cxCache && Date.now() - cxCache.ts < CX_TTL_MS) {
     return NextResponse.json(cxCache.payload);
   }
   try {
     const bases = [...basesTeste()];
-    const [rows, ctxRows, avisos] = await Promise.all([
+    const [rows, ctxRows, avisos, recusas] = await Promise.all([
       runRivers(),
       query<ContextoCheckin>(CTX_QUERY(bases)),
       getAvisosCx(),
+      getRecusaMotivos(),
     ]);
 
     const ctx = new Map<number, ContextoCheckin>();
@@ -161,6 +193,42 @@ export async function GET() {
       // mais urgente primeiro (quem já estourou vem no topo)
       .sort((a, b) => a.minutos_pro_sla - b.minutos_pro_sla);
 
+    // RECUSAS DE HOJE (04/09): quem recusou a reserva sai da fila de ação (ordem de
+    // 20/08), mas a recusa é a maior lacuna de dado do piloto — 79 em 3 semanas, nenhum
+    // motivo, porque o Maestro não pergunta. A tela lista as de hoje e pede o motivo.
+    // Vem do contexto do check-in (não do motor): cliente que recusou e foi embora, ou
+    // moto que ficou pronta e saiu, não estão mais em `rows`, e a recusa aconteceu.
+    const placaPorOs = new Map(rows.map((o) => [o.os_id, o.placa]));
+    const basePorOs = new Map(rows.map((o) => [o.os_id, o.location_id]));
+    // base da OS: pelo OMS; se a OS não veio no os_info, pelo motor (que tem as ativas)
+    const baseDe = (c: ContextoCheckin) => Number(c.location_id) || basePorOs.get(Number(c.os_id)) || 0;
+    const hoje = diaSP(Date.now());
+    const recusas_hoje = [...ctx.values()]
+      .filter(
+        (c) =>
+          Number(c.ofertada_ts) > 0 &&
+          Number(c.cancelada_ts) > Number(c.ofertada_ts) &&
+          bases.includes(baseDe(c)) &&
+          diaSP(Number(c.cancelada_ts) * 1000) === hoje
+      )
+      .map((c) => {
+        const os_id = Number(c.os_id);
+        const m = recusas.get(os_id);
+        return {
+          os_id,
+          placa: c.placa || placaPorOs.get(os_id) || "",
+          location_id: baseDe(c),
+          cliente: c.cliente || null,
+          ofertada_em: Number(c.ofertada_ts) * 1000,
+          recusada_em: Number(c.cancelada_ts) * 1000,
+          ofertou: c.ofertou || null,
+          recusa_motivo: m
+            ? { motivo: m.motivo, detalhe: m.detalhe, actor: m.actor, created_at: m.created_at }
+            : null,
+        };
+      })
+      .sort((a, b) => b.recusada_em - a.recusada_em);
+
     const pressao = rows.find((o) => bases.includes(o.location_id))?.pressao_piso ?? 0;
 
     // Identidade COMPLETA da versão: ALGO_VERSION + id do deploy do Worker (binding
@@ -184,6 +252,7 @@ export async function GET() {
       pressao_piso: pressao,
       total: clientes.length,
       clientes,
+      recusas_hoje,
     };
     cxCache = { ts: Date.now(), payload };
     return NextResponse.json(payload);

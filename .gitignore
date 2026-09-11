@@ -65,3 +65,7 @@ CREDENCIAIS-CLOUDFLARE.txt
 
 # relatorios e artefatos de calibracao locais (contem placas/dados internos)
 calib/
+
+# sessao do Claude Code e artefatos locais do modelo (podem conter placas) - fora do repo publico
+.claude/
+modelo/

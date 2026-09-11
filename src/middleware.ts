@@ -14,7 +14,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const PROTEGIDAS = ["/cx", "/api/cx"];
+// /kpi entrou em 26/08: não mostra nome de cliente, mas mostra desempenho interno
+// (precisão, adesão do CX por faixa) — não é pra ficar aberto na internet.
+const PROTEGIDAS = ["/cx", "/api/cx", "/kpi", "/api/kpi"];
 const COOKIE = "rivers_acesso";
 
 export function middleware(req: NextRequest) {
@@ -57,5 +59,14 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/cx", "/cx/:path*", "/api/cx", "/api/cx/:path*"],
+  matcher: [
+    "/cx",
+    "/cx/:path*",
+    "/api/cx",
+    "/api/cx/:path*",
+    "/kpi",
+    "/kpi/:path*",
+    "/api/kpi",
+    "/api/kpi/:path*",
+  ],
 };

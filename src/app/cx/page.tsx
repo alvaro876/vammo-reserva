@@ -7,6 +7,7 @@
 // um clique pra registrar que o cliente já sabe.
 
 import { useEffect, useState } from "react";
+import { MOTIVOS_RECUSA, rotuloRecusa } from "@/lib/recusa";
 
 interface ClienteCx {
   os_id: number;
@@ -41,6 +42,18 @@ interface ClienteCx {
   avisado_por: string | null;
 }
 
+// Recusa de hoje (04/09): quem recusou a reserva, quando, e o motivo que o CX registrou
+interface RecusaHoje {
+  os_id: number;
+  placa: string;
+  location_id: number;
+  cliente: string | null;
+  ofertada_em: number;
+  recusada_em: number;
+  ofertou: string | null;
+  recusa_motivo: { motivo: string; detalhe: string | null; actor: string | null; created_at: string } | null;
+}
+
 interface Resposta {
   versao?: string;
   atualizado_em: string;
@@ -48,6 +61,8 @@ interface Resposta {
   pressao_piso: number;
   total: number;
   clientes: ClienteCx[];
+  // opcional: payload em cache de antes do deploy não traz o campo
+  recusas_hoje?: RecusaHoje[];
 }
 
 // AUTO-RELOAD por versão (20/08, caso TLT6B13): a TV fica aberta por dias — os DADOS
@@ -301,6 +316,8 @@ function CardAcao({ c }: { c: ClienteCx }) {
               </Selo>
             )}
             {!c.ofertada_em && <Selo tom="ok">sem oferta no Maestro ainda</Selo>}
+            {/* morto hoje: `clientes` filtra !c.recusada (regra de 20/08). Só volta a
+                renderizar se esse filtro cair. */}
             {c.recusada && <Selo tom="alerta">cliente recusou</Selo>}
             {c.chamada_retirada && <Selo tom="oficina">chamado pra retirar</Selo>}
             {/* contexto do incidente — informação pra conversa, não motivo da reserva */}
@@ -331,6 +348,238 @@ function CardAcao({ c }: { c: ClienteCx }) {
             pra quando houver uma superfície clicável (celular/desktop do CX). */}
       </div>
     </div>
+  );
+}
+
+// ── MOTIVO DA RECUSA (04/09) ─────────────────────────────────────────────────
+// O cliente que recusou continua FORA da fila de ação (ordem de 20/08). Mas a recusa
+// é a maior lacuna de dado do piloto: 79 recusas em 3 semanas e nenhum motivo — o
+// Maestro não pergunta na hora de cancelar. Esta seção lista as recusas de HOJE e
+// pede um clique no motivo (lista fechada em src/lib/recusa.ts). Uma linha por OS;
+// "trocar" sobrescreve. É a única parte clicável da tela: pensada pro computador do
+// CX. Na TV ela também aparece (mesma página, sem gate) — o selo "N sem motivo" é o
+// que importa lá; os botões só fazem efeito em quem tem mouse.
+// 08/09: saiu do fim da página e passou a ficar logo depois da fila de ação (pedido do
+// Alvaro: no fim ninguém via). Virou <details> fechado por padrão porque em dia de pico
+// são 13 recusas, e aberto isso tira as outras seções da TV. Nada de cor de zona aqui:
+// âmbar e vermelho são do relógio do SLA e a legenda do rodapé promete isso ao CX.
+function RecusasHoje({ lista }: { lista: RecusaHoje[] }) {
+  // o que foi salvo nesta sessão vence o payload (a API tem cache de 75s)
+  const [salvos, setSalvos] = useState<Record<number, { motivo: string; detalhe: string | null }>>({});
+  const [editando, setEditando] = useState<number | null>(null); // os_id com os botões abertos ("trocar")
+  const [outroEm, setOutroEm] = useState<number | null>(null);   // os_id com o campo "outro" aberto
+  const [texto, setTexto] = useState("");
+  const [quem, setQuem] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState<number | null>(null);
+
+  useEffect(() => {
+    setQuem(localStorage.getItem("rivers_cx_quem") ?? "");
+  }, []);
+
+  // v3: NÃO esconder em dia sem recusa — sem a faixa ninguém acha o campo (08/09)
+
+  const motivoDe = (r: RecusaHoje) =>
+    salvos[r.os_id] ?? (r.recusa_motivo ? { motivo: r.recusa_motivo.motivo, detalhe: r.recusa_motivo.detalhe } : null);
+  const semMotivo = lista.filter((r) => !motivoDe(r)).length;
+
+  async function salvar(r: RecusaHoje, motivo: string, detalhe: string | null) {
+    setSalvando(r.os_id);
+    setErro(null);
+    try {
+      const res = await fetch("/api/cx/recusa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          os_id: r.os_id,
+          motivo,
+          detalhe,
+          actor: quem.trim() || null,
+          placa: r.placa,
+          location_id: r.location_id,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? `Erro ${res.status}`);
+      }
+      setSalvos((prev) => ({ ...prev, [r.os_id]: { motivo, detalhe } }));
+      // fecha só a linha salva — edição aberta em outra linha continua como está
+      setEditando((e) => (e === r.os_id ? null : e));
+      setOutroEm((o) => (o === r.os_id ? null : o));
+      if (outroEm === r.os_id) setTexto("");
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao salvar o motivo");
+    } finally {
+      setSalvando(null);
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <details className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        {/* faixa sempre visível: na TV é isso que importa (o contador). O clique acontece no
+            computador do CX; <details> não-controlado guarda o aberto entre os refreshes. */}
+        <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-5 py-3">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+            Recusou a reserva hoje: por quê?
+          </h2>
+          <span className="text-sm text-slate-500">
+            {lista.length === 0
+              ? "nenhuma recusa registrada hoje"
+              : `${lista.length} ${lista.length === 1 ? "recusa" : "recusas"} hoje`}
+          </span>
+          {/* cor de zona é só do relógio do SLA: pendência aqui é slate, nunca vermelho nem âmbar */}
+          {lista.length === 0 ? null : semMotivo > 0 ? (
+            <Selo tom="ok">{semMotivo} sem motivo</Selo>
+          ) : (
+            <Selo tom="auto">todas com motivo</Selo>
+          )}
+        </summary>
+      <div className="border-t border-slate-100 px-5 py-3">
+      {lista.length === 0 && (
+        <p className="text-sm text-slate-500">
+          Quando o operador cancelar uma oferta de reserva no Maestro, o cliente aparece aqui pra
+          você marcar o motivo com um clique. Cancelamento automático (a moto ficou pronta) não entra.
+        </p>
+      )}
+      {lista.length > 0 && (
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <input
+          value={quem}
+          onChange={(e) => {
+            setQuem(e.target.value);
+            localStorage.setItem("rivers_cx_quem", e.target.value);
+          }}
+          placeholder="seu nome (opcional)"
+          className="ml-auto w-44 rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-700"
+          aria-label="quem está registrando"
+        />
+      </div>
+      )}
+      {erro && (
+        <div className="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{erro}</div>
+      )}
+      <div className="overflow-hidden rounded-xl border border-slate-200">
+        {lista.map((r) => {
+          const m = motivoDe(r);
+          const mostrarBotoes = !m || editando === r.os_id;
+          return (
+            <div key={r.os_id} className="border-b border-slate-100 px-5 py-3 last:border-b-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <Placa numero={r.placa} tam="p" />
+                <span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">cliente </span>
+                  <span className="font-semibold text-slate-700">{nomeCurto(r.cliente, 26)}</span>
+                </span>
+                <span className="text-sm text-slate-500">
+                  ofertada {hora(r.ofertada_em)}
+                  {r.ofertou ? ` · ${r.ofertou.split(" ")[0]}` : ""} · recusou {hora(r.recusada_em)}
+                </span>
+                {m && !mostrarBotoes && (
+                  <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
+                    <Selo tom="ok">
+                      {m.motivo === "outro" && m.detalhe ? m.detalhe : rotuloRecusa(m.motivo)}
+                      {m.motivo !== "outro" && m.detalhe ? `: ${m.detalhe}` : ""}
+                    </Selo>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditando(r.os_id);
+                        setOutroEm(null);
+                        setTexto("");
+                      }}
+                      className="text-xs font-semibold text-sky-700 underline"
+                    >
+                      trocar
+                    </button>
+                  </span>
+                )}
+              </div>
+              {mostrarBotoes && (
+                <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={`motivo da recusa ${r.placa}`}>
+                  {MOTIVOS_RECUSA.map((op) => (
+                    <button
+                      key={op.code}
+                      type="button"
+                      disabled={salvando === r.os_id}
+                      onClick={() => {
+                        if (op.code !== "outro") {
+                          salvar(r, op.code, null);
+                          return;
+                        }
+                        // texto é um só: ao abrir "outro" em outra linha, começa limpo
+                        if (outroEm !== r.os_id) setTexto("");
+                        setOutroEm(r.os_id);
+                      }}
+                      className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition disabled:opacity-50 ${
+                        m?.motivo === op.code
+                          ? "border-sky-400 bg-sky-100 text-sky-800"
+                          : "border-slate-300 bg-white text-slate-700 hover:border-sky-400 hover:bg-sky-50"
+                      }`}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                  {outroEm === r.os_id && (
+                    <form
+                      className="flex w-full flex-wrap items-center gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (texto.trim()) salvar(r, "outro", texto.trim());
+                      }}
+                    >
+                      <input
+                        autoFocus
+                        value={texto}
+                        onChange={(e) => setTexto(e.target.value)}
+                        placeholder="descreva o motivo"
+                        aria-label="descreva o motivo da recusa"
+                        maxLength={500}
+                        className="min-w-[260px] flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!texto.trim() || salvando === r.os_id}
+                        className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50"
+                      >
+                        salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOutroEm(null);
+                          setTexto("");
+                        }}
+                        className="text-sm text-slate-500 underline"
+                      >
+                        cancelar
+                      </button>
+                    </form>
+                  )}
+                  {m && editando === r.os_id && outroEm !== r.os_id && (
+                    <button
+                      type="button"
+                      onClick={() => setEditando(null)}
+                      className="text-sm text-slate-500 underline"
+                    >
+                      manter como está
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      </div>
+      </details>
+      <p className="mt-2 text-xs text-slate-400">
+        Um clique por recusa. O Maestro não guarda esse motivo; aqui ele fica salvo pra análise
+        (&ldquo;trocar&rdquo; corrige). Só recusas registradas por operador no Maestro; fechamento automático
+        quando a moto fica pronta não entra.
+      </p>
+    </section>
   );
 }
 
@@ -468,6 +717,11 @@ export default function CxPiso() {
             </div>
           )}
         </section>
+
+        {/* 08/09: a recusa saiu do fim da página e passou a ficar colada na fila de ação,
+            porque lá embaixo ninguém via. Fechada por padrão pra não empurrar as outras
+            seções fora da TV nos dias de pico (13 recusas em 02/09). */}
+        <RecusasHoje lista={dados?.recusas_hoje ?? []} />
 
         {emAndamento.length > 0 && (
           <section className="mt-8">

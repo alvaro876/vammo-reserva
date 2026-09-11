@@ -246,6 +246,10 @@ function motivoInfo(rule: string | null): { icone: string; titulo: string } {
   if (rule === "C2_SEM_ESTOQUE")       return { icone: "📦", titulo: "Peça sem estoque" };
   if (rule === "C3_TEMPO_ALTO")        return { icone: "⏱️", titulo: "Trabalho muito longo" };
   if (rule === "C3_TEMPO_COMBINADO")   return { icone: "⏳", titulo: "Tempo total excede limite" };
+  if (rule === "C3_NAO_COMECOU")       return { icone: "🛑", titulo: "Conserto nem começou e a conta não fecha" };
+  if (rule === "C3_SEM_EXECUCAO_90")   return { icone: "🛑", titulo: "90 min na base sem entrar em execução" };
+  if (rule === "C3_CONTA_NAO_FECHA")   return { icone: "⏳", titulo: "Conta corrigida passa de 3h30" };
+  if (rule === "C1_FILA_DIAG_LONGA")   return { icone: "⏰", titulo: "60 min sem diagnóstico" };
   if (rule === "C4_CAPACIDADE")        return { icone: "🚦", titulo: "Oficina saturada (fila + serviço > 3h)" };
   return { icone: "🔴", titulo: "Reserva recomendada" };
 }

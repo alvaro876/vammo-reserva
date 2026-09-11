@@ -92,6 +92,10 @@ export async function GET(req: NextRequest) {
     //    cruzou as 3h SEM regra de reserva — a moto sai antes de uma reserva chegar,
     //    e a ação certa é o CX conversar com o cliente. Mesma lógica do bucket
     //    "precisa avisar" da tela. Dedup próprio (rivers_bot_aviso, 48h, 1 por OS).
+    // Pisos do pré-aviso (27/08) — ver o bloco de comentário dentro do filtro.
+    const ATRASO_MIN_PARA_AVISAR = 20;   // atraso previsto mínimo pra tocar o grupo
+    const FOLGA_MIN_PARA_PRE_AVISO = 20; // folga mínima pra ainda ser "pré"-aviso
+
     const jaAvisadas = isTest ? new Set<number>() : await getBotPostsOsIds("aviso");
     const candidatosAviso = result.filter((o) => {
       if (o.is_piso !== 1 || !basesTeste().has(o.location_id)) return false;
@@ -116,6 +120,21 @@ export async function GET(req: NextRequest) {
         // NADA de achismo no grupo — espera a linha e vira 🔴.
         const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
         if (pronta.min === null || pronta.min <= slaRestante) return false;
+
+        // ── DOIS PISOS ADICIONADOS EM 27/08 ──────────────────────────────────
+        // Crítica do Guida no caso SVR5D34/OS 61392: "avisar dois minutos antes do
+        // prazo, sendo que faltam oito para ficar pronta, não é um critério legal".
+        // Ele está certo, e não era só aquele caso — MEDIDO nos 77 pré-avisos com
+        // desfecho: 46 (60%) NEM estouraram, e a mediana foi o cliente sair 12min
+        // ANTES do prazo. 71% foram irrelevantes (sem estouro ou <= 15min).
+        //
+        // 1) atraso previsto mínimo: conversar com o cliente sobre 6 minutos não
+        //    muda nada pra ele, e queima a atenção do grupo pro caso que importa.
+        if (pronta.min - slaRestante < ATRASO_MIN_PARA_AVISAR) return false;
+        // 2) folga mínima: "pré-aviso" com 2 minutos de folga não é pré-aviso, não
+        //    sobra tempo de conversar antes do cliente perceber. Abaixo disso deixa
+        //    a linha passar — o caso volta como 🔴 estouro, que é outra mensagem.
+        if (slaRestante < FOLGA_MIN_PARA_PRE_AVISO) return false;
       }
       return true;
     });

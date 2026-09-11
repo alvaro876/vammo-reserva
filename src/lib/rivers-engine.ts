@@ -11,6 +11,7 @@ import { isAcaoAutomatica } from "@/lib/autonomia";
 import { logRiversSuggestions, SuggestionLog } from "@/lib/supabase";
 import { pEstouro } from "@/lib/classificador";
 import { MINUTOS_POR_PECA, TEMPO_BASE_MIN, TEMPO_FALLBACK_MIN } from "@/lib/tempo-pecas";
+import { PECAS_UNICAS_SQL, CHAVE_PECA_SQL, FAMILIA_IDS_SQL } from "@/lib/pecas-unicas";
 import { Recomendacao } from "@/types";
 
 // Tempos calibrados (minutos por peça) injetados no SQL via transform().
@@ -33,6 +34,8 @@ const TEMPO_MINS = Object.values(MINUTOS_POR_PECA).join(",");
 // peças) e +47min (13+) porque a soma trava no fator de 8; com 0,85/0,80 o backtest
 // foi de 84,3%→88,7% de precisão mantendo recall (config f2b, scripts/backtest-v23.mjs).
 const FATOR_N_PECAS = "transform(least(uniqExact(si.item_group_id), 13), [1,2,3,4,5,6,7,8,9,10,11,12,13], [1.39,1.11,1.04,1.04,1.0,1.03,0.95,0.94,0.85,0.85,0.85,0.85,0.8], 0.8)";
+// Mesmo fator, contando FAMÍLIA de variantes como uma peça (v0.34, CTE pecas_tempo).
+const FATOR_N_CHAVES = "transform(least(uniqExact(chave), 13), [1,2,3,4,5,6,7,8,9,10,11,12,13], [1.39,1.11,1.04,1.04,1.0,1.03,0.95,0.94,0.85,0.85,0.85,0.85,0.8], 0.8)";
 
 // Peças BLOQUEANTES: a falta delas impede liberar a moto (tração/freio/rodante/direção).
 // Peça cosmética/acessório em falta NÃO segura a moto — a oficina libera e fica pendência.
@@ -153,7 +156,22 @@ pecas_diag AS (
     SELECT
         si.so_id AS os_id,
         count(DISTINCT si.item_group_id) AS n_pecas,
-        round(sum(si.quantity * coalesce(
+        -- tempo_estimado_min ABAIXO NÃO É MAIS USADO desde v0.34 (a conta vive na CTE pecas_tempo);
+        -- fica só como referência da fórmula antiga. Não religar.
+        -- QUANTIDADE NÃO MULTIPLICA PEÇA DE FIXAÇÃO (27/08). Achado pelo Victor no caso
+        -- TJQ9C16: "Parafuso do disco" entrou 3× a 8min = 24min, como se três parafusos
+        -- levassem 24 minutos em série — eles saem junto com o disco. O campeão era
+        -- "Parafuso da bolha" (15min de cadastro, até 10 unidades = 150min) somado à
+        -- "Borracha de vedação Bolha" (idem): 300min estimados pra trocar uma bolha.
+        -- Medido em agosto/Mooca: 21,6% das OS tinham peça com qtd>1, inflação mediana
+        -- de 29min e p90 de 90min. Efeito nos gatilhos: OS cruzando 230 cai de 107 pra 85.
+        -- Ids abaixo = tudo que casa parafuso|porca|arruela|presilha|clipe|borracha de
+        -- vedação|abraçadeira|rebite no cadastro (28 ids, extraídos em 27/08). Fixos de
+        -- propósito: casar por nome faria o comportamento mudar em silêncio num rename.
+        round(sum(if(si.item_group_id IN (172,181,262,263,264,265,266,267,268,269,281,290,
+                                         291,292,293,294,350,351,352,353,354,355,356,623,
+                                         824,825,827,1068),
+                     1, si.quantity) * coalesce(
             nullIf(transform(si.item_group_id, [${TEMPO_IDS}], [${TEMPO_MINS}], 0), 0),
             nullIf(ig.time_target, 0), ${TEMPO_FALLBACK_MIN})) * ${FATOR_N_PECAS} + ${TEMPO_BASE_MIN}) AS tempo_estimado_min,
         max(coalesce(isk.skill, 1)) AS complexidade_max,
@@ -172,6 +190,44 @@ pecas_diag AS (
       AND si.item_group_id > 0
       AND si.deleted_at IS NULL
     GROUP BY si.so_id
+),
+pecas_tempo AS (
+    -- ESTIMATIVA DE TEMPO (v0.34, 06/09): substitui o tempo_estimado_min da pecas_diag.
+    -- Duas regras de bom senso sobre o lançamento de peças:
+    --   (1) peça que a moto só tem UMA (pneu, garfo, carenagem por lado, controladora, motor…)
+    --       conta 1 por OS — lançada com quantidade 2 OU em duas linhas (o caso comum: o
+    --       mecânico lança a mesma peça de novo). Por isso ela entra pelo mesmo caminho da
+    --       família (max por chave), e não pelo qtd_eff por linha da fixação;
+    --   (2) duas VARIANTES da mesma peça física na mesma OS (Roda traseira _v1 + _v2, Tampa do
+    --       motor v1 + v2, Controladora 3500W + 4000W) contam como UMA peça, a de maior tempo —
+    --       inclusive no nº de peças do fator multi-peça.
+    -- Medido em 3 bases (jun–set): 1,0% das OS, inflação mediana 13 min (máx 72), 8 OS cruzaram
+    -- a trava de reserva só por isso. Lista e famílias em src/lib/pecas-unicas.ts.
+    SELECT so_id AS os_id,
+        round(sum(if(conta_uma = 1, minutos_variante, soma_linhas)) * ${FATOR_N_CHAVES} + ${TEMPO_BASE_MIN}) AS tempo_estimado_min
+    FROM (
+        SELECT so_id, chave, max(conta_uma) AS conta_uma,
+            max(minutos) AS minutos_variante,          -- única/família: 1 unidade (a variante mais demorada)
+            sum(qtd_eff * minutos) AS soma_linhas      -- demais: soma normal (fixação vale 1 por linha)
+        FROM (
+            SELECT si.so_id AS so_id,
+                ${CHAVE_PECA_SQL} AS chave,
+                if(si.item_group_id IN (${FAMILIA_IDS_SQL}) OR si.item_group_id IN (${PECAS_UNICAS_SQL}), 1, 0) AS conta_uma,
+                if(si.item_group_id IN (172,181,262,263,264,265,266,267,268,269,281,290,291,292,293,294,
+                                        350,351,352,353,354,355,356,623,824,825,827,1068), 1, si.quantity) AS qtd_eff,
+                coalesce(nullIf(transform(si.item_group_id, [${TEMPO_IDS}], [${TEMPO_MINS}], 0), 0),
+                         nullIf(ig.time_target, 0), ${TEMPO_FALLBACK_MIN}) AS minutos
+            FROM oms_r.so_item si FINAL
+            LEFT JOIN ims_r.item_group ig FINAL ON ig.id = si.item_group_id
+            WHERE si.origin IN ('DIAGNOSIS', 'MECHANIC')
+              AND si._peerdb_is_deleted = 0
+              AND si.quantity > 0
+              AND si.item_group_id > 0
+              AND si.deleted_at IS NULL
+        )
+        GROUP BY so_id, chave
+    )
+    GROUP BY so_id
 ),
 estoque AS (
     SELECT
@@ -240,9 +296,26 @@ oferta_oficina AS (
     -- anunciando "reserva sugerida" no Slack pra cliente que a oficina já tinha
     -- atendido (o check-in fica aberto ~4h depois da oferta). Fonte viva pós
     -- Check-in 2.0 = checkin_event; recusa posterior (RESERVE_CANCELLED) reabre o caso.
+    --
+    -- CANCELAMENTO TEM DOIS SABORES (medido em 26/08, achado pelo Alvaro perguntando
+    -- "quantas foram recusadas pelo cliente?"). Tratar os dois como recusa inflava
+    -- o rótulo em 40%:
+    --
+    --   source = 'OPERATOR'   → uma pessoa cancelou. Mediana de 15min depois da oferta,
+    --                           com a moto ainda a ~79min de ficar pronta. É RECUSA
+    --                           (ou não tinha moto reserva) — 43 casos em 13 dias.
+    --   source = 'KAFKA_OMS'  → o OMS cancela sozinho quando a moto fica pronta.
+    --                           metadata.so_status = 'AWAITING_CX', mediana 0min entre
+    --                           o cancel e a moto pronta. O cliente NÃO recusou nada —
+    --                           26 casos em 13 dias.
+    --
+    -- Só o cancelamento de operador reabre o caso e vira "cliente recusou" na tela.
     SELECT e.so_id AS os_id,
         maxIf(toUnixTimestamp(e.created_at), e.event_type = 'RESERVE_OFFERED') AS ofertada_ts,
-        maxIf(toUnixTimestamp(e.created_at), e.event_type = 'RESERVE_CANCELLED') AS cancelada_ts
+        maxIf(toUnixTimestamp(e.created_at),
+              e.event_type = 'RESERVE_CANCELLED' AND e.source = 'OPERATOR') AS cancelada_ts,
+        maxIf(toUnixTimestamp(e.created_at),
+              e.event_type = 'RESERVE_CANCELLED' AND e.source != 'OPERATOR') AS encerrada_ts
     FROM maestro_scheduler_r.checkin_event e FINAL
     WHERE e._peerdb_is_deleted = 0
       AND e.so_id IS NOT NULL
@@ -347,7 +420,7 @@ SELECT
     coalesce(sn.sintoma_ids, []) AS sintoma_ids,
     coalesce(ma.mecanico_nome, '') AS mecanico_atual,
     coalesce(p.n_pecas, 0) AS n_pecas,
-    coalesce(p.tempo_estimado_min, 0) AS tempo_estimado_min,
+    coalesce(pt.tempo_estimado_min, 0) AS tempo_estimado_min,
     coalesce(p.complexidade_max, 0) AS complexidade_max,
     coalesce(p.n_pecas_criticas, 0) AS n_pecas_criticas,
     coalesce(p.peca_principal, '') AS peca_principal,
@@ -369,14 +442,24 @@ SELECT
     -- 1 pra TODA OS e o motor marcou as 3 motos da tela como troca de placa automática.
     -- (O is_piso acima escapa disso porque checkin.so_id é Nullable.)
     if(coalesce(sp.os_id, 0) > 0, 1, 0) AS troca_placa,
-    -- 1 = a oficina já ofereceu e o cliente não recusou depois
-    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.ofertada_ts, 0) > coalesce(oo.cancelada_ts, 0), 1, 0) AS oferta_ativa,
+    -- 1 = a oficina já ofereceu e ninguém cancelou depois (de qualquer origem)
+    if(coalesce(oo.ofertada_ts, 0) > 0
+       AND coalesce(oo.ofertada_ts, 0) > coalesce(oo.cancelada_ts, 0)
+       AND coalesce(oo.ofertada_ts, 0) > coalesce(oo.encerrada_ts, 0), 1, 0) AS oferta_ativa,
     -- 1 = ofereceram e o cliente RECUSOU (20/08, ordem do Alvaro: quem recusa some da
-    -- fila de ação — já foi avisado e escolheu esperar; o bot também não fala mais dele)
-    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.cancelada_ts, 0) >= coalesce(oo.ofertada_ts, 0), 1, 0) AS oferta_recusada
+    -- fila de ação — já foi avisado e escolheu esperar; o bot também não fala mais dele).
+    -- CORRIGIDO 26/08: só conta cancelamento de OPERADOR. Antes contava também o
+    -- fechamento automático do OMS (que dispara quando a moto fica pronta), e a tela
+    -- mostrava "cliente recusou" pra quem só teve a moto liberada — 26 de 69 casos
+    -- em 13 dias, 40% de superestimação. Ver comentário no CTE oferta_oficina.
+    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.cancelada_ts, 0) >= coalesce(oo.ofertada_ts, 0), 1, 0) AS oferta_recusada,
+    -- 1 = a reserva foi encerrada pelo sistema porque a moto ficou pronta. Não é recusa;
+    -- existe pra não confundir com ela em nenhuma contagem.
+    if(coalesce(oo.ofertada_ts, 0) > 0 AND coalesce(oo.encerrada_ts, 0) >= coalesce(oo.ofertada_ts, 0), 1, 0) AS oferta_encerrada_pronta
 FROM os_meta om
 LEFT JOIN mecanico_atual ma ON ma.os_id = om.os_id
 LEFT JOIN pecas_diag p ON p.os_id = om.os_id
+LEFT JOIN pecas_tempo pt ON pt.os_id = om.os_id
 LEFT JOIN sem_estoque se ON se.os_id = om.os_id
 LEFT JOIN pecas_criticas_nomes pcn ON pcn.os_id = om.os_id
 LEFT JOIN is_piso ip ON ip.os_id = om.os_id

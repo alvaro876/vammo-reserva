@@ -135,6 +135,52 @@ export async function getRecentSuggestions(days: number): Promise<SuggestionRow[
   return data as unknown as SuggestionRow[];
 }
 
+export interface SuggestionKpiRow {
+  os_id: number;
+  decision: string;
+  reason_code: string | null;
+  status_atual: string | null; // submotivo: ONDE a moto estava travada no disparo
+  is_piso: boolean | null;
+  location_id: number | null;
+  created_at: string;
+  // features traz min_desde_chegada (espera no instante do aviso) e
+  // tempo_estimado_min (estimativa da oficina). As colunas arrival_at e
+  // min_arrival_to_suggestion da tabela estão 100% nulas desde 23/06 — não use.
+  features: Record<string, unknown> | null;
+}
+
+// Sugestões a partir de uma DATA fixa (não "últimos N dias"), pro painel de KPI.
+// Por que data fixa e não janela relativa: o piloto tem um marco (13/08, início com
+// o time) e o painel compara contra ele. Janela relativa fazia o corte andar sozinho.
+//
+// Traz reason_code e location_id, que o getRecentSuggestions não traz — o painel
+// precisa dos dois pra quebrar por regra e pra filtrar a base pelo lado do log.
+// Pagina de 1000 em 1000: a TV loga a cada 45s, então são ~3k linhas/dia e o
+// limite default do supabase-js truncaria silenciosamente.
+export async function getSuggestionsSince(desdeISO: string): Promise<SuggestionKpiRow[]> {
+  const c = client();
+  if (!c) return [];
+  const PAGINA = 1000;
+  const out: SuggestionKpiRow[] = [];
+  for (let inicio = 0; ; inicio += PAGINA) {
+    const { data, error } = await c
+      .from("rivers_suggestion")
+      .select("os_id,decision,reason_code,status_atual,is_piso,location_id,created_at,features")
+      .eq("decision", "RESERVA")
+      .gte("created_at", desdeISO)
+      .order("created_at", { ascending: true })
+      .range(inicio, inicio + PAGINA - 1);
+    if (error) {
+      console.error("[kpi] erro ao ler sugestoes:", error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    out.push(...(data as unknown as SuggestionKpiRow[]));
+    if (data.length < PAGINA) break;
+  }
+  return out;
+}
+
 // ── Avisos do CX Piso ("o cliente já sabe") ───────────────────────────────────
 
 export interface AvisoCx {
@@ -206,6 +252,70 @@ export async function logRiversFeedback(
     actor: fb.actor ?? null,
     motivo_humano: fb.motivo_humano ?? null,
   });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// ── Motivo da recusa da moto reserva (04/09) ──────────────────────────────────
+// O Maestro registra RESERVE_CANCELLED sem motivo (0 de 79 no piloto). Enquanto o
+// campo não existe lá, o CX registra aqui pela tela /cx. Uma linha por OS: registrar
+// de novo sobrescreve (upsert em os_id). Códigos fechados em src/lib/recusa.ts.
+
+export interface RecusaMotivo {
+  os_id: number;
+  motivo: string;
+  detalhe: string | null;
+  actor: string | null;
+  created_at: string;
+}
+
+// Motivos registrados nos últimos 3 dias, por OS (a tela só lista recusas de hoje;
+// a janela maior cobre a virada da meia-noite e fuso).
+export async function getRecusaMotivos(): Promise<Map<number, RecusaMotivo>> {
+  const c = client();
+  if (!c) return new Map();
+  const desde = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await c
+    .from("rivers_recusa_motivo")
+    .select("os_id,motivo,detalhe,actor,created_at")
+    .gte("updated_at", desde)
+    .limit(2000);
+  if (error || !data) {
+    if (error) console.error("[cx] erro ao ler motivos de recusa:", error.message);
+    return new Map();
+  }
+  return new Map((data as unknown as RecusaMotivo[]).map((r) => [r.os_id, r]));
+}
+
+export interface RecusaMotivoInput {
+  os_id: number;
+  placa?: string | null;
+  location_id?: number | null;
+  motivo: string;
+  detalhe?: string | null;
+  actor?: string | null;
+}
+
+export async function registrarRecusaMotivo(
+  r: RecusaMotivoInput
+): Promise<{ ok: boolean; error?: string }> {
+  const c = client();
+  if (!c) return { ok: false, error: "Supabase nao configurado (.env.local)" };
+  const agora = new Date().toISOString();
+  const { error } = await c.from("rivers_recusa_motivo").upsert(
+    {
+      os_id: r.os_id,
+      placa: r.placa ?? null,
+      location_id: r.location_id ?? null,
+      motivo: r.motivo,
+      detalhe: r.detalhe ?? null,
+      actor: r.actor ?? null,
+      // created_at fica de fora de propósito: o default now() vale no insert e o update
+      // não toca nele — senão "trocar" apagava a hora da primeira resposta.
+      updated_at: agora,
+    },
+    { onConflict: "os_id" }
+  );
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
