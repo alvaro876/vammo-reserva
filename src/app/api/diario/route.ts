@@ -158,7 +158,10 @@ SELECT
     ck.service_conclusion                                       AS service_conclusion,
     toUnixTimestamp(ck.chegou_at)                               AS chegou_ts,
     if(ck.chamado_at IS NULL, 0, toUnixTimestamp(ck.chamado_at)) AS chamado_ts,
-    if(toUnixTimestamp(ck.saiu_at) >= 4102444800, 0, toUnixTimestamp(ck.saiu_at)) AS saiu_ts,
+    -- 0 = o cliente nao foi embora. A sentinela abaixo TEM que ser a mesma data usada no
+    -- least() do CTE ck; comparar com outra constante faz toda moto sem carimbo de saida
+    -- parecer que saiu no ano 2099 (bug de 11/09).
+    if(ck.saiu_at >= toDateTime64('2099-01-01 00:00:00', 6), 0, toUnixTimestamp(ck.saiu_at)) AS saiu_ts,
     toUnixTimestamp(os.aberta_at)                               AS aberta_ts,
     coalesce(tl.t_pronta, 0)                                    AS pronta_ts,
     coalesce(tl.t_exec1, 0)                                     AS exec1_ts,

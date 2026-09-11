@@ -271,7 +271,13 @@ export function analisaOS(r: LinhaCH, aviso: AvisoLog | null, pisoNoLog: boolean
   const dur = r.pronta_ts > 0 ? Math.round((r.pronta_ts - r.t0) / 60) : -1;
   const aberta = dur < 0;
   const estourou = dur > LIMITE_MIN;
-  const rp = replay(r, Math.min(TETO_REPLAY_MIN, dur > 0 ? dur : TETO_REPLAY_MIN));
+  // O replay para onde a observação para. Para moto ainda na oficina isso é AGORA, não o
+  // teto: rodar até o minuto 300 numa moto com 30 min de casa repete o último status
+  // conhecido e inventa alertas que ainda nem tiveram chance de acontecer. Foi o que fez o
+  // relatório de 11/09 acusar duas regras de não terem disparado em motos que ainda estavam
+  // no minuto 30 (bug de 11/09).
+  const decorrido = Math.max(0, Math.floor((agora - r.t0) / 60));
+  const rp = replay(r, Math.min(TETO_REPLAY_MIN, dur > 0 ? dur : decorrido));
 
   const avisouNoMin = aviso ? Math.round((aviso.ts - r.t0) / 60) : null;
   const avisou = Boolean(aviso) && pisoNoLog;
@@ -286,7 +292,7 @@ export function analisaOS(r: LinhaCH, aviso: AvisoLog | null, pisoNoLog: boolean
   const pecasTarde = rank.filter((p) => !rank120.some((q) => q.ig === p.ig)).map((p) => p.nome);
 
   let motivo = "", detalhe = "";
-  if (!aTempo) {
+  if (!aTempo && !aberta) {
     const d = porQueNaoPegou(r, rp, { estFim, chegouTarde, pecasTarde, dur });
     motivo = d.motivo;
     detalhe = avisou ? `avisou, mas em cima da hora (folga ${folga} min). ${d.detalhe}` : d.detalhe;

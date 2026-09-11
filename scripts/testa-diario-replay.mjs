@@ -49,7 +49,9 @@ for (const s of fixture.log) {
     espera_no_aviso: typeof f.min_desde_chegada === "number" ? f.min_desde_chegada : null });
 }
 
-const agora = Math.floor(new Date(`${dia}T23:59:00-03:00`).getTime() / 1000);
+// dia fechado: usa o fim do dia. dia de hoje: usa AGORA, senão o replay simula o futuro.
+const fimDoDia = Math.floor(new Date(`${dia}T23:59:00-03:00`).getTime() / 1000);
+const agora = Math.min(fimDoDia, Math.floor(Date.now() / 1000));
 const t0 = Date.now();
 const saida = fixture.linhas.map((r) =>
   analisaOS(r, primeiroAviso.get(r.os_id) ?? null, pisoLogado.has(r.os_id), agora));
@@ -90,7 +92,9 @@ const somaMotivos = Object.values(porMotivo).reduce((a, b) => a + b, 0);
 if (somaMotivos !== cx.C) erros.push(`os motivos somam ${somaMotivos}, deviam somar ${cx.C}`);
 if (porMotivo.OUTRO) erros.push(`${porMotivo.OUTRO} motos caíram em OUTRO (não classificadas)`);
 for (const x of saida) {
-  if (!x.a_tempo && !x.motivo_nao_pegou) erros.push(`OS ${x.os_id} sem aviso a tempo e sem motivo`);
+  // moto ainda na oficina (caixa E) nao leva motivo: o dia dela nao acabou
+  if (!x.a_tempo && !x.aberta && !x.motivo_nao_pegou) erros.push(`OS ${x.os_id} sem aviso a tempo e sem motivo`);
+  if (x.aberta && x.motivo_nao_pegou) erros.push(`OS ${x.os_id} ainda aberta e ja tem motivo`);
   if (x.a_tempo && x.motivo_nao_pegou) erros.push(`OS ${x.os_id} avisou a tempo e mesmo assim tem motivo`);
   if (x.folga_min !== null && x.avisou_no_min !== null && x.folga_min !== 180 - x.avisou_no_min)
     erros.push(`OS ${x.os_id} folga não bate com o minuto do aviso`);
