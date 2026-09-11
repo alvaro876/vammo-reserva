@@ -256,7 +256,8 @@ function CardAcao({ c }: { c: ClienteCx }) {
             como "está esperando há tanto", que é o contrário do que ele diz */}
         <div className="min-w-[150px]">
           <div className="text-xs font-bold uppercase tracking-wide" style={{ color: z.cor }}>
-            {estourou ? "já passou das 3h" : "faltam"}
+            {/* "faltam" lia como trabalho restante; é o PRAZO que vence (11/09) */}
+            {estourou ? "já passou das 3h" : "prazo vence em"}
           </div>
           <div className="text-4xl font-black leading-none tabular-nums" style={{ color: z.cor }}>
             {relogio(c.minutos_pro_sla)}
@@ -689,7 +690,7 @@ export default function CxPiso() {
               style={{ backgroundColor: ZONAS.tranquilo.fundo, color: ZONAS.tranquilo.cor }}
             >
               <div className="text-3xl font-black leading-tight tabular-nums">{noPrazo.length}</div>
-              <div className="text-xs font-bold uppercase tracking-wide">no prazo</div>
+              <div className="text-xs font-bold uppercase tracking-wide">sem aviso</div>
             </div>
             {/* input "seu nome" removido: tela de TV, ninguém digita (05/08) */}
           </div>
@@ -767,8 +768,13 @@ export default function CxPiso() {
 
         {noPrazo.length > 0 && (
           <section className="mt-8">
+            {/* O TÍTULO AFIRMA UM FATO, NÃO UMA PREVISÃO (11/09, caso SU05F61 apontado pelo
+                Alvaro). Antes era "No piso, dentro do prazo", e isso é uma promessa que a
+                tela não tem como cumprir: a moto do caso estava com 2h42 na fila da
+                qualidade, e moto nesse estado estoura em 18 de 39 casos (46%). O que a
+                tela sabe é que o RIVERS não sugeriu reserva. É isso que ela diz agora. */}
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
-              No piso, dentro do prazo
+              No piso, sem aviso do RIVERS
             </h2>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {noPrazo.map((c) => (
@@ -811,7 +817,7 @@ export default function CxPiso() {
                       className="shrink-0 font-semibold tabular-nums"
                       style={{ color: zona(c.minutos_pro_sla).cor }}
                     >
-                      faltam {relogio(c.minutos_pro_sla)}
+                      vence em {relogio(c.minutos_pro_sla)}
                     </span>
                   </div>
                 </div>

@@ -7,7 +7,26 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.35.0"; // 0.35.0 = AVISAR ANTES (10/09, pedido do Alvaro depois da
+export const ALGO_VERSION = "0.36.0"; // 0.36.0 = A MOTO NA FILA DO QA PARA DE SER INVISÍVEL
+                                     // (11/09, caso SU05F61 apontado pelo Alvaro: moto com 2h42
+                                     // na fila da qualidade aparecia como "dentro do prazo").
+                                     // Duas descobertas ao medir: (a) NENHUMA regra de reserva
+                                     // alcança moto em QA — todas as C3 exigem !emQa, a
+                                     // TEMPO_COMBINADO morre porque o restante em QA é 0, e a
+                                     // C1_QA_TARDIA só dispara se já foi reprovada; (b) 46 dos
+                                     // 210 estouros do piloto passaram pela fila do QA ainda
+                                     // dentro das 3h e ninguém falou nada.
+                                     // O que NÃO entrou, e por quê: um gatilho de reserva pra QA
+                                     // foi medido e REPROVADO — 39 alertas = 18 certos + 21
+                                     // errados (46,2%) com antecedência mediana de 15 min. Pior
+                                     // que o humano (55,9%) e derrubaria a precisão do conjunto
+                                     // de 82,0% pra 67,8%. Essas motos já estavam perdidas quando
+                                     // chegaram no QA: ficaram na bancada até o minuto 159.
+                                     // O que entrou: restanteParaPronta passa a usar o p75 real
+                                     // do QA (19 min) em vez da mediana (14) pra moto que JÁ está
+                                     // na fila. Efeito: o card sobe pra fila de atenção do CX aos
+                                     // 162 min em vez de 167. Não muda nenhuma decisão de reserva.
+                                     // 0.35.0 = AVISAR ANTES (10/09, pedido do Alvaro depois da
                                      // cobrança do Billy): o motor em produção avisava com 60min+
                                      // de antecedência em 69 casos do piloto (52 certos + 17
                                      // errados, 75%) e pegava 52 dos 210 estouros. Três regras
@@ -404,6 +423,21 @@ const THRESHOLDS = {
                              // Medido em 45d: 5,4 casos/dia, 79% estouram — bom pra avisar cedo,
                              // não pra entregar sozinho (por isso fica como recomendação; aos
                              // 2h30 o mesmo cliente escala pra automática pela regra acima).
+  qa_fila_min: 19,           // QUANTO FALTA pra moto que JA ESTA na fila do QA ou em conferência.
+                             // Separado do qa_min (14) de propósito: são duas perguntas.
+                             // O qa_min responde "quanto ainda vai sobrar de QA no fim", e pra
+                             // uma estimativa central a mediana serve. Este responde "essa moto
+                             // aqui cabe no prazo que resta", e pra decidir risco a mediana erra
+                             // metade das vezes. Medido no piloto (1.177 OS, da entrada na fila
+                             // até a moto pronta): mediana 13, p75 19, p90 30, p95 45. Passa dos
+                             // 14 em 42% dos casos; com reprovação a mediana vai a 39 e o p90 a 105.
+                             // Achado de 11/09, caso SU05F61: moto com 2h42 na fila do QA caía em
+                             // "dentro do prazo" porque 162 + 14 = 176 < 180. Medido: moto na fila
+                             // aos 165 min estoura em 18 de 39 casos (46%). Com 19 ela sobe pra
+                             // fila de atenção aos 162 em vez de 167.
+                             // NÃO mexe em regra de reserva: as regras calculam o restante por
+                             // outro caminho (tempoRestanteC3), esta constante só alimenta o
+                             // restanteParaPronta, que é display e fila de atenção do CX.
   fator_bancada: 0.67,       // v0.35: real ÷ estimado do restante de execução. Mediana medida de
                              // forma prospectiva, semana a semana, no piloto (0,664–0,688); a
                              // recalibração por fase (QA 0,18 / execução 0,69 / esperando
@@ -449,7 +483,7 @@ export function restanteParaPronta(
     // reprovada = retrabalho (mediana medida 45min) + nova conferência; senão só a conferência
     return status_atual === "QA_REJECTED"
       ? { tipo: "retrabalho", min: THRESHOLDS.qa_retrabalho_min + THRESHOLDS.qa_min }
-      : { tipo: "qa", min: THRESHOLDS.qa_min };
+      : { tipo: "qa", min: THRESHOLDS.qa_fila_min };
   }
   if (tempo_estimado_min <= 0) return { tipo: "sem_diag", min: null };
   const restante = tempo_estimado_min - (exec_acum_min ?? 0);

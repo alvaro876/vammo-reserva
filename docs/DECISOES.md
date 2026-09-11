@@ -260,3 +260,45 @@ backtest em PRE_OS (0 certos) foram excluídos da conta acima. (3) Backtest é b
 precisão real das regras novas será lida em `/kpi` a partir de 11/09.
 **Quem:** Alvaro (pedido), Claude (medição e código). Reprodutível em
 `rivers-preditivo/src/rivers_modelo/backtest_v035_final.py` → `reports/v035_final.csv`.
+
+
+### D19 — A moto na fila da qualidade para de ser invisível, e a tela para de prometer (2026-09-11) ✅
+**Gatilho:** o Alvaro apontou um card do /cx: moto com 2h42, "na fila da qualidade", debaixo do
+título NO PISO, DENTRO DO PRAZO, dizendo "faltam 18min".
+**O que a medição achou, e é pior do que o card:**
+1. **Nenhuma regra de reserva alcança moto em QA.** `C3_RELOGIO_150`, `C3_CONTA_NAO_FECHA` e
+   `C3_TEMPO_ALTO` exigem `!emQa`; `C3_SEM_EXECUCAO_90` exige status de pré-execução;
+   `C3_TEMPO_COMBINADO` morre porque em QA o restante é 0 e `0 + 14 >= 30` é falso; `C1_QA_TARDIA`
+   só dispara se a moto **já foi reprovada**. Moto esperando conferência não existe pro motor.
+2. **46 dos 210 estouros do piloto passaram pela fila do QA ainda dentro das 3h sem ninguém falar.**
+   Entraram na fila com 21 min de prazo (mediana) e a conferência levou 33.
+3. **A tela mentia.** Moto na fila do QA aos 165 min estoura em 18 de 39 casos (46%). Aos 135, 13%;
+   aos 150, 11%; até 120, 1 a 4%. O título dizia "dentro do prazo" para um caso de quase moeda.
+4. **O QA não leva 14 minutos.** Da entrada na fila até a moto pronta (n=1.177): mediana 13, p75 19,
+   p90 30, p95 45. Passa dos 14 em **42%** dos casos. Com reprovação (n=70) a mediana é 39 e o p90, 105.
+
+**O que NÃO entrou, e por quê.** Um gatilho de reserva para QA foi construído e **reprovado na
+medição**: 39 alertas = 18 certos + 21 errados (**46,2%**, IC 32–61) com antecedência mediana de
+**15 min**. Pior que o humano (55,9%) e derrubaria a precisão do conjunto de 82,0% para 67,8% sem
+mudar nada na régua de 60 min (128 = 102 + 26 com ou sem ela). Motivo físico: essas motos já estavam
+perdidas quando chegaram no QA, porque ficaram na bancada até o minuto 159. É o mesmo buraco dos 83
+estouros que nenhuma regra pega, aparecendo em outro lugar.
+
+**O que entrou:**
+- `THRESHOLDS.qa_fila_min = 19` (o p75 medido), usado só pelo `restanteParaPronta` quando a moto
+  **já está** na fila do QA ou em conferência. O `qa_min` de 14 continua intacto nas projeções,
+  porque lá a pergunta é outra ("quanto ainda vai sobrar de QA no fim", e aí a mediana serve).
+  Efeito: o card sobe pra fila de atenção do CX aos 162 min em vez de 167. **Nenhuma decisão de
+  reserva muda**, porque as regras calculam o restante por outro caminho (`tempoRestanteC3`).
+- O título da seção sai de "No piso, dentro do prazo" para **"No piso, sem aviso do RIVERS"**, e o
+  contador do topo de "no prazo" para "sem aviso". A tela passa a afirmar um fato que ela conhece
+  em vez de uma previsão que ela não tem como fazer.
+- O relógio do card sai de "faltam" para **"prazo vence em"**. O número sempre foi `180 − relógio`,
+  uma contagem regressiva do prazo, mas "faltam 18min" lia como "falta pouco serviço". Numa moto que
+  precisa de 60 min de bancada e tem 46 de prazo, a tela mostrava 46 e não dizia nada.
+
+**Ressalva:** o p75 é uma escolha de risco, não uma verdade. Com a mediana (13) a moto só subiria aos
+167; com o p90 (30), aos 151, e aí entrariam 80 cards de que 19 estouram (23,8%). O 19 foi escolhido
+por ser o percentil em que a moto que **não** cabe começa a ser maioria na faixa, e é revisável.
+**Quem:** Alvaro (achou o caso), Claude (mediu e implementou). Reprodutível em
+`rivers-preditivo/src/rivers_modelo/{buraco_do_qa,regra_qa}.py` → `reports/qa/`.
