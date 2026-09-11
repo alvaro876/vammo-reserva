@@ -81,12 +81,19 @@ export async function getLoggedReservaOsIds(_algoVersion: string): Promise<Set<n
 // virou reserva às 15h10 e o bot ficou mudo). tipo='reserva' e tipo='pre'/'estouro'
 // deduplicam separados: reserva DEPOIS de aviso é escalada legítima; aviso depois de
 // reserva é ruído (suprimido no cron).
-export async function getBotPostsOsIds(tipo: "reserva" | "aviso"): Promise<Set<number>> {
+export async function getBotPostsOsIds(
+  tipo: "reserva" | "aviso" | "maestro"
+): Promise<Set<number>> {
   const c = client();
   if (!c) return new Set();
   const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   let q = c.from("rivers_bot_aviso").select("os_id").gte("created_at", desde).limit(5000);
-  q = tipo === "reserva" ? q.eq("tipo", "reserva") : q.in("tipo", ["pre", "estouro"]);
+  q =
+    tipo === "reserva"
+      ? q.eq("tipo", "reserva")
+      : tipo === "maestro"
+        ? q.eq("tipo", "maestro")
+        : q.in("tipo", ["pre", "estouro"]);
   const { data, error } = await q;
   if (error || !data) {
     if (error) console.error("[rivers] erro ao ler posts do bot:", error.message);
