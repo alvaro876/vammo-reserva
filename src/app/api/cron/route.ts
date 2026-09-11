@@ -14,6 +14,8 @@ import { getBotPostsOsIds, registrarAvisosBot } from "@/lib/supabase";
 import { notifyReserva, notifyAviso } from "@/lib/slack";
 import { basesTeste } from "@/lib/autonomia";
 import { ALGO_VERSION, restanteParaPronta } from "@/lib/algorithm";
+import { enviarSugestaoMaestro } from "@/lib/maestro";
+import { maestroReason } from "@/lib/maestro-reason";
 
 // Janela de operação da oficina (horário de São Paulo). Fora disso não roda.
 const HORA_ABRE = 7;
@@ -86,6 +88,49 @@ export async function GET(req: NextRequest) {
     );
     if (notificadas > 0 && !isTest) {
       await registrarAvisosBot(novas.map((o) => ({ os_id: o.os_id, tipo: "reserva" })), ALGO_VERSION);
+    }
+
+    // 6b) Espelha as reservas de piso novas pro Maestro (tela do operador). Mesmo
+    //     filtro do bot (piso, base de teste, sem oferta ativa, não recusada), mas
+    //     com dedup próprio (tipo "maestro") pra ser independente do Slack. No-op
+    //     enquanto MAESTRO_BASE_URL/TOKEN não estiverem no ambiente. Só as regras
+    //     que têm de-para pro enum do Maestro entram (maestroReason != null).
+    const jaEnviadasMaestro = isTest ? new Set<number>() : await getBotPostsOsIds("maestro");
+    const novasMaestro = reservasPiso.filter(
+      (o) =>
+        !jaEnviadasMaestro.has(o.os_id) &&
+        basesTeste().has(o.location_id) &&
+        o.oferta_ativa !== 1 &&
+        (o as unknown as { oferta_recusada?: number }).oferta_recusada !== 1 &&
+        maestroReason(o.recomendacao!.rule_triggered) !== null
+    );
+
+    const enviadasMaestro: number[] = [];
+    for (const o of novasMaestro) {
+      const reason = maestroReason(o.recomendacao!.rule_triggered);
+      if (!reason) continue;
+      // estimatedHours é o restante corrigido (v0.35); quando não há estimativa
+      // (ex.: reserva pré-diagnóstico), fica de fora — o Maestro aceita sem ele.
+      const pronta = restanteParaPronta(o.status_atual, o.tempo_estimado_min || 0, o.exec_acum_min);
+      const estimatedHours =
+        pronta.min != null ? Math.round((pronta.min / 60) * 10) / 10 : undefined;
+      const r = await enviarSugestaoMaestro({
+        soId: o.os_id,
+        reason,
+        estimatedHours,
+        notes: o.recomendacao!.motivo,
+        source: `rivers-${ALGO_VERSION}`,
+        computedAt: new Date().toISOString(),
+      });
+      // Marca como enviado só quando o Maestro processou (aplicou ou pulou por guard).
+      // "no_checkin"/"error"/"disabled" não marcam → tenta de novo na próxima rodada.
+      if (r === "applied" || r === "skipped") enviadasMaestro.push(o.os_id);
+    }
+    if (enviadasMaestro.length > 0 && !isTest) {
+      await registrarAvisosBot(
+        enviadasMaestro.map((os_id) => ({ os_id, tipo: "maestro" })),
+        ALGO_VERSION
+      );
     }
 
     // 7) AVISOS de SLA (18/08, caso UGA1G47): cliente que vai cruzar (<=30min) ou já
