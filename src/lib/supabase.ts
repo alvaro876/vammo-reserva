@@ -82,7 +82,10 @@ export async function getLoggedReservaOsIds(_algoVersion: string): Promise<Set<n
 // deduplicam separados: reserva DEPOIS de aviso é escalada legítima; aviso depois de
 // reserva é ruído (suprimido no cron).
 export async function getBotPostsOsIds(
-  tipo: "reserva" | "aviso" | "maestro"
+  // "maestro_falha" (12/09) = a OS foi TENTADA e o POST nao virou envio (404/erro). Serve
+  // pra nao repetir o registro a cada rodada; NAO conta como enviada, entao a retentativa
+  // continua acontecendo. O dedup de envio usa igualdade exata em "maestro".
+  tipo: "reserva" | "aviso" | "maestro" | "maestro_falha"
 ): Promise<Set<number>> {
   const c = client();
   if (!c) return new Set();
@@ -91,8 +94,8 @@ export async function getBotPostsOsIds(
   q =
     tipo === "reserva"
       ? q.eq("tipo", "reserva")
-      : tipo === "maestro"
-        ? q.eq("tipo", "maestro")
+      : tipo === "maestro" || tipo === "maestro_falha"
+        ? q.eq("tipo", tipo)
         : q.in("tipo", ["pre", "estouro"]);
   const { data, error } = await q;
   if (error || !data) {

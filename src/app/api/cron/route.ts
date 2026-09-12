@@ -106,6 +106,15 @@ export async function GET(req: NextRequest) {
     );
 
     const enviadasMaestro: number[] = [];
+    // TRILHA DURAVEL DE TENTATIVA (12/09). O console.warn do 404 só existe enquanto alguém
+    // está com um `wrangler tail` aberto, e tail não guarda histórico. Ontem 9 reservas de
+    // piso da Mooca passaram e não deu pra saber se algum POST saiu, porque ninguém estava
+    // escutando na hora. Agora cada tentativa que NÃO vira envio deixa registro no Supabase
+    // com tipo "maestro_<resultado>", e a pergunta "está mandando?" vira uma query.
+    // O dedup de envio continua olhando só tipo="maestro" (igualdade exata), então falha
+    // nunca marca a OS como enviada: ela segue sendo tentada na rodada seguinte.
+    const falhasMaestro: { os_id: number; tipo: string }[] = [];
+    const jaRegistradas = isTest ? new Set<number>() : await getBotPostsOsIds("maestro_falha");
     for (const o of novasMaestro) {
       const reason = maestroReason(o.recomendacao!.rule_triggered);
       if (!reason) continue;
@@ -124,7 +133,17 @@ export async function GET(req: NextRequest) {
       });
       // Marca como enviado só quando o Maestro processou (aplicou ou pulou por guard).
       // "no_checkin"/"error"/"disabled" não marcam → tenta de novo na próxima rodada.
-      if (r === "applied" || r === "skipped") enviadasMaestro.push(o.os_id);
+      if (r === "applied" || r === "skipped") {
+        enviadasMaestro.push(o.os_id);
+      } else if (!jaRegistradas.has(o.os_id)) {
+        // uma linha por OS por dia, não uma por tentativa: a mesma moto é retentada a cada
+        // rodada enquanto continuar elegível, e isso encheria a tabela sem informar mais nada
+        falhasMaestro.push({ os_id: o.os_id, tipo: "maestro_falha" });
+        console.warn(`[maestro] so_id=${o.os_id} resultado=${r} (registrado como maestro_falha)`);
+      }
+    }
+    if (falhasMaestro.length > 0 && !isTest) {
+      await registrarAvisosBot(falhasMaestro, `${ALGO_VERSION}`);
     }
     if (enviadasMaestro.length > 0 && !isTest) {
       await registrarAvisosBot(
