@@ -82,21 +82,29 @@ export async function getLoggedReservaOsIds(_algoVersion: string): Promise<Set<n
 // deduplicam separados: reserva DEPOIS de aviso é escalada legítima; aviso depois de
 // reserva é ruído (suprimido no cron).
 export async function getBotPostsOsIds(
-  // "maestro_falha" (12/09) = a OS foi TENTADA e o POST nao virou envio (404/erro). Serve
-  // pra nao repetir o registro a cada rodada; NAO conta como enviada, entao a retentativa
-  // continua acontecendo. O dedup de envio usa igualdade exata em "maestro".
+  // "reserva"        -> ja anunciada no Slack como reserva
+  // "aviso"          -> ja recebeu pre-aviso ou aviso de estouro (tipos "pre"/"estouro")
+  // "maestro"        -> ja ESPELHADA com sucesso pro scheduler (dedup de envio)
+  // "maestro_falha"  -> ja TENTADA e recusada; agrupa "maestro_404", "maestro_error" e
+  //                     "maestro_disabled". Serve so pra nao repetir o registro a cada
+  //                     rodada; NAO conta como enviada, entao a retentativa continua.
   tipo: "reserva" | "aviso" | "maestro" | "maestro_falha"
 ): Promise<Set<number>> {
   const c = client();
   if (!c) return new Set();
   const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   let q = c.from("rivers_bot_aviso").select("os_id").gte("created_at", desde).limit(5000);
-  q =
-    tipo === "reserva"
-      ? q.eq("tipo", "reserva")
-      : tipo === "maestro" || tipo === "maestro_falha"
-        ? q.eq("tipo", tipo)
-        : q.in("tipo", ["pre", "estouro"]);
+  if (tipo === "reserva") {
+    q = q.eq("tipo", "reserva");
+  } else if (tipo === "maestro") {
+    q = q.eq("tipo", "maestro");
+  } else if (tipo === "maestro_falha") {
+    // o "_" e curinga no LIKE do Postgres: tem que ir escapado, senao "maestro_404"
+    // e "maestroX404" casariam igual
+    q = q.like("tipo", "maestro\_%");
+  } else {
+    q = q.in("tipo", ["pre", "estouro"]);
+  }
   const { data, error } = await q;
   if (error || !data) {
     if (error) console.error("[rivers] erro ao ler posts do bot:", error.message);

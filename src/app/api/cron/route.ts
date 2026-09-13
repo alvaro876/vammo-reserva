@@ -138,7 +138,13 @@ export async function GET(req: NextRequest) {
       } else if (!jaRegistradas.has(o.os_id)) {
         // uma linha por OS por dia, não uma por tentativa: a mesma moto é retentada a cada
         // rodada enquanto continuar elegível, e isso encheria a tabela sem informar mais nada
-        falhasMaestro.push({ os_id: o.os_id, tipo: "maestro_falha" });
+        // o tipo carrega o MOTIVO: "maestro_404" (o scheduler nao conhece a OS) separa de
+        // "maestro_erro" (401 de token, 5xx, rede). Sem essa distincao o rastro so diz que
+        // tentou, e a acao pra cada caso e completamente diferente.
+        falhasMaestro.push({
+          os_id: o.os_id,
+          tipo: r === "no_checkin" ? "maestro_404" : `maestro_${r}`,
+        });
         console.warn(`[maestro] so_id=${o.os_id} resultado=${r} (registrado como maestro_falha)`);
       }
     }
