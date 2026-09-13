@@ -244,11 +244,16 @@ export async function GET(req: NextRequest) {
   }
 
   const conta = (f: (x: (typeof saida)[number]) => boolean) => saida.filter(f).length;
-  const estouraram = conta((x) => x.estourou);
-  const pegos = conta((x) => x.caixa === "A");
-  const avisouFechado = conta((x) => x.a_tempo && !x.aberta);
+  // DENOMINADOR = so o universo em que a reserva resolve (13/09). Fica de fora o guincho
+  // e quem nao tem sinal de cliente na base. O alcance divide por isso, nao por tudo.
+  const estouraram = conta((x) => x.estourou && x.no_universo);
+  const estourosFora = conta((x) => x.estourou && !x.no_universo);
+  const pegos = conta((x) => x.caixa === "A" && x.no_universo);
+  const avisouFechado = conta((x) => x.a_tempo && !x.aberta && x.no_universo);
   const porMotivo = new Map<string, number>();
-  for (const x of saida) if (x.caixa === "C") porMotivo.set(x.motivo_nao_pegou, (porMotivo.get(x.motivo_nao_pegou) ?? 0) + 1);
+  for (const x of saida)
+    if (x.caixa === "C" && x.no_universo)
+      porMotivo.set(x.motivo_nao_pegou, (porMotivo.get(x.motivo_nao_pegou) ?? 0) + 1);
 
   return NextResponse.json({
     dia, bases, parcial, versao: ALGO_VERSION, gerado_em: hhmmSP(agora),
@@ -257,8 +262,11 @@ export async function GET(req: NextRequest) {
       fechados: conta((x) => !x.aberta),
       ainda_na_oficina: conta((x) => x.aberta),
       estouraram,
-      estouros_com_cliente: conta((x) => x.estourou && !x.cliente_saiu_antes),
-      estouros_cliente_ja_fora: conta((x) => x.estourou && x.cliente_saiu_antes),
+      // a quebra que fecha: todo estouro cai em exatamente um destes tres
+      estouros_ficou_na_mao: conta((x) => x.ficou_na_mao),
+      estouros_saiu_de_reserva: conta((x) => x.estourou && x.no_universo && x.recebeu_reserva),
+      estouros_fora_do_universo: estourosFora,
+      estouros_total: conta((x) => x.estourou),
       avisou: conta((x) => x.avisou),
       avisou_a_tempo: conta((x) => x.a_tempo),
       avisou_em_cima_da_hora: conta((x) => x.avisou && !x.a_tempo),
@@ -270,6 +278,12 @@ export async function GET(req: NextRequest) {
       C: conta((x) => x.caixa === "C"), D: conta((x) => x.caixa === "D"),
       E: conta((x) => x.caixa === "E"),
     },
+    fora_do_universo: Object.entries(
+      saida.filter((x) => !x.no_universo).reduce<Record<string, number>>((a, x) => {
+        a[x.fora_do_universo] = (a[x.fora_do_universo] ?? 0) + 1;
+        return a;
+      }, {})
+    ).map(([motivo, n]) => ({ motivo, n })),
     porque_nao: [...porMotivo.entries()].sort((a, b) => b[1] - a[1]).map(([codigo, n]) => ({ codigo, n })),
     conferencia: {
       // O replay roda sempre com as regras de HOJE. Num dia em que o motor no ar era

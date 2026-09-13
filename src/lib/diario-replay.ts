@@ -298,6 +298,31 @@ export function analisaOS(r: LinhaCH, aviso: AvisoLog | null, pisoNoLog: boolean
     detalhe = avisou ? `avisou, mas em cima da hora (folga ${folga} min). ${d.detalhe}` : d.detalhe;
   }
 
+  // ── O UNIVERSO DA RESERVA (13/09, pedido do Alvaro: "nao incluir esses caras") ──
+  // Nem todo estouro e alvo de moto reserva. Sai do denominador quem o motor foi mandado
+  // ignorar (guincho) e quem nao tem NENHUM sinal de que havia cliente na base.
+  //
+  // O que eu quase errei aqui, e que a medicao pegou: "sem chamada no balcao" NAO e sinal
+  // de ausencia. No piloto, 18 das 26 OS sem `called_at` tiveram oferta de reserva e 10
+  // receberam moto — havia cliente, faltava o carimbo. Usar ausencia de dado como ausencia
+  // de cliente jogaria fora caso real. Por isso a evidencia e a UNIAO dos sinais.
+  const evidenciaDeCliente =
+    r.chamado_ts > 0 || r.ofertou === 1 || r.chamou === 1 ||
+    ["RESERVE_DELIVERED", "BIKE_REPLACED"].includes(r.service_conclusion);
+  const foraDoUniverso = r.guincho === 1
+    ? "guincho, o motor foi mandado ignorar"
+    : !evidenciaDeCliente
+      ? "nenhum sinal de cliente na base"
+      : "";
+  const noUniverso = foraDoUniverso === "";
+
+  // Dentro do universo, o estouro tem dois desfechos MUITO diferentes, e juntar os dois
+  // esconde o que importa: metade dos 210 estouros do piloto (99) terminou com o cliente
+  // indo embora de outra moto. Contar isso como "estouro que o RIVERS nao pegou" e contar
+  // um acerto como erro.
+  const recebeuReserva = ["RESERVE_DELIVERED", "BIKE_REPLACED"].includes(r.service_conclusion);
+  const ficouNaMao = estourou && noUniverso && !recebeuReserva;
+
   const caixa = aberta ? "E" : estourou ? (aTempo ? "A" : "C") : (aTempo ? "B" : "D");
   // ESTOURO DA MOTO x ESTOURO DO CLIENTE. Quando o atendimento fecha antes das 3h e a
   // moto só fica pronta muito depois, quem passou das 3h foi a MOTO: o cliente já tinha
@@ -307,6 +332,8 @@ export function analisaOS(r: LinhaCH, aviso: AvisoLog | null, pisoNoLog: boolean
   const saiuNoMin = r.saiu_ts > 0 ? Math.round((r.saiu_ts - r.t0) / 60) : -1;
   const clienteSaiuAntes = saiuNoMin >= 0 && dur > 0 && saiuNoMin < Math.min(dur, LIMITE_MIN);
   return {
+    no_universo: noUniverso, fora_do_universo: foraDoUniverso,
+    recebeu_reserva: recebeuReserva, ficou_na_mao: ficouNaMao,
     cliente_saiu_no_min: saiuNoMin, cliente_saiu_antes: clienteSaiuAntes,
     virou_o_dia: r.pronta_ts > 0 && diaSP(r.pronta_ts) !== diaSP(r.chegou_ts),
     os_id: r.os_id, placa: r.placa, base: r.base, so_type: r.so_type,

@@ -32,6 +32,7 @@ interface Linha {
   pecas_depois_do_prazo: string;
   guincho: number; troca_placa: number; n_checkins: number;
   cliente_saiu_no_min: number; cliente_saiu_antes: boolean; virou_o_dia: boolean;
+  no_universo: boolean; fora_do_universo: string; recebeu_reserva: boolean; ficou_na_mao: boolean;
   ofertou: number; recusou: number; encerrou: number; motivo_cx: string;
   ofertou_no_min: number | null; entregue: number; status_final: string;
 }
@@ -39,7 +40,8 @@ interface Diario {
   dia: string; bases: number[]; parcial: boolean; versao: string; gerado_em: string;
   resumo: {
     chegaram: number; fechados: number; ainda_na_oficina: number; estouraram: number;
-    estouros_com_cliente: number; estouros_cliente_ja_fora: number;
+    estouros_ficou_na_mao: number; estouros_saiu_de_reserva: number;
+    estouros_fora_do_universo: number; estouros_total: number;
     avisou: number; avisou_a_tempo: number; avisou_em_cima_da_hora: number;
     alcance: number | null; precisao: number | null;
   };
@@ -51,6 +53,7 @@ interface Diario {
     avisos_sem_desfecho_no_dia: number; linhas_de_log: number;
     regras_estruturalmente_tardias: Record<string, number>;
   };
+  fora_do_universo: { motivo: string; n: number }[];
   linhas: Linha[];
 }
 
@@ -158,8 +161,8 @@ export default function DiarioPage() {
 
       <div style={S.cards}>
         <Card n={String(r.chegaram)} rot="motos no dia" sub={`${r.fechados} já saíram + ${r.ainda_na_oficina} ainda na oficina`} />
-        <Card n={String(r.estouraram)} rot="passaram de 3h" alerta
-              sub={`${r.estouros_com_cliente} com o cliente esperando + ${r.estouros_cliente_ja_fora} que ele já tinha ido embora`} />
+        <Card n={String(r.estouros_ficou_na_mao)} rot="clientes que ficaram na mão" alerta
+              sub={`de ${r.estouros_total} que passaram de 3h: ${r.estouros_saiu_de_reserva} saíram de reserva e ${r.estouros_fora_do_universo} fora do alvo`} />
         <Card n={String(r.avisou_a_tempo)} rot="avisos com 1h de folga" destaque
               sub={`${r.avisou} avisos no total, ${r.avisou_em_cima_da_hora} em cima da hora`} />
         <Card n={r.alcance === null ? "—" : `${r.alcance}%`} rot="dos estouros, pegos a tempo"
@@ -183,6 +186,26 @@ export default function DiarioPage() {
           ))}
         </div>
       </section>
+
+      {d.fora_do_universo.length > 0 && (
+        <section style={S.bloco}>
+          <h2 style={S.h2}>Quem fica fora da conta, e por quê</h2>
+          <p style={S.rodape}>
+            O alcance divide pelos estouros em que a moto reserva resolve. Estes não entram,
+            porque não existe aviso que os resolva:
+          </p>
+          {d.fora_do_universo.map((f) => (
+            <div key={f.motivo} style={S.ins}>
+              <div style={S.insN}>{f.n}</div>
+              <div>{f.motivo}</div>
+            </div>
+          ))}
+          <p style={{ ...S.cmp3s, marginTop: ".5rem" }}>
+            {r.estouros_total} que passaram de 3h = {r.estouros_ficou_na_mao} ficaram na mão
+            + {r.estouros_saiu_de_reserva} saíram de reserva + {r.estouros_fora_do_universo} fora do alvo.
+          </p>
+        </section>
+      )}
 
       {d.porque_nao.length > 0 && (
         <section style={S.bloco}>

@@ -66,13 +66,24 @@ console.log(`chegaram ${saida.length} = ${n((x) => !x.aberta)} fechadas + ${cx.E
 console.log(`estouraram ${n((x) => x.estourou)} · avisou ${n((x) => x.avisou)} · a tempo ${n((x) => x.a_tempo)}`);
 console.log(`\ncaixas: A ${cx.A} + B ${cx.B} + C ${cx.C} + D ${cx.D} + E ${cx.E} = ${cx.A + cx.B + cx.C + cx.D + cx.E}`);
 
+// ── o universo da reserva: a quebra tem que fechar ──
+const totalEst = n((x) => x.estourou);
+const naMao = n((x) => x.ficou_na_mao);
+const comReserva = n((x) => x.estourou && x.no_universo && x.recebeu_reserva);
+const foraUniv = n((x) => x.estourou && !x.no_universo);
+console.log(`
+estouros ${totalEst} = ${naMao} ficaram na mão + ${comReserva} saíram de reserva + ${foraUniv} fora do alvo`);
+const fu = {};
+for (const x of saida.filter((y) => y.estourou && !y.no_universo)) fu[x.fora_do_universo] = (fu[x.fora_do_universo] ?? 0) + 1;
+for (const [k, v] of Object.entries(fu)) console.log(`  fora: ${v} ${k}`);
+
 const porMotivo = {};
-for (const x of saida.filter((y) => y.caixa === "C")) porMotivo[x.motivo_nao_pegou] = (porMotivo[x.motivo_nao_pegou] ?? 0) + 1;
-console.log(`\npor que não pegou os ${cx.C} estouros:`);
+for (const x of saida.filter((y) => y.caixa === "C" && y.no_universo)) porMotivo[x.motivo_nao_pegou] = (porMotivo[x.motivo_nao_pegou] ?? 0) + 1;
+console.log(`\npor que não pegou os ${n((x) => x.caixa === "C" && x.no_universo)} estouros do alvo:`);
 for (const [k, v] of Object.entries(porMotivo).sort((a, b) => b[1] - a[1])) console.log(`  ${String(v).padStart(3)}  ${k}`);
 
 console.log(`\nexemplos (os 6 piores estouros sem aviso a tempo):`);
-for (const x of saida.filter((y) => y.caixa === "C").sort((a, b) => b.excesso - a.excesso).slice(0, 6)) {
+for (const x of saida.filter((y) => y.caixa === "C" && y.no_universo).sort((a, b) => b.excesso - a.excesso).slice(0, 6)) {
   console.log(`  ${x.placa} ${x.chegou}→${x.pronta} ${x.dur_min}min (+${x.excesso})`);
   console.log(`     ${x.motivo_nao_pegou}: ${x.detalhe}`);
   console.log(`     no min 120: ${x.status_120} · exec ${x.exec_120} · est ${x.est_120} · conta ${x.proj_120}`
@@ -88,8 +99,10 @@ for (const x of saida.filter((y) => y.caixa === "A").slice(0, 4)) {
 // ── invariantes ─────────────────────────────────────────────────────────────
 const erros = [];
 if (cx.A + cx.B + cx.C + cx.D + cx.E !== saida.length) erros.push("as caixas não somam o total");
+const cNoUniverso = n((x) => x.caixa === "C" && x.no_universo);
 const somaMotivos = Object.values(porMotivo).reduce((a, b) => a + b, 0);
-if (somaMotivos !== cx.C) erros.push(`os motivos somam ${somaMotivos}, deviam somar ${cx.C}`);
+if (somaMotivos !== cNoUniverso) erros.push(`os motivos somam ${somaMotivos}, deviam somar ${cNoUniverso}`);
+if (naMao + comReserva + foraUniv !== totalEst) erros.push(`a quebra dos estouros não fecha: ${naMao}+${comReserva}+${foraUniv} != ${totalEst}`);
 if (porMotivo.OUTRO) erros.push(`${porMotivo.OUTRO} motos caíram em OUTRO (não classificadas)`);
 for (const x of saida) {
   // moto ainda na oficina (caixa E) nao leva motivo: o dia dela nao acabou

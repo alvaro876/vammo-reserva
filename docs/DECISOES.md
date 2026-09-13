@@ -302,3 +302,48 @@ estouros que nenhuma regra pega, aparecendo em outro lugar.
 por ser o percentil em que a moto que **não** cabe começa a ser maioria na faixa, e é revisável.
 **Quem:** Alvaro (achou o caso), Claude (mediu e implementou). Reprodutível em
 `rivers-preditivo/src/rivers_modelo/{buraco_do_qa,regra_qa}.py` → `reports/qa/`.
+
+
+### D20 — O denominador passa a ser o universo em que a reserva resolve (2026-09-13) ✅
+**Decisão:** o alcance deixa de dividir por todo estouro. Ficam de fora **guincho** (o motor foi
+mandado ignorar, decisão antiga e medida) e **OS sem nenhum sinal de cliente na base**. E todo
+estouro passa a sair quebrado em três: *ficou na mão*, *saiu de reserva*, *fora do alvo*.
+**Gatilho:** ordem do Alvaro em 13/09, olhando o relatório do dia: "tomar cuidado pra não incluir
+esses caras na análise".
+**A primeira versão desta régua estava errada, e a medição pegou.** Eu ia excluir dois grupos que
+pareciam óbvios:
+- *"cliente saiu antes do minuto 120"* (50 estouros): **43 saíram COM reserva entregue** e 46
+  tiveram oferta. Não são clientes ausentes, são o sistema funcionando — o cliente foi embora de
+  outra moto e a dele ficou pronta 410 min depois (mediana). Excluir isso seria contar acerto
+  como erro.
+- *"nunca foi chamado no balcão"* (26 estouros): **18 tiveram oferta de reserva e 10 receberam
+  moto**. Havia cliente; o que falta é o carimbo `called_at`. Usar ausência de dado como ausência
+  de cliente jogaria fora caso real.
+
+**A régua que ficou:** há cliente quando existe QUALQUER um dos sinais — chamada no balcão, oferta
+de reserva (`RESERVE_OFFERED` / `CALL_FOR_RESERVE`) ou entrega (`RESERVE_DELIVERED` /
+`BIKE_REPLACED`). Nunca só a chamada.
+
+**O efeito no piloto (1.185 OS, 210 estouros):**
+
+| | |
+|---|---|
+| fora do alvo | **12** = 6 guincho + 6 sem nenhum sinal de cliente |
+| no alvo, mas o cliente saiu de reserva | **99** |
+| no alvo e o cliente ficou na mão | **99** |
+| soma | **210** |
+
+Metade dos estouros do piloto terminou com o cliente indo embora de outra moto. O denominador do
+alcance vai de 210 para **198**; o número que a operação de fato sente é **99**.
+
+**Por que 198 e não 99:** quem recebeu reserva continua no denominador de propósito. O alerta do
+RIVERS é parte da razão de ele ter recebido — tirar esses casos removeria justamente os acertos e
+inverteria causa e efeito. O 99 é métrica de desfecho, não denominador de alcance.
+
+**Onde mudou:** `src/lib/diario-replay.ts` (campos `no_universo`, `fora_do_universo`,
+`recebeu_reserva`, `ficou_na_mao`), `src/app/api/diario/route.ts` (denominador e a quebra),
+`src/app/diario/page.tsx` (o card principal agora é "clientes que ficaram na mão", com a quebra
+dos três embaixo), `scripts/placar-producao.mjs` e o teste `scripts/testa-diario-replay.mjs`,
+que ganhou a invariante "a quebra dos estouros tem que fechar".
+**Quem:** Alvaro (ordem), Claude (medição e código). Reprodutível em
+`rivers-preditivo/src/rivers_modelo/universo_reserva.py` → `reports/universo/`.
