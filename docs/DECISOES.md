@@ -347,3 +347,94 @@ dos três embaixo), `scripts/placar-producao.mjs` e o teste `scripts/testa-diari
 que ganhou a invariante "a quebra dos estouros tem que fechar".
 **Quem:** Alvaro (ordem), Claude (medição e código). Reprodutível em
 `rivers-preditivo/src/rivers_modelo/universo_reserva.py` → `reports/universo/`.
+
+---
+
+## D21 — o conta-minuto sai do ar (15/09, v0.37.0)
+
+**A regra `C3_RELOGIO_150` foi desligada.** Ela esperava o relógio do cliente chegar em 160 min e
+disparava. O motivo de desligar não é precisão, é CHEGADA: o aviso nascia tarde demais pra virar
+moto na mão de alguém.
+
+Medido em produção na Mooca, 08 a 14/09, com o replay do `/diario` sobre os 22 disparos dela:
+
+```
+folga máxima entre TODOS os 22 alertas : 20 min
+alertas com 30+ min de folga           :  0 de 22
+alertas disparados DEPOIS das 3h       :  6 de 22   (-23, -17, -15, -12, -6, -3)
+acertou (a moto de fato passou de 3h)  : 18 de 22   (82%)
+```
+
+Entregar uma reserva leva cerca de 30 min (o próprio motor usa isso em `restante_min_reserva`).
+Com folga máxima de 20, **nenhum dos 22 avisos dava tempo**. A precisão de 82% é real e é
+irrelevante: acertar o diagnóstico depois do enterro não salva ninguém.
+
+**Custo medido de desligar: zero.** Com a regra ligada a semana dá 47 alertas e 19 motos pegas com
+60+ min de folga; sem ela, 37 alertas e as mesmas 19. Nenhuma moto que era pega a tempo deixa de
+ser. No piloto inteiro, dos 122 disparos dela 118 já tinham sido pegos por outra regra com 75 min
+de antecedência na mediana, e os 4 exclusivos tiveram a moto pronta no minuto 1.838 na mediana.
+
+O código já reconhecia o problema em `REGRAS_ESTRUTURALMENTE_TARDIAS` (`src/lib/regras-sla.ts`),
+onde ela está listada com `C1_QA_TARDIA` (165) e `C1_ESPERA_SEM_DIAG` (150). A gente documentou e
+manteve ligada.
+
+**Religa com `RIVERS_REGRA_RELOGIO=on`, sem deploy.**
+**Quem:** Alvaro (ordem, repetida várias vezes), Claude (medição e código).
+Reprodutível em `scripts/impacto-sem-relogio.mjs`.
+
+---
+
+## D22 — a conta da regra passa a usar o fator de quem estoura (15/09, v0.37.1)
+
+**`fator_bancada` 0,67 → `fator_bancada_regra` 0,90, e `conta_folga_min` 30 → 50 (corte 210 → 230).**
+
+O motor corrigia o restante de execução multiplicando por 0,67, assumindo que a bancada entrega
+mais rápido que a estimativa. Na média está certo. Na cauda, que é exatamente a população que a
+regra precisa pegar, está invertido. Medido em 352 motos da Mooca (bancada real ÷ estimativa):
+
+```
+grupo              n     p25   mediana   p75    p90    acima de 1
+todas            352    0,42    0,58    0,84   1,11      14%
+ficou no prazo   281    0,38    0,51    0,68   0,92       6%
+passou de 3h      71    0,78    0,99    1,30   1,45      46%
+```
+
+Dos 71 que estouraram, **60 tiveram bancada acima de 0,67 do estimado** e 33 levaram mais que a
+estimativa inteira. O 0,67 encurtava a projeção justo em quem ia furar o prazo.
+
+**A tela continua no 0,67 de propósito.** Lá o que importa é acertar o caso típico; 0,90 deixaria
+todo "pronta em ~" pessimista. Por isso a constante é separada.
+
+**O par fator × corte** foi escolhido varrendo as duas dimensões nas 338 motos da semana (68
+estouros), com a régua do projeto (primeiro alerta por OS, 60+ min de folga, denominador único):
+
+```
+                 alertas  precisão  a tempo  alcance
+0,67 × 210 (antes)    37     78,4%      19    31,7%
+0,90 × 230 (agora)    34     76,5%      22    36,7%
+0,80 × 210            49     73,5%      29    42,6%
+```
+
+O par escolhido é o único que melhora os dois lados: **3 alertas a menos e 3 motos a mais salvas**.
+O `0,80 × 210` compra mais alcance por 4 pontos de precisão e fica como próximo passo.
+
+**Partido por data** pra conferir que não é corte pescado no mesmo dado: metade A (55 estouros) vai
+de 79% para 77% de precisão com alcance de 27% para 35%; metade B (13 estouros) fica em 73% e 54%
+nas duas. A metade B é pequena e não discrimina.
+
+**REPROVADO no caminho: fator por número de peças.** A razão real cresce com o tamanho do serviço
+(p75 de 0,61 em 1-2 peças até 0,94 em 9+), o que sugeria um fator por faixa. Não funciona: o número
+de peças **já está dentro da estimativa**, então corrigir por peça conta duas vezes. Deu 46 alertas
+/ 71,7% / 26 a tempo, contra 42 / 76,2% / 26 do fator fixo. Perdeu em precisão e em volume pelo
+mesmo alcance.
+
+**O que continua aberto:** a régua do balcão. No histórico da Mooca, dos 808 estouros o atendente
+avisou 399 a tempo e a regra 174; em 285 casos só ele pegou, e em 182 deles (64%) o motivo que ele
+escreveu foi "serviço complexo", em motos cuja estimativa dizia 124 min e que ficaram 422 min. O
+sinal que ele usa é o tamanho do serviço, que o motor removeu como critério em julho. Corrigir o
+fator ataca o mesmo buraco por dentro da conta; se não bastar, a lista de motivos do atendente é o
+próximo lugar pra olhar.
+
+**Quem:** Alvaro (ordem), Claude (medição e código).
+Reprodutível em `scripts/testa-tudo.mjs`, `scripts/fator-bancada-real.mjs` e
+`scripts/calibra-fator-pecas.mjs`.

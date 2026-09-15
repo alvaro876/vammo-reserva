@@ -72,3 +72,8 @@ modelo/
 
 # fixture de teste do relatorio diario: dado real com placa, nunca vai pro repo
 scripts/fixture/
+
+# rascunho de medicao (pode conter placa) — repo PUBLICO
+scripts/_*.json
+src/lib/_*_entry.ts
+scripts/sombra-vs-regra.mjs

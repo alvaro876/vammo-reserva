@@ -7,7 +7,7 @@
 import { Recomendacao, ReservaDecision } from "@/types";
 
 // Versão da lógica — muda quando alteramos regras/thresholds (p/ comparar acurácia no log)
-export const ALGO_VERSION = "0.36.0"; // 0.36.0 = A MOTO NA FILA DO QA PARA DE SER INVISÍVEL
+export const ALGO_VERSION = "0.37.1"; // 0.37.1 = a conta da regra passa a usar o fator de quem estoura (0,90) e corte 230
                                      // (11/09, caso SU05F61 apontado pelo Alvaro: moto com 2h42
                                      // na fila da qualidade aparecia como "dentro do prazo").
                                      // Duas descobertas ao medir: (a) NENHUMA regra de reserva
@@ -445,11 +445,39 @@ const THRESHOLDS = {
                              // Entra no "pronta em ~" (restanteParaPronta), no tempo_previsto_min e
                              // na regra C3_CONTA_NAO_FECHA. NÃO mexe no compressao_bancada (0,6) do
                              // C3_NAO_COMECOU, que já está no ar e medido.
+  fator_bancada_regra: 0.90, // v0.37.1 (15/09): o fator que a REGRA usa, separado do da tela.
+                             // Por que separar: o 0,67 é a mediana de TODAS as motos, e a mediana
+                             // de quem ESTOURA é 0,99. Medido nesta semana (352 motos da Mooca,
+                             // bancada real ÷ estimativa): 0,51 mediana em quem fica no prazo,
+                             // 0,99 em quem passa de 3h, e 46% dos que estouram levam MAIS que a
+                             // estimativa inteira. Ou seja, o 0,67 encurta a projeção justo na
+                             // população que a regra precisa pegar: dos 71 estouros da semana, 60
+                             // tiveram bancada acima de 0,67 do estimado.
+                             // A tela continua no 0,67 de propósito: lá o que importa é acertar o
+                             // caso típico, e 0,90 deixaria todo "pronta em ~" pessimista.
+                             // REPROVADO no caminho: fator por nº de peças. A razão real cresce com
+                             // o serviço (p75 de 0,61 em 1-2 peças a 0,94 em 9+), mas o número de
+                             // peças JÁ está dentro da estimativa, então corrigir por peça conta
+                             // duas vezes: 46 alertas / 71,7% / 26 a tempo, contra 42 / 76,2% / 26
+                             // do fator fixo. Perdeu em precisão e em volume pelo mesmo alcance.
   sem_execucao_min: 90,      // v0.35 C3_SEM_EXECUCAO_90: relógio a partir do qual moto ainda sem
                              // execução vira reserva, sem olhar estimativa. Piloto: 88 = 73 + 15 (83%).
-  conta_folga_min: 30,       // v0.35 C3_CONTA_NAO_FECHA: folga acima de projecao_reserva_min (180)
-                             // exigida da conta corrigida → corte 210. Testado 190/200/210: 190 dá
-                             // 67,8% e 200 dá 79,8% na regra sozinha; 210 dá 84,9% (73 = 62 + 11).
+  conta_folga_min: 50,       // C3_CONTA_NAO_FECHA: folga acima de projecao_reserva_min (180)
+                             // exigida da conta corrigida → corte 230.
+                             // Era 30 (corte 210) até 15/09. Subiu junto com o fator porque os dois
+                             // andam colados: fator maior projeta mais longe, e sem alargar o corte
+                             // o alerta viraria enxurrada. O par foi escolhido varrendo fator × corte
+                             // nas 338 motos da semana (68 estouros), com a régua do projeto:
+                             //   0,67 × 210 (antes) : 45 alertas, 77,8%, 22 a tempo, alcance 32,4%
+                             //   0,90 × 230 (agora) : 42 alertas, 76,2%, 26 a tempo, alcance 38,2%
+                             //   0,80 × 210         : 49 alertas, 73,5%, 29 a tempo, alcance 42,6%
+                             // O par escolhido é o único que melhora os DOIS lados contra o anterior:
+                             // manda 3 alertas a menos e salva 4 motos a mais. Partido por data pra
+                             // conferir que não é corte pescado no mesmo dado: metade A (55 estouros)
+                             // 79%→77% de precisão com 27%→35% de alcance; metade B (13 estouros)
+                             // 73%→73% com 54%→54%. A metade B é pequena e não discrimina.
+                             // Histórico: 190 dava 67,8% e 200 dava 79,8% na regra sozinha; 210 dava
+                             // 84,9% (73 = 62 + 11) com o fator antigo.
   fronteira_margem_min: 30,  // projeção a menos de 30min da linha das 3h = "fronteira"
                              // (zona cara-ou-coroa: variação natural do serviço decide o lado)
 };
@@ -733,7 +761,28 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   // Reparo tem cauda lognormal: quem já demorou vai demorar mais — EXCETO em QA,
   // que é sinal de conserto no fim. Números do hazard (90d, piso Mooca):
   // 150min fora de QA = 87,3% de estouro (n=887, 95% de recall); em QA = 22,6%.
+  //
+  // DESLIGADA em 15/09 (D22). Decisão do Alvaro, e o motivo não é precisão, é CHEGADA:
+  // o alerta nasce tarde demais pra virar moto na mão do cliente. Medido em produção na
+  // Mooca, 08 a 14/09, com o replay do /diario sobre os 22 disparos dela:
+  //
+  //   folga máxima entre TODOS os 22 alertas : 20 min
+  //   alertas com 30+ min de folga           :  0 de 22
+  //   alertas disparados DEPOIS das 3h       :  6 de 22  (-23, -17, -15, -12, -6, -3)
+  //   acertou (a moto de fato passou de 3h)  : 18 de 22  (82%)
+  //
+  // Entregar uma reserva leva ~30min (o próprio motor usa isso em restante_min_reserva).
+  // Com folga máxima de 20, NENHUM dos 22 avisos dava tempo. A precisão de 82% é real e é
+  // irrelevante: acertar o diagnóstico depois do enterro não salva ninguém. O código já
+  // reconhecia o problema em REGRAS_ESTRUTURALMENTE_TARDIAS (regras-sla.ts), onde ela está
+  // listada junto com C1_QA_TARDIA (165) e C1_ESPERA_SEM_DIAG (150) — a gente documentou e
+  // manteve ligada. Custo medido de desligar: zero alerta a tempo perdido.
+  //
+  // Religa com RIVERS_REGRA_RELOGIO=on, sem deploy, se o alcance cair mais do que o esperado.
+  // Quem cobre o buraco são as regras que disparam cedo: C1_FILA_DIAG_LONGA (60),
+  // C3_NAO_COMECOU (60), C3_SEM_EXECUCAO_90 (90) e C3_CONTA_NAO_FECHA.
   if (
+    process.env.RIVERS_REGRA_RELOGIO === "on" &&
     input.is_piso === 1 &&
     !emQa &&
     relogio >= THRESHOLDS.relogio_reserva_min &&
@@ -821,8 +870,9 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     );
   }
   const totalSemMec = relogio + tempoRestanteC3 + THRESHOLDS.qa_min;
-  // v0.35: mesma conta com o restante corrigido pelo fator real da bancada (0,67).
-  const restanteCorrigido = emQa ? tempoRestanteC3 : Math.round(tempoRestanteC3 * THRESHOLDS.fator_bancada);
+  // v0.37.1: o fator da REGRA (0,90), não o da tela (0,67). A mediana da razão bancada/estimativa
+  // é 0,51 em quem fica no prazo e 0,99 em quem estoura; a regra tem que enxergar a segunda.
+  const restanteCorrigido = emQa ? tempoRestanteC3 : Math.round(tempoRestanteC3 * THRESHOLDS.fator_bancada_regra);
   const totalCorrigido = relogio + restanteCorrigido + THRESHOLDS.qa_min;
   // Projeção a menos de 30min da linha = fronteira: a sugestão sai marcada pro
   // encarregado saber que é decisão de foto de chegada, não de convicção.
@@ -873,7 +923,7 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
   ) {
     return reserva(
       "C3_CONTA_NAO_FECHA",
-      `já esperou ${relogio}min + restante ~${restanteCorrigido}min (estimativa ${tempoRestanteC3}min × ${THRESHOLDS.fator_bancada}) + ${THRESHOLDS.qa_min}min QA = ${totalCorrigido}min, mais de 3h30`,
+      `já esperou ${relogio}min + restante ~${restanteCorrigido}min (estimativa ${tempoRestanteC3}min × ${THRESHOLDS.fator_bancada_regra}) + ${THRESHOLDS.qa_min}min QA = ${totalCorrigido}min, mais de 3h30`,
       base,
       "alta"
     );
