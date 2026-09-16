@@ -158,7 +158,11 @@ export interface Replay {
 }
 
 /** Roda o motor de verdade na grade do cron e guarda o 1º disparo de cada regra. */
-export function replay(r: LinhaCH, tetoMin: number): Replay {
+// `estOverride` troca a estimativa de bancada por outro número (um modelo, por exemplo) sem mexer
+// em nada do motor. Só vale DEPOIS que o diagnóstico existe: antes disso a estimativa é 0 e tem
+// que continuar 0, senão o replay passa a prever o que o motor não tinha como saber. Serve pra
+// medir se um modelo de estimativa melhora a DECISÃO, que é o que decide, e não o erro médio.
+export function replay(r: LinhaCH, tetoMin: number, estOverride?: number | null): Replay {
   const disparos: { regra: string; min: number; sla: boolean }[] = [];
   const vistos = new Set<string>();
   let tiques = 0, tiquesAte120 = 0;
@@ -172,7 +176,8 @@ export function replay(r: LinhaCH, tetoMin: number): Replay {
     const noHorario = h >= CRON_INICIO_SP && h < CRON_FIM_SP;
 
     const { status, desde } = statusEm(r.evs, T);
-    const { est, nPecas } = estimativaEm(r.itens, T);
+    const { est: estCru, nPecas } = estimativaEm(r.itens, T);
+    const est = (estCru > 0 && estOverride != null && estOverride > 0) ? estOverride : estCru;
     const exec = execAcumEm(r.evs, T);
     const emQa = QA_STATUSES.has(status);
     const restante = emQa ? 0 : Math.max(0, est - exec);
