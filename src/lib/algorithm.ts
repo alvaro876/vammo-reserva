@@ -929,6 +929,43 @@ export function avaliarOS(input: AlgoritmoInput): Recomendacao {
     );
   }
 
+  // ── SLOT EXPERIMENTAL (15/09) ────────────────────────────────────────────────
+  // DESLIGADO em produção: só roda com RIVERS_REGRA_EXP preenchido, e a variável não
+  // existe no ambiente. Existe pra medir candidata nova PELO MOTOR DE VERDADE.
+  //
+  // Por que precisou: a primeira varredura de candidatas foi feita numa reimplementação
+  // por fora, e ela prometeu +30 clientes salvos que não existiam. O motivo: a
+  // reimplementação ignorava a janela do cron (7h–21h), a lista de status avaliáveis e as
+  // exclusões do piso (NO_SHOW, CANCELLED, DROPOUT, RETURN_INSPECTION). Os "novos" eram
+  // moto que chegava de madrugada, quando o motor nem roda. Candidata que não passa pelas
+  // mesmas travas não é candidata, é número solto.
+  //
+  // Fica DEPOIS de todas as regras de reserva de propósito: assim ela só pega o que
+  // escapou, e o ganho medido é marginal por construção, nunca roubado de outra regra.
+  //
+  // Sintaxe: condições separadas por vírgula, todas têm que valer.
+  //   piso · status_pre · fora_qa · relogio>=110 · exec<=5 · parado>=30 · est>=160
+  //   pecas>=6 · conta>=220 · restante>=40
+  // Ex.: RIVERS_REGRA_EXP="piso,status_pre,relogio>=110"
+  const specExp = process.env.RIVERS_REGRA_EXP;
+  if (specExp) {
+    const campos: Record<string, number> = {
+      relogio, exec: execFeita, parado: input.min_no_status ?? 0,
+      est: input.tempo_estimado_min, pecas: input.n_pecas ?? 0,
+      conta: totalCorrigido, restante: restanteCorrigido,
+    };
+    const ok = specExp.split(",").map((s) => s.trim()).filter(Boolean).every((cond) => {
+      if (cond === "piso") return input.is_piso === 1;
+      if (cond === "status_pre") return STATUS_PRE_EXECUCAO.has(input.status_atual);
+      if (cond === "fora_qa") return !emQa;
+      const m = /^([a-z_]+)(>=|<=)(\d+)$/.exec(cond);
+      if (!m) return false;
+      const x = campos[m[1]];
+      return x === undefined ? false : (m[2] === ">=" ? x >= Number(m[3]) : x <= Number(m[3]));
+    });
+    if (ok) return reserva("C3_EXPERIMENTAL", `regra em teste (${specExp})`, base, "alta");
+  }
+
   // ── CAMADA 4: Capacidade da oficina (modelo de presença) ───────────────
   // Usa a CAPACIDADE ESPERADA de mecânicos na base/hora (curva do histórico,
   // injetada em route.ts) + a fila de trabalho esperando mecânico, pra estimar

@@ -21,6 +21,8 @@ export const REGRAS_SLA = new Set([
   "C1_QA_TARDIA",
   "C1_ESPERA_SEM_DIAG",
   "C4_CAPACIDADE",
+  // slot de teste (desligado em producao, so com RIVERS_REGRA_EXP)
+  "C3_EXPERIMENTAL",
 ]);
 
 export const NOME_REGRA: Record<string, string> = {
@@ -34,6 +36,7 @@ export const NOME_REGRA: Record<string, string> = {
   C1_QA_TARDIA: "Reprovou no QA tarde",
   C1_ESPERA_SEM_DIAG: "Espera sem diagnóstico",
   C4_CAPACIDADE: "Oficina saturada",
+  C3_EXPERIMENTAL: "Regra em teste",
   // fora do conjunto SLA, mas aparecem no relatório diário como contexto
   C1_PLACA: "Troca de placa",
   C1_HARD: "Situação crítica",

@@ -438,3 +438,67 @@ próximo lugar pra olhar.
 **Quem:** Alvaro (ordem), Claude (medição e código).
 Reprodutível em `scripts/testa-tudo.mjs`, `scripts/fator-bancada-real.mjs` e
 `scripts/calibra-fator-pecas.mjs`.
+
+
+---
+
+## D23 — o teto do motor, medido em 30 dias (15/09)
+
+**Não existe regra nova que ganhe alcance sem pagar precisão.** Medido com 1.594 motos e 322
+estouros da Mooca (5 semanas, 11/08 a 15/09), pelo motor de verdade e não por reimplementação.
+
+O motor hoje: **176 alertas, 76,1% de precisão, 113 clientes salvos de 322 (35,1%)**.
+
+A fronteira, testando candidatas no slot `RIVERS_REGRA_EXP` (que fica DEPOIS de todas as regras,
+então o ganho é marginal por construção):
+
+```
+candidata                                alertas  precisão  salvos   efeito
+hoje                                         176     76,1%     113      -
+piso,status_pre,relogio>=100                 176     76,1%     113   dispara 0 vezes
+piso,status_pre,relogio>=110                 176     76,1%     113   dispara 0 vezes
+piso,fora_qa,conta>=215,relogio>=90          237     67,9%     130   +17 salvos, -8,2pp
+piso,fora_qa,conta>=200,relogio>=110         303     60,7%     150   +37 salvos, -15,4pp
+piso,fora_qa,est>=160,relogio>=90            227     65,2%     132   +19 salvos, -10,9pp
+piso,fora_qa,pecas>=8,relogio>=90            424     43,2%     172   +59 salvos, -33,0pp
+piso,fora_qa,restante>=60,relogio>=100       413     46,0%     181   +68 salvos, -30,1pp
+```
+
+**O câmbio é de cerca de 1 ponto de precisão a cada 2 clientes a mais.** E a família "ainda não
+entrou na bancada" dispara ZERO vezes no slot, porque a `C3_SEM_EXECUCAO_90` já cobre ela inteira
+aos 90 minutos. Não sobrou espaço ali.
+
+No único botão que existe (`sem_execucao_min`), a troca é a mesma:
+
+```
+sem_execucao_min   alertas  precisão  salvos  alcance
+90 (hoje)              176     76,1%     113    35,1%
+110                    163     79,8%     108    33,5%
+120                    159     80,5%     106    32,9%
+```
+
+Chegar em 80% custa 7 clientes em 30 dias.
+
+**UM ERRO QUE EU COMETI E QUE FICA REGISTRADO.** A primeira varredura foi feita numa
+reimplementação das regras por fora do motor, e ela prometeu +30 clientes salvos. Eram falsos: a
+reimplementação ignorava a janela do cron (7h–21h), a lista de status avaliáveis e as exclusões do
+piso (NO_SHOW, CANCELLED, DROPOUT, RETURN_INSPECTION). Os "novos" eram moto que chegava de
+madrugada, quando o motor nem roda. Daí nasceu o slot `RIVERS_REGRA_EXP`: **candidata que não passa
+pelas mesmas travas do motor não é candidata.**
+
+**O que de fato quebra o teto, e não é regra:**
+
+1. **A estimativa.** Ela é o único insumo real de quase toda regra, e erra de forma previsível:
+   a razão bancada real ÷ estimativa é 0,51 na mediana em quem fica no prazo e 0,99 em quem
+   estoura. As regras são formas cada vez mais elaboradas de compensar um número errado.
+2. **O atendente.** No histórico da Mooca, 808 estouros: ele avisa 399 a tempo, a regra 174. Em
+   285 casos só ele pega, e em 182 deles (64%) o motivo que ele escreve é "serviço complexo", em
+   motos cuja estimativa dizia 124 min e que ficaram 422 min.
+
+**A base de medição que passou a existir:** 32 fixtures diários (11/08 a 15/09), 1.594 motos e 322
+estouros. Antes disso toda decisão saía de 60 a 70 estouros, e nesse tamanho a diferença entre 76%
+e 83% não é distinguível.
+
+**Quem:** Alvaro (ordem), Claude (medição e código).
+Reprodutível em `scripts/mina-regras.mjs` (garimpo de condições) e
+`scripts/testa-candidatas.mjs` (teste pelo motor real via slot).
